@@ -36,6 +36,9 @@ Laporan Laba Rugi, Posisi Keuangan, Perubahan Ekuitas, Arus Kas; CALK; semua exp
 | D8 | `journal_entries.transaction_id` tanpa cascade | `ON DELETE CASCADE`; transaksi terkunci setelah dijurnal | Hapus upload = hapus jurnalnya |
 | D9 | Nama "LedgerAI" | Semua nama memakai **Jurnalku** (seed email `admin@jurnalku.local`) | Konsistensi |
 | D10 | Folder `samples/` | Folder yang ada adalah `sample/`; keduanya di-gitignore | Data keuangan asli |
+| D11 | Rule tanpa arah | `category_rules.direction` (`DB`/`CR`/NULL); rule hanya cocok untuk arah yang sama. Rule seed diberi arah; rule seed `BI-FAST` dihapus | `TOKOPEDIA → Pendapatan` salah untuk uang keluar; `BI-FAST` juga muncul di transfer masuk |
+| D12 | PDF disimpan ke file temp lalu dihapus | PDF diteruskan dari memori ke sidecar, tanpa file temp | Lebih ketat: tidak pernah menyentuh disk |
+| D13 | Seeder di `seeds/02_coa.ts` dst. | Data CoA & rule di `app/src/lib/server/company/`; `seeds/index.ts` hanya CLI | Data yang sama dipakai saat membuat perusahaan baru |
 
 ## 3. Arsitektur
 
@@ -125,7 +128,7 @@ Mengikuti PRD §9 dengan perubahan berikut (Drizzle, Postgres 16). Semua uang `N
 - **`user_role` enum**: `admin | accountant | viewer`.
 - **`companies`**: + `bank_account_id UUID REFERENCES accounts(id)` (di-set ke `1-1002` saat seed perusahaan).
 - **`accounts`**: sesuai PRD. "Leaf" = akun tanpa anak; hanya leaf yang bisa dipilih untuk transaksi/jurnal.
-- **`category_rules`**: + `UNIQUE(company_id, keyword_pattern)`. Keyword disimpan uppercase.
+- **`category_rules`**: + `direction tx_direction NULL` (`DB | CR`), `UNIQUE(company_id, keyword_pattern, direction) NULLS NOT DISTINCT`. Keyword disimpan uppercase.
 - **`upload_status` enum**: `processing | review | done | error`.
 - **`statement_uploads`**: + `account_no VARCHAR(30)`, `opening_balance`, `closing_balance NUMERIC(18,2)`, `balance_warning TEXT NULL`, `error_message TEXT NULL`, `ai_status TEXT NULL` (`ok | partial | unavailable`).
 - **`transactions`**: + `line_no INTEGER` (urutan dalam statement), `ai_suggested_account_id UUID NULL`, `ai_reason TEXT NULL`, `ai_keyword TEXT NULL`, `group_key TEXT`. `company_id NOT NULL`.
@@ -167,14 +170,14 @@ Algoritma:
 
 ### 6.1 Upload — `POST /api/uploads` (accountant+)
 1. Validasi: ekstensi `.pdf`, magic bytes `%PDF`, ≤ 10 MB → selain itu `400`.
-2. Simpan ke file temp, kirim ke sidecar, hapus temp di `finally`. Sidecar tidak bisa dihubungi → `503 sidecar_unavailable`. `422` dari sidecar → `422` dengan pesan user-friendly; tidak ada yang disimpan.
+2. Teruskan PDF dari memori ke sidecar (tanpa file temp, D12). Sidecar tidak bisa dihubungi → `503 sidecar_unavailable`. `422` dari sidecar → `422` dengan pesan user-friendly; tidak ada yang disimpan.
 3. Duplikat: upload lain di company yang sama dengan `account_no` sama dan periode tumpang tindih → `409 duplicate_statement`.
 4. Cek saldo awal: jika jurnal OPENING ada, hitung saldo akun bank perusahaan per `period_start − 1 hari`; jika ≠ `opening_balance` PDF, isi `balance_warning` (tidak memblokir).
 5. Insert `statement_uploads` (status `processing`) + `transactions` (`DB` → `debit = amount`, `CR` → `credit = amount`, `group_key = normalize(description)`), dalam satu DB transaction.
 6. Enqueue job kategorisasi; response `201 { id }`. UI mem-polling `GET /api/uploads/:id` sampai status ≠ `processing`.
 
 ### 6.2 Job kategorisasi
-1. **Rule** — untuk tiap transaksi belum confirmed: cari rule `WHERE company_id = ? AND upper(description) LIKE '%' || keyword_pattern || '%' ORDER BY source DESC, priority DESC, length(keyword_pattern) DESC LIMIT 1`. Cocok → `account_id`, `source = RULE`, `ai_confidence = 1.000`, `is_confirmed = true`, `confirmed_at = now()`, `confirmed_by = NULL`.
+1. **Rule** — untuk tiap transaksi belum confirmed: cari rule milik perusahaan (akun tujuan aktif) dengan `direction IS NULL` atau sama dengan arah transaksi, yang keyword-nya terkandung secara literal (tanpa wildcard, case-insensitive) di deskripsi; urutan: `source` USER > SYSTEM, `priority` tertinggi, keyword terpanjang. Cocok → `account_id`, `source = RULE`, `ai_confidence = 1.000`, `is_confirmed = true`, `confirmed_at = now()`, `confirmed_by = NULL`.
 2. **AI** — sisa transaksi dikelompokkan per `group_key`. Grup dikirim per batch ≤ 10 ke Ollama (`/api/chat`, `format: "json"`, `temperature: 0`). Prompt memuat daftar akun leaf aktif (kode, nama, tipe), dan per grup: contoh deskripsi, arah, nominal. Output yang diharapkan: `{ "results": [{ "group_id", "account_code", "confidence", "reason", "keyword" }] }`, divalidasi zod; `account_code` harus leaf aktif milik perusahaan.
    - JSON invalid / kode tidak dikenal → retry batch 1x; gagal lagi → grup itu tanpa saran.
    - Ollama tidak bisa dihubungi / timeout (60 dtk per batch) → hentikan langkah AI; semua sisa tanpa saran; `ai_status = unavailable` (bukan error — upload tetap lanjut ke `review`). Sebagian batch gagal → `ai_status = partial`; semua berhasil → `ok`.
