@@ -58,3 +58,34 @@ export async function createAccount(companyId: string, role: Role, input: Create
 		}
 	});
 }
+
+export const UpdateAccountInput = z.object({
+	code: z.string().trim().min(1).max(20).optional(),
+	name: z.string().trim().min(1).max(200).optional(),
+	normalBal: z.enum(['DEBIT', 'CREDIT']).optional(),
+	cashFlowCat: z.enum(['OPERATING', 'INVESTING', 'FINANCING']).nullable().optional(),
+	isActive: z.boolean().optional()
+});
+export type UpdateAccountInput = z.infer<typeof UpdateAccountInput>;
+
+export async function updateAccount(companyId: string, accountId: string, input: UpdateAccountInput): Promise<void> {
+	try {
+		const updated = await db
+			.update(accounts)
+			.set(input)
+			.where(and(eq(accounts.id, accountId), eq(accounts.companyId, companyId)))
+			.returning({ id: accounts.id });
+		if (updated.length === 0) throw new ApiError(404, 'not_found', 'Akun tidak ditemukan');
+	} catch (e) {
+		if (isUniqueViolation(e)) throw new ApiError(409, 'duplicate_code', `Kode akun ${input.code} sudah dipakai`);
+		throw e;
+	}
+}
+
+export async function deactivateAccount(companyId: string, accountId: string): Promise<void> {
+	const company = await db.query.companies.findFirst({ where: eq(companies.id, companyId) });
+	if (company?.bankAccountId === accountId) {
+		throw new ApiError(409, 'bank_account', 'Akun ini dipakai sebagai akun bank perusahaan; ganti dulu di Pengaturan → Perusahaan');
+	}
+	await updateAccount(companyId, accountId, { isActive: false });
+}
