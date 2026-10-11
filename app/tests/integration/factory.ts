@@ -33,3 +33,15 @@ export async function accountIdByCode(companyId: string, code: string): Promise<
 	if (!row) throw new Error(`Akun ${code} tidak ada`);
 	return row.id;
 }
+
+import { resolveContext, type AppContext } from '../../src/lib/server/rbac';
+
+export async function contextFor(
+	u: { id: string; email: string; name: string; isSuperAdmin: boolean },
+	companyId?: string
+): Promise<AppContext> {
+	return resolveContext(
+		{ id: u.id, email: u.email, name: u.name, isSuperAdmin: u.isSuperAdmin },
+		companyId ?? null
+	);
+}
