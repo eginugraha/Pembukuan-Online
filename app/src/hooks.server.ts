@@ -1,8 +1,17 @@
 import { building } from '$app/environment';
-import { redirect, type Handle } from '@sveltejs/kit';
+import { redirect, type Handle, type ServerInit } from '@sveltejs/kit';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { getAuth } from '$lib/server/auth';
 import { COMPANY_COOKIE, resolveContext } from '$lib/server/rbac';
+import { assertRuntimeEnv } from '$lib/server/env';
+import { resumePendingJobs } from '$lib/server/jobs';
+
+export const init: ServerInit = async () => {
+	if (building) return;
+	assertRuntimeEnv();
+	const resumed = await resumePendingJobs();
+	if (resumed > 0) console.log(`Melanjutkan ${resumed} upload yang belum selesai diproses`);
+};
 
 const PUBLIC_PATHS = ['/login'];
 

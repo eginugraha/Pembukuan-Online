@@ -3,6 +3,9 @@ import { db } from '../../src/lib/server/db';
 import { accounts, companies, userCompanies } from '../../src/lib/server/db/schema';
 import { createCompany } from '../../src/lib/server/company/seed-company';
 import { createUserWithPassword } from '../../src/lib/server/users/create';
+import { resolveContext, type AppContext } from '../../src/lib/server/rbac';
+import { statementUploads, transactions } from '../../src/lib/server/db/schema';
+import { normalizeDescription } from '../../src/lib/server/categorize/normalize';
 
 let seq = 0;
 
@@ -34,8 +37,6 @@ export async function accountIdByCode(companyId: string, code: string): Promise<
 	return row.id;
 }
 
-import { resolveContext, type AppContext } from '../../src/lib/server/rbac';
-
 export async function contextFor(
 	u: { id: string; email: string; name: string; isSuperAdmin: boolean },
 	companyId?: string
@@ -45,9 +46,6 @@ export async function contextFor(
 		companyId ?? null
 	);
 }
-
-import { statementUploads, transactions } from '../../src/lib/server/db/schema';
-import { normalizeDescription } from '../../src/lib/server/categorize/normalize';
 
 export async function makeUpload(
 	companyId: string,
