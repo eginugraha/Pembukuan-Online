@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: jurnalku
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jurnalku}
@@ -15,5 +16,47 @@ services:
       interval: 5s
       retries: 10
 
+  sidecar:
+    build: ./sidecar
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  ollama:
+    image: ollama/ollama:0.34.4
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    environment:
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+    volumes:
+      - ollama:/root/.ollama
+      - ./ollama/entrypoint.sh:/entrypoint.sh:ro
+    ports:
+      - "127.0.0.1:11434:11434"
+
+  app:
+    build: ./app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      sidecar:
+        condition: service_started
+      ollama:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://jurnalku:${POSTGRES_PASSWORD:-jurnalku}@db:5432/jurnalku
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET wajib diisi di .env}
+      BETTER_AUTH_URL: ${APP_ORIGIN:-http://localhost:3000}
+      ORIGIN: ${APP_ORIGIN:-http://localhost:3000}
+      SIDECAR_URL: http://sidecar:8000
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@jurnalku.local}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+    ports:
+      - "3000:3000"
+
 volumes:
   pgdata:
+  ollama:
