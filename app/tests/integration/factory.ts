@@ -45,3 +45,51 @@ export async function contextFor(
 		companyId ?? null
 	);
 }
+
+import { statementUploads, transactions } from '../../src/lib/server/db/schema';
+import { normalizeDescription } from '../../src/lib/server/categorize/normalize';
+
+export async function makeUpload(
+	companyId: string,
+	userId: string | null,
+	txns: Array<{ date?: string; description: string; debit?: string; credit?: string }>,
+	opts: {
+		accountNo?: string;
+		periodStart?: string;
+		periodEnd?: string;
+		status?: 'processing' | 'review' | 'done' | 'error';
+	} = {}
+): Promise<{ uploadId: string; txnIds: string[] }> {
+	const [u] = await db
+		.insert(statementUploads)
+		.values({
+			companyId,
+			uploadedBy: userId,
+			filename: 'uji.pdf',
+			accountNo: opts.accountNo ?? '1234567890',
+			periodStart: opts.periodStart ?? '2026-08-01',
+			periodEnd: opts.periodEnd ?? '2026-08-31',
+			openingBalance: '0',
+			closingBalance: '0',
+			status: opts.status ?? 'processing'
+		})
+		.returning({ id: statementUploads.id });
+	const txnIds: string[] = [];
+	for (const [i, t] of txns.entries()) {
+		const [row] = await db
+			.insert(transactions)
+			.values({
+				uploadId: u.id,
+				companyId,
+				lineNo: i + 1,
+				txnDate: t.date ?? '2026-08-15',
+				description: t.description,
+				groupKey: normalizeDescription(t.description),
+				debit: t.debit ?? '0',
+				credit: t.credit ?? '0'
+			})
+			.returning({ id: transactions.id });
+		txnIds.push(row.id);
+	}
+	return { uploadId: u.id, txnIds };
+}
