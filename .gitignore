@@ -1,0 +1,29 @@
+# Data keuangan — JANGAN di-commit
+sample/
+samples/
+*.pdf
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Node / SvelteKit
+node_modules/
+.svelte-kit/
+build/
+dist/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Test artifacts
+test-results/
+playwright-report/
+
+# OS
+.DS_Store
