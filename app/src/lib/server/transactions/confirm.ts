@@ -1,10 +1,10 @@
 import { and, eq, gte, isNotNull } from 'drizzle-orm';
 import { z } from 'zod';
-import { assertLeafAccount, listLeafAccounts } from '../accounts/queries';
+import { assertCategoryAccount, listLeafAccounts } from '../accounts/queries';
 import { ApiError, notFound } from '../api';
 import { applyRulesToPending, directionOf, normalizeKeyword, upsertUserRule } from '../categorize/rules';
 import { db } from '../db';
-import { journalEntries, statementUploads, transactions } from '../db/schema';
+import { companies, journalEntries, statementUploads, transactions } from '../db/schema';
 import { refreshReviewedUploads } from '../uploads/status';
 
 export const ConfirmInput = z.object({
@@ -41,7 +41,7 @@ export async function confirmTransaction(
 		if (t.journalId) {
 			throw new ApiError(409, 'transaction_journaled', 'Transaksi sudah dijurnal sehingga kategorinya tidak bisa diubah');
 		}
-		await assertLeafAccount(tx, companyId, input.accountId);
+		await assertCategoryAccount(tx, companyId, input.accountId);
 
 		let keyword: string | null = null;
 		if (input.rule) {
@@ -82,14 +82,18 @@ export async function bulkConfirm(
 		});
 		if (!upload) throw notFound('Upload');
 
-		const leaf = new Set((await listLeafAccounts(tx, companyId)).map((a) => a.id));
+		const company = await tx.query.companies.findFirst({ where: eq(companies.id, companyId) });
+		const leaf = new Set(
+			(await listLeafAccounts(tx, companyId)).filter((a) => a.id !== company?.bankAccountId).map((a) => a.id)
+		);
 		const rows = (
 			await tx
 				.select({
 					id: transactions.id,
 					debit: transactions.debit,
 					accountId: transactions.aiSuggestedAccountId,
-					keyword: transactions.aiKeyword
+					keyword: transactions.aiKeyword,
+					description: transactions.description
 				})
 				.from(transactions)
 				.where(
@@ -113,7 +117,8 @@ export async function bulkConfirm(
 		const learned = new Set<string>();
 		for (const r of rows) {
 			const keyword = normalizeKeyword(r.keyword);
-			if (!keyword) continue;
+			// Keyword AI tidak dilihat user saat bulk confirm: hanya pelajari yang benar-benar ada di keterangan.
+			if (!keyword || !r.description.toUpperCase().includes(keyword)) continue;
 			const direction = directionOf(r);
 			const key = `${keyword}|${direction}`;
 			if (learned.has(key)) continue;

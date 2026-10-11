@@ -1,6 +1,6 @@
 import { and, asc, desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { assertLeafAccount } from '../accounts/queries';
+import { assertCategoryAccount } from '../accounts/queries';
 import { ApiError, notFound } from '../api';
 import { normalizeKeyword } from '../categorize/rules';
 import { db } from '../db';
@@ -37,7 +37,7 @@ export async function listRules(companyId: string) {
 export async function createRule(companyId: string, input: CreateRuleInput): Promise<{ id: string }> {
 	const keyword = normalizeKeyword(input.keyword);
 	if (!keyword) throw new ApiError(422, 'invalid_keyword', 'Keyword rule minimal 3 karakter');
-	await assertLeafAccount(db, companyId, input.accountId);
+	await assertCategoryAccount(db, companyId, input.accountId);
 	try {
 		const [row] = await db
 			.insert(categoryRules)

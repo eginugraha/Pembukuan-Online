@@ -1,7 +1,7 @@
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { ApiError } from '../api';
 import type { Executor } from '../db';
-import { accounts } from '../db/schema';
+import { accounts, companies } from '../db/schema';
 
 export interface LeafAccount {
 	id: string;
@@ -44,6 +44,16 @@ export async function assertLeafAccount(ex: Executor, companyId: string, account
 		.limit(1);
 	if (!row) throw new ApiError(422, 'invalid_account', 'Akun tidak valid, tidak aktif, atau bukan akun detail (leaf)');
 	return row;
+}
+
+export const BANK_NOT_ALLOWED_MESSAGE =
+	'Akun bank perusahaan tidak bisa dipakai sebagai kategori transaksi (jurnalnya akan menjadi Dr Bank / Cr Bank)';
+
+/** Akun kategori transaksi/rule: leaf aktif milik perusahaan dan bukan akun bank perusahaan. */
+export async function assertCategoryAccount(ex: Executor, companyId: string, accountId: string): Promise<LeafAccount> {
+	const company = await ex.query.companies.findFirst({ where: eq(companies.id, companyId) });
+	if (company?.bankAccountId === accountId) throw new ApiError(422, 'bank_account_not_allowed', BANK_NOT_ALLOWED_MESSAGE);
+	return assertLeafAccount(ex, companyId, accountId);
 }
 
 export async function listAccounts(ex: Executor, companyId: string): Promise<AccountRow[]> {

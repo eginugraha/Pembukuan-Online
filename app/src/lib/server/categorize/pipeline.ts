@@ -86,7 +86,8 @@ export async function runCategorization(uploadId: string, suggest: SuggestFn): P
 						aiKeyword: s.keyword,
 						source: 'AI'
 					})
-					.where(inArray(transactions.id, ids));
+					// Jangan timpa transaksi yang sudah dikonfirmasi user selama batch AI berjalan.
+					.where(and(inArray(transactions.id, ids), eq(transactions.isConfirmed, false)));
 			}
 		}
 		if (aiStatus === 'ok' && failed > 0) aiStatus = 'partial';

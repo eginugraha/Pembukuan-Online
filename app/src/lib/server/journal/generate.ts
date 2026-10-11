@@ -1,4 +1,5 @@
 import { and, asc, count, eq, isNull, like, sql } from 'drizzle-orm';
+import { BANK_NOT_ALLOWED_MESSAGE } from '../accounts/queries';
 import { ApiError, notFound } from '../api';
 import { db, type Tx } from '../db';
 import { companies, journalEntries, journalLines, statementUploads, transactions } from '../db/schema';
@@ -47,6 +48,10 @@ export async function generateJournal(companyId: string, uploadId: string, userI
 			.leftJoin(journalEntries, eq(journalEntries.transactionId, transactions.id))
 			.where(and(eq(transactions.uploadId, uploadId), isNull(journalEntries.id)))
 			.orderBy(asc(transactions.txnDate), asc(transactions.lineNo));
+
+		if (rows.some((t) => t.accountId === company.bankAccountId)) {
+			throw new ApiError(422, 'bank_account_not_allowed', BANK_NOT_ALLOWED_MESSAGE);
+		}
 
 		const nextSeq = new Map<string, number>();
 		for (const t of rows) {

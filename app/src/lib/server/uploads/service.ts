@@ -45,29 +45,30 @@ export async function createUpload(
 
 	const parsed = await deps.parse(input.file); // PDF hanya diteruskan dari memori (D12)
 
-	const [duplicate] = await db
-		.select({ id: statementUploads.id })
-		.from(statementUploads)
-		.where(
-			and(
-				eq(statementUploads.companyId, company.id),
-				eq(statementUploads.accountNo, parsed.account_no),
-				lte(statementUploads.periodStart, parsed.period_end),
-				gte(statementUploads.periodEnd, parsed.period_start)
-			)
-		)
-		.limit(1);
-	if (duplicate) {
-		throw new ApiError(
-			409,
-			'duplicate_statement',
-			`Statement rekening ${parsed.account_no} untuk periode ini sudah pernah diunggah. Hapus upload lama terlebih dahulu.`
-		);
-	}
-
 	const balanceWarning = await openingBalanceWarning(company, parsed);
 
 	const id = await db.transaction(async (tx) => {
+		// Cek duplikat di dalam lock baris perusahaan agar dua upload bersamaan tidak sama-sama lolos.
+		await tx.execute(sql`select id from companies where id = ${company.id} for update`);
+		const [duplicate] = await tx
+			.select({ id: statementUploads.id })
+			.from(statementUploads)
+			.where(
+				and(
+					eq(statementUploads.companyId, company.id),
+					eq(statementUploads.accountNo, parsed.account_no),
+					lte(statementUploads.periodStart, parsed.period_end),
+					gte(statementUploads.periodEnd, parsed.period_start)
+				)
+			)
+			.limit(1);
+		if (duplicate) {
+			throw new ApiError(
+				409,
+				'duplicate_statement',
+				`Statement rekening ${parsed.account_no} untuk periode ini sudah pernah diunggah. Hapus upload lama terlebih dahulu.`
+			);
+		}
 		const [upload] = await tx
 			.insert(statementUploads)
 			.values({

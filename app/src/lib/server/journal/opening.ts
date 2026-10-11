@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { isZero, toMoney } from '../../money';
 import { assertLeafAccount } from '../accounts/queries';
@@ -35,6 +35,8 @@ export async function saveOpening(companyId: string, userId: string, input: Open
 	assertBalanced(lines);
 
 	return db.transaction(async (tx) => {
+		// Serialisasi per perusahaan: dua simpan bersamaan tidak boleh menghasilkan dua entry OPENING.
+		await tx.execute(sql`select id from companies where id = ${companyId} for update`);
 		for (const l of lines) await assertLeafAccount(tx, companyId, l.accountId);
 		await tx
 			.delete(journalEntries)
