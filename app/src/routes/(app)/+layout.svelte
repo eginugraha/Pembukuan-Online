@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
+	import { tick } from 'svelte';
 	import { page } from '$app/state';
 	import Menu from '@lucide/svelte/icons/menu';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -39,7 +40,38 @@
 			.map((w) => w[0]?.toUpperCase() ?? '')
 			.join('')
 	);
-	const closeDrawer = () => (drawerOpen = false);
+	let trigger = $state<HTMLButtonElement | null>(null);
+	let drawerEl = $state<HTMLDivElement | null>(null);
+	let closeBtn = $state<HTMLButtonElement | null>(null);
+
+	async function openDrawer() {
+		drawerOpen = true;
+		await tick();
+		closeBtn?.focus();
+	}
+	function closeDrawer() {
+		if (!drawerOpen) return;
+		drawerOpen = false;
+		trigger?.focus();
+	}
+	// Fokus tidak boleh keluar dari drawer modal selama terbuka.
+	function trapTab(e: KeyboardEvent) {
+		if (e.key !== 'Tab' || !drawerEl) return;
+		const items = [...drawerEl.querySelectorAll<HTMLElement>('a[href], button:not([tabindex="-1"]), select, input')];
+		if (items.length === 0) return;
+		const first = items[0];
+		const last = items[items.length - 1];
+		if (e.shiftKey && document.activeElement === first) {
+			e.preventDefault();
+			last.focus();
+		} else if (!e.shiftKey && document.activeElement === last) {
+			e.preventDefault();
+			first.focus();
+		}
+	}
+	afterNavigate(() => {
+		drawerOpen = false;
+	});
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && closeDrawer()} />
@@ -55,10 +87,10 @@
 
 		<!-- Drawer HP/tablet -->
 		{#if drawerOpen}
-			<div class="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
-				<button class="absolute inset-0 bg-ink/40 backdrop-blur-[2px]" aria-label="Tutup menu" onclick={closeDrawer}></button>
+			<div id="mobile-drawer" bind:this={drawerEl} class="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu" tabindex="-1" onkeydown={trapTab}>
+				<button class="absolute inset-0 bg-ink/40 backdrop-blur-[2px]" tabindex="-1" aria-hidden="true" onclick={closeDrawer}></button>
 				<aside class="absolute inset-y-0 left-0 w-72 max-w-[85vw] overflow-y-auto bg-white shadow-2xl">
-					<button class="absolute top-5 right-4 rounded-lg p-1.5 text-ink/60 hover:bg-muted" aria-label="Tutup menu" onclick={closeDrawer}>
+					<button bind:this={closeBtn} class="absolute top-5 right-4 rounded-lg p-1.5 text-ink/60 hover:bg-muted" aria-label="Tutup menu" onclick={closeDrawer}>
 						<X class="size-5" />
 					</button>
 					<AppSidebar nav={data.nav} {isActive} nextStep={data.nextStep} userName={ctx.user.name} {roleLabel} onnavigate={closeDrawer} />
@@ -68,12 +100,19 @@
 
 		<div class="flex min-w-0 flex-1 flex-col bg-[linear-gradient(#f7f9f7_0,#f7f9f7_260px,#fff_260px)]">
 			<header class="flex items-center gap-3 px-4 pt-4 pb-2 sm:px-6 lg:px-8 lg:pt-6">
-				<button class="tile-3d tile-3d-muted size-10 shrink-0 lg:hidden" aria-label="Buka menu" onclick={() => (drawerOpen = true)}>
+				<button
+					bind:this={trigger}
+					class="tile-3d tile-3d-muted size-10 shrink-0 lg:hidden"
+					aria-label="Buka menu"
+					aria-expanded={drawerOpen}
+					aria-controls="mobile-drawer"
+					onclick={openDrawer}
+				>
 					<Menu class="size-5" />
 				</button>
 				{#if ctx.companies.length > 0}
 					<select
-						class="h-10 max-w-[55vw] min-w-0 truncate rounded-xl border-0 bg-white px-3 text-sm font-semibold shadow-[0_4px_14px_-8px_rgb(0_0_0/0.25)] focus-visible:ring-3 focus-visible:ring-green/25 focus-visible:outline-none sm:max-w-xs"
+						class="h-10 max-w-[45vw] min-w-0 truncate rounded-xl border-0 bg-white px-3 text-sm font-semibold shadow-[0_4px_14px_-8px_rgb(0_0_0/0.25)] focus-visible:ring-3 focus-visible:ring-green/25 focus-visible:outline-none sm:max-w-xs"
 						value={ctx.companyId}
 						onchange={switchCompany}
 						aria-label="Pilih perusahaan"
@@ -84,8 +123,13 @@
 					</select>
 				{/if}
 				{#if ctx.user.isSuperAdmin}
-					<a href="/settings/company?new=1" class="hidden items-center gap-1 text-sm font-medium text-deep hover:underline sm:flex">
-						<Plus class="size-4" /> Perusahaan baru
+					<a
+						href="/settings/company?new=1"
+						aria-label="Perusahaan baru"
+						title="Perusahaan baru"
+						class="flex size-10 shrink-0 items-center justify-center gap-1 rounded-xl text-sm font-medium text-deep hover:bg-pale sm:size-auto sm:px-2 sm:py-2 sm:hover:underline"
+					>
+						<Plus class="size-4" /><span class="hidden sm:inline">Perusahaan baru</span>
 					</a>
 				{/if}
 				<div class="ml-auto flex items-center gap-3">
