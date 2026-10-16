@@ -1,17 +1,20 @@
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
+import { COA_TEMPLATE_IDS } from '../../coa-templates';
 import { assertLeafAccount } from '../accounts/queries';
 import { ApiError, notFound } from '../api';
 import { db } from '../db';
 import { companies } from '../db/schema';
 
-export const CreateCompanyInput = z.object({
+const CompanyFields = z.object({
 	name: z.string().trim().min(1).max(200),
 	npwp: z.string().trim().max(20).nullable().optional(),
 	address: z.string().trim().max(500).nullable().optional()
 });
 
-export const UpdateCompanyInput = CreateCompanyInput.extend({ bankAccountId: z.uuid().nullable().optional() });
+export const CreateCompanyInput = CompanyFields.extend({ coaTemplate: z.enum(COA_TEMPLATE_IDS).default('general') });
+
+export const UpdateCompanyInput = CompanyFields.extend({ bankAccountId: z.uuid().nullable().optional() });
 export type UpdateCompanyInput = z.infer<typeof UpdateCompanyInput>;
 
 export async function getCompany(companyId: string) {

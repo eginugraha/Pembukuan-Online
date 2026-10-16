@@ -2,7 +2,8 @@ import { beforeEach, expect, test } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
 import { db } from '../../src/lib/server/db';
 import { accounts, authAccount, categoryRules, companies, user, userCompanies } from '../../src/lib/server/db/schema';
-import { seedCompany } from '../../src/lib/server/company/seed-company';
+import { createCompany, seedCompany } from '../../src/lib/server/company/seed-company';
+import { COA_TEMPLATE_DATA } from '../../src/lib/server/company/templates';
 import { verifyPassword } from '../../src/lib/server/password';
 import { runSeed } from '../../seeds/index';
 import { accountIdByCode, makeCompany } from './factory';
@@ -20,6 +21,17 @@ test('createCompany seeds CoA, rules and bank account', async () => {
 	expect(bankAccountId).toBe(await accountIdByCode(companyId, '1-1002'));
 	const kas = accs.find((a) => a.code === '1-1001')!;
 	expect(kas.parentId).toBe(accs.find((a) => a.code === '1-1000')!.id);
+});
+
+test('createCompany with IT template seeds the IT CoA and its rules', async () => {
+	const { id } = await createCompany({ name: 'PT Software', coaTemplate: 'it' });
+	const accs = await db.select().from(accounts).where(eq(accounts.companyId, id));
+	const rules = await db.select().from(categoryRules).where(eq(categoryRules.companyId, id));
+	expect(accs).toHaveLength(COA_TEMPLATE_DATA.it.coa.length);
+	expect(rules).toHaveLength(COA_TEMPLATE_DATA.it.rules.length);
+	expect(accs.some((a) => a.name === 'Cloud, Hosting & Server')).toBe(true);
+	const company = await db.query.companies.findFirst({ where: eq(companies.id, id) });
+	expect(company!.bankAccountId).toBe(await accountIdByCode(id, '1-1002'));
 });
 
 test('seedCompany is idempotent', async () => {

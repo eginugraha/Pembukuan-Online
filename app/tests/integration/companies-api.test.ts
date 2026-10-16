@@ -1,7 +1,10 @@
 import { beforeEach, expect, test } from 'bun:test';
-import { GET } from '../../src/routes/api/companies/+server';
+import { GET, POST } from '../../src/routes/api/companies/+server';
 import { POST as SWITCH } from '../../src/routes/api/companies/switch/+server';
 import { COMPANY_COOKIE } from '../../src/lib/server/rbac';
+import { eq } from 'drizzle-orm';
+import { db } from '../../src/lib/server/db';
+import { accounts } from '../../src/lib/server/db/schema';
 import { addMember, contextFor, makeCompany, makeUser } from './factory';
 import { call, fakeEvent } from './event';
 import { resetDb } from './db';
@@ -36,4 +39,16 @@ test('switch to own company sets cookie; foreign company is 404; anonymous is 40
 
 	const anon = fakeEvent({ ctx: null, method: 'POST', body: { companyId: a.companyId } });
 	expect((await call(SWITCH, anon)).status).toBe(401);
+});
+
+test('super admin creates company from chosen CoA template; unknown template is 400', async () => {
+	const admin = await makeUser({ isSuperAdmin: true });
+	const ctx = await contextFor(admin);
+	const res = await call(POST, fakeEvent({ ctx, method: 'POST', body: { name: 'PT IT', coaTemplate: 'it' } }));
+	expect(res.status).toBe(201);
+	const names = (await db.select().from(accounts).where(eq(accounts.companyId, res.body.id))).map((a) => a.name);
+	expect(names).toContain('Cloud, Hosting & Server');
+
+	const bad = await call(POST, fakeEvent({ ctx, method: 'POST', body: { name: 'PT X', coaTemplate: 'pabrik' } }));
+	expect(bad.status).toBe(400);
 });

@@ -1,11 +1,13 @@
 import { eq } from 'drizzle-orm';
 import { db, type Executor } from '../db';
 import { accounts, categoryRules, companies } from '../db/schema';
-import { BANK_ACCOUNT_CODE, DEFAULT_COA } from './coa-data';
-import { DEFAULT_RULES } from './rules-data';
+import type { CoaTemplateId } from '../../coa-templates';
+import { BANK_ACCOUNT_CODE } from './coa-data';
+import { COA_TEMPLATE_DATA } from './templates';
 
-/** Isi CoA PSAK default + rule SYSTEM + akun bank untuk satu perusahaan. Idempoten. */
-export async function seedCompany(ex: Executor, companyId: string): Promise<void> {
+/** Isi CoA PSAK dari template + rule SYSTEM + akun bank untuk satu perusahaan. Idempoten. */
+export async function seedCompany(ex: Executor, companyId: string, template: CoaTemplateId = 'general'): Promise<void> {
+	const { coa, rules } = COA_TEMPLATE_DATA[template];
 	const existing = await ex
 		.select({ id: accounts.id })
 		.from(accounts)
@@ -14,7 +16,7 @@ export async function seedCompany(ex: Executor, companyId: string): Promise<void
 	if (existing.length > 0) return;
 
 	const idByCode = new Map<string, string>();
-	for (const a of DEFAULT_COA) {
+	for (const a of coa) {
 		const [row] = await ex
 			.insert(accounts)
 			.values({
@@ -30,7 +32,7 @@ export async function seedCompany(ex: Executor, companyId: string): Promise<void
 	}
 
 	await ex.insert(categoryRules).values(
-		DEFAULT_RULES.map((r) => ({
+		rules.map((r) => ({
 			companyId,
 			keywordPattern: r.keyword,
 			accountId: idByCode.get(r.account)!,
@@ -50,13 +52,14 @@ export async function createCompany(input: {
 	name: string;
 	npwp?: string | null;
 	address?: string | null;
+	coaTemplate?: CoaTemplateId;
 }): Promise<{ id: string }> {
 	return db.transaction(async (tx) => {
 		const [company] = await tx
 			.insert(companies)
 			.values({ name: input.name.trim(), npwp: input.npwp ?? null, address: input.address ?? null })
 			.returning({ id: companies.id });
-		await seedCompany(tx, company.id);
+		await seedCompany(tx, company.id, input.coaTemplate);
 		return company;
 	});
 }

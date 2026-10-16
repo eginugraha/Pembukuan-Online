@@ -8,6 +8,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { apiFetch } from '$lib/api-client';
 	import { selectClass } from '$lib/ui';
+	import { COA_TEMPLATES, type CoaTemplateId } from '$lib/coa-templates';
 
 	let { data } = $props();
 	// Nilai awal form diambil sekali dari data (snapshot), lalu diedit lokal.
@@ -19,6 +20,7 @@
 	});
 	let form = $state(initialForm());
 	let newName = $state('');
+	let newTemplate = $state<CoaTemplateId>('general');
 	let message = $state<string | null>(null);
 	let errorMessage = $state<string | null>(null);
 
@@ -46,7 +48,7 @@
 	const create = (e: SubmitEvent) => {
 		e.preventDefault();
 		return run(async () => {
-			const res = await apiFetch<{ id: string }>('/api/companies', { method: 'POST', json: { name: newName } });
+			const res = await apiFetch<{ id: string }>('/api/companies', { method: 'POST', json: { name: newName, coaTemplate: newTemplate } });
 			await apiFetch('/api/companies/switch', { method: 'POST', json: { companyId: res.id } });
 			await invalidateAll();
 			await goto('/settings/company');
@@ -60,10 +62,13 @@
 
 {#if data.showNew}
 	<Card.Root class="mb-6 max-w-xl">
-		<Card.Header><Card.Title>Perusahaan baru</Card.Title><Card.Description>CoA PSAK dan rule default akan dibuat otomatis.</Card.Description></Card.Header>
+		<Card.Header><Card.Title>Perusahaan baru</Card.Title><Card.Description>Bagan akun (CoA) PSAK dan rule default dibuat otomatis sesuai template yang dipilih.</Card.Description></Card.Header>
 		<Card.Content>
-			<form class="flex gap-2" onsubmit={create}>
-				<Input bind:value={newName} placeholder="PT Nama Perusahaan" required />
+			<form class="flex flex-wrap gap-2" onsubmit={create}>
+				<Input class="min-w-48 flex-1" bind:value={newName} placeholder="PT Nama Perusahaan" required />
+				<select class="{selectClass} sm:w-auto" bind:value={newTemplate} aria-label="Template bagan akun">
+					{#each COA_TEMPLATES as t (t.id)}<option value={t.id}>{t.label}</option>{/each}
+				</select>
 				<Button type="submit">Buat</Button>
 			</form>
 		</Card.Content>
