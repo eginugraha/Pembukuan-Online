@@ -4,7 +4,10 @@
 	let { status }: { status: 'processing' | 'review' | 'done' | 'error' } = $props();
 
 	const labels = { processing: 'Memproses', review: 'Perlu review', done: 'Selesai', error: 'Error' } as const;
-	const variants = { processing: 'secondary', review: 'outline', done: 'default', error: 'destructive' } as const;
+	const variants = { processing: 'muted', review: 'warning', done: 'success', error: 'destructive' } as const;
 </script>
 
-<Badge variant={variants[status]}>{labels[status]}</Badge>
+<Badge variant={variants[status]}>
+	{#if status === 'processing'}<span class="size-1.5 animate-pulse rounded-full bg-current"></span>{/if}
+	{labels[status]}
+</Badge>
