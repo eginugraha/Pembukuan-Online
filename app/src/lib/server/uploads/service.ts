@@ -9,6 +9,11 @@ import type { ParsedStatement } from './sidecar-client';
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
+/** Hanya digit, agar "123-456 7890" dan "1234567890" dianggap rekening yang sama saat cek duplikat. */
+export function normalizeAccountNo(raw: string): string {
+	return raw.replace(/\D/g, '') || raw.trim();
+}
+
 export interface UploadDeps {
 	parse: (file: File) => Promise<ParsedStatement>;
 	enqueue: (uploadId: string) => void;
@@ -44,6 +49,7 @@ export async function createUpload(
 	if (!company) throw notFound('Perusahaan');
 
 	const parsed = await deps.parse(input.file); // PDF hanya diteruskan dari memori (D12)
+	const accountNo = normalizeAccountNo(parsed.account_no);
 
 	const balanceWarning = await openingBalanceWarning(company, parsed);
 
@@ -56,7 +62,7 @@ export async function createUpload(
 			.where(
 				and(
 					eq(statementUploads.companyId, company.id),
-					eq(statementUploads.accountNo, parsed.account_no),
+					eq(statementUploads.accountNo, accountNo),
 					lte(statementUploads.periodStart, parsed.period_end),
 					gte(statementUploads.periodEnd, parsed.period_start)
 				)
@@ -66,7 +72,7 @@ export async function createUpload(
 			throw new ApiError(
 				409,
 				'duplicate_statement',
-				`Statement rekening ${parsed.account_no} untuk periode ini sudah pernah diunggah. Hapus upload lama terlebih dahulu.`
+				`Statement rekening ${accountNo} untuk periode ini sudah pernah diunggah. Hapus upload lama terlebih dahulu.`
 			);
 		}
 		const [upload] = await tx
@@ -75,7 +81,7 @@ export async function createUpload(
 				companyId: company.id,
 				uploadedBy: input.userId,
 				filename: input.file.name,
-				accountNo: parsed.account_no,
+				accountNo,
 				periodStart: parsed.period_start,
 				periodEnd: parsed.period_end,
 				openingBalance: parsed.opening_balance,

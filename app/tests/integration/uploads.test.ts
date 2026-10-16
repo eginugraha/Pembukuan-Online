@@ -78,6 +78,16 @@ test('rejects overlapping statement for same account, allows other account', asy
 	expect(other.id).toBeString();
 });
 
+test('account number is normalized to digits so formatting differences still count as duplicate', async () => {
+	const { companyId } = await makeCompany();
+	const u = await makeUser();
+	const res = await createUpload({ companyId, userId: u.id, file: pdf() }, deps(statement({ account_no: ' 123-456 7890 ' })).d);
+	expect((await getUpload(companyId, res.id)).accountNo).toBe('1234567890');
+	expect(await codeOf(createUpload({ companyId, userId: u.id, file: pdf() }, deps(statement({ account_no: '123.456.7890' })).d))).toBe(
+		'duplicate_statement'
+	);
+});
+
 test('statement without transactions is accepted and settles to done', async () => {
 	const { companyId } = await makeCompany();
 	const u = await makeUser();
