@@ -22,7 +22,15 @@
 		await goto('/dashboard');
 	}
 
-	const isActive = (href: string) => page.url.pathname === href || page.url.pathname.startsWith(`${href}/`);
+	const matches = (href: string) => page.url.pathname === href || page.url.pathname.startsWith(`${href}/`);
+	// Hanya item dengan prefix terpanjang yang aktif (mis. /uploads/new tidak ikut menyorot /uploads).
+	const activeHref = $derived(
+		data.nav
+			.flatMap((g) => g.items.map((i) => i.href))
+			.filter(matches)
+			.sort((a, b) => b.length - a.length)[0] ?? null
+	);
+	const isActive = (href: string) => href === activeHref;
 	const roleLabel = $derived(ctx.user.isSuperAdmin ? 'Super Admin' : ctx.role ? ROLE_LABELS[ctx.role] : '—');
 	const initials = $derived(
 		ctx.user.name

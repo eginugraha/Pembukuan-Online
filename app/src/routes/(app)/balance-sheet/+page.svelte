@@ -27,7 +27,7 @@
 			<Table.Cell style={indent(depth)} colspan={2}>{l.name}</Table.Cell>
 		</Table.Row>
 		{#each l.children as c (c.accountId)}{@render line(c, depth + 1)}{/each}
-		<Table.Row class="text-slate-600">
+		<Table.Row class="text-ink/70">
 			<Table.Cell style={indent(depth)}>Jumlah {l.name}</Table.Cell>
 			<Table.Cell class="border-t text-right tabular-nums">{amount(l.amount)}</Table.Cell>
 		</Table.Row>
@@ -35,12 +35,12 @@
 {/snippet}
 
 {#snippet section(s: BalanceSheetSection)}
-	<Table.Row class="bg-slate-50">
-		<Table.Cell colspan={2} class="font-medium">{s.title}</Table.Cell>
+	<Table.Row class="bg-pale/60">
+		<Table.Cell colspan={2} class="font-semibold text-deep">{s.title}</Table.Cell>
 	</Table.Row>
 	{#each s.lines as l (l.accountId ?? l.name)}{@render line(l, 1)}{/each}
 	{#if s.lines.length === 0}
-		<Table.Row><Table.Cell colspan={2} class="pl-8 text-slate-400">—</Table.Cell></Table.Row>
+		<Table.Row><Table.Cell colspan={2} class="pl-8 text-muted-foreground/70">—</Table.Cell></Table.Row>
 	{/if}
 	<Table.Row class="font-medium">
 		<Table.Cell>Jumlah {s.title}</Table.Cell>
@@ -49,7 +49,7 @@
 {/snippet}
 
 {#snippet grandTotal(label: string, value: string)}
-	<Table.Row class="border-t-2 font-semibold">
+	<Table.Row class="border-t-2 border-border bg-pale font-bold text-deep hover:bg-pale">
 		<Table.Cell>{label}</Table.Cell>
 		<Table.Cell class="text-right tabular-nums">{amount(value)}</Table.Cell>
 	</Table.Row>
@@ -57,16 +57,17 @@
 
 <PageHeader title="Laporan Posisi Keuangan" description="Per {formatDate(bs.asOf)} · tahun buku mulai {formatDate(bs.fiscalYearStart)}">
 	{#snippet actions()}
-		<Badge variant={bs.balanced ? 'default' : 'destructive'}>{bs.balanced ? 'Balance' : 'Tidak balance'}</Badge>
+		<Badge variant={bs.balanced ? 'success' : 'destructive'}>{bs.balanced ? 'Balance' : 'Tidak balance'}</Badge>
 	{/snippet}
 </PageHeader>
 
-<form method="GET" class="mb-4 flex items-end gap-3">
-	<label class="text-sm">Per tanggal<input type="date" name="as_of" value={bs.asOf} class="{inputClass} mt-1" /></label>
+<form method="GET" class="panel mb-5 flex flex-wrap items-end gap-3 p-4">
+	<label class="text-xs font-semibold text-ink/70">Per tanggal<input type="date" name="as_of" value={bs.asOf} class="{inputClass} mt-1" /></label>
 	<Button type="submit" variant="outline">Tampilkan</Button>
 </form>
 
 <div class="max-w-3xl">
+	<div class="panel px-2 py-1">
 	<Table.Root>
 		<Table.Header>
 			<Table.Row>
@@ -75,12 +76,12 @@
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
-			<Table.Row><Table.Cell colspan={2} class="pt-4 text-base font-semibold">ASET</Table.Cell></Table.Row>
+			<Table.Row><Table.Cell colspan={2} class="pt-4 text-base font-bold tracking-wide text-ink">ASET</Table.Cell></Table.Row>
 			{@render section(bs.assets.current)}
 			{@render section(bs.assets.nonCurrent)}
 			{@render grandTotal('JUMLAH ASET', bs.assets.total)}
 
-			<Table.Row><Table.Cell colspan={2} class="pt-6 text-base font-semibold">LIABILITAS DAN EKUITAS</Table.Cell></Table.Row>
+			<Table.Row><Table.Cell colspan={2} class="pt-6 text-base font-bold tracking-wide text-ink">LIABILITAS DAN EKUITAS</Table.Cell></Table.Row>
 			{@render section(bs.liabilities.current)}
 			{@render section(bs.liabilities.nonCurrent)}
 			<Table.Row class="font-medium">
@@ -91,7 +92,8 @@
 			{@render grandTotal('JUMLAH LIABILITAS DAN EKUITAS', bs.totalLiabilitiesAndEquity)}
 		</Table.Body>
 	</Table.Root>
+	</div>
 	{#if !bs.balanced}
-		<p class="mt-3 text-sm text-red-600">Jumlah aset tidak sama dengan jumlah liabilitas dan ekuitas. Periksa saldo awal dan jurnal.</p>
+		<p class="mt-3 px-3 pb-3 text-sm text-destructive">Jumlah aset tidak sama dengan jumlah liabilitas dan ekuitas. Periksa saldo awal dan jurnal.</p>
 	{/if}
 </div>

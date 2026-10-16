@@ -4,6 +4,8 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
+	import FileText from '@lucide/svelte/icons/file-text';
+	import UploadIcon from '@lucide/svelte/icons/upload';
 	import { apiFetch } from '$lib/api-client';
 
 	let file = $state<File | null>(null);
@@ -40,7 +42,7 @@
 	<Card.Content class="pt-6">
 		<form class="space-y-4" onsubmit={submit}>
 			<label
-				class="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-10 text-center {dragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300'}"
+				class="flex cursor-pointer flex-col items-center justify-center rounded-[20px] border-2 border-dashed p-10 text-center transition-colors {dragging ? 'border-green bg-pale' : 'border-green/35 bg-[#fbfcfb] hover:border-green/60 hover:bg-pale/50'}"
 				ondragover={(e) => {
 					e.preventDefault();
 					dragging = true;
@@ -52,8 +54,11 @@
 					pick(e.dataTransfer?.files);
 				}}
 			>
-				<span class="font-medium">{file ? file.name : 'Seret file PDF ke sini atau klik untuk memilih'}</span>
-				<span class="mt-1 text-xs text-slate-500">Maksimal 10 MB</span>
+				<span class="tile-3d mb-4 size-16 rounded-2xl">
+					{#if file}<FileText class="size-7" />{:else}<UploadIcon class="size-7" />{/if}
+				</span>
+				<span class="font-semibold break-all">{file ? file.name : 'Seret file PDF ke sini atau klik untuk memilih'}</span>
+				<span class="mt-1 text-xs text-muted-foreground">Maksimal 10 MB</span>
 				<input type="file" accept="application/pdf,.pdf" class="sr-only" onchange={(e) => pick(e.currentTarget.files)} />
 			</label>
 			{#if errorMessage}

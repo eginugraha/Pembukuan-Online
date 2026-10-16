@@ -81,7 +81,7 @@
 	{#if message}<Alert.Root><Alert.Description>{message}</Alert.Description></Alert.Root>{/if}
 	{#if errorMessage}<Alert.Root variant="destructive"><Alert.Description>{errorMessage}</Alert.Description></Alert.Root>{/if}
 	{#if upload.balanceWarning}
-		<Alert.Root><Alert.Title>Saldo awal berbeda</Alert.Title><Alert.Description>{upload.balanceWarning}</Alert.Description></Alert.Root>
+		<Alert.Root class="border-amber-300 bg-amber-50 text-amber-900"><Alert.Title>Saldo awal berbeda</Alert.Title><Alert.Description>{upload.balanceWarning}</Alert.Description></Alert.Root>
 	{/if}
 	{#if upload.aiStatus === 'unavailable'}
 		<Alert.Root><Alert.Title>AI tidak tersedia</Alert.Title><Alert.Description>Transaksi yang tidak cocok dengan rule perlu dikategorikan manual di halaman Review.</Alert.Description></Alert.Root>
@@ -91,11 +91,14 @@
 	{#if upload.status === 'error'}
 		<Alert.Root variant="destructive"><Alert.Title>Pemrosesan gagal</Alert.Title><Alert.Description>{upload.errorMessage}</Alert.Description></Alert.Root>
 	{/if}
-	<p class="text-sm text-slate-600">
-		Saldo awal Rp {formatIdr(upload.openingBalance)} · Saldo akhir Rp {formatIdr(upload.closingBalance)}
-	</p>
+	<div class="flex flex-wrap gap-3">
+		<div class="panel px-4 py-3"><p class="text-xs text-muted-foreground">Saldo awal</p><p class="font-bold tabular-nums">Rp {formatIdr(upload.openingBalance)}</p></div>
+		<div class="panel px-4 py-3"><p class="text-xs text-muted-foreground">Saldo akhir</p><p class="font-bold tabular-nums">Rp {formatIdr(upload.closingBalance)}</p></div>
+		<div class="panel px-4 py-3"><p class="text-xs text-muted-foreground">Transaksi</p><p class="font-bold tabular-nums">{data.transactions.length}</p></div>
+	</div>
 </div>
 
+<div class="panel px-2 py-1">
 <Table.Root>
 	<Table.Header>
 		<Table.Row>
@@ -111,22 +114,23 @@
 		{#each data.transactions as t (t.id)}
 			<Table.Row>
 				<Table.Cell class="whitespace-nowrap">{formatDate(t.txnDate)}</Table.Cell>
-				<Table.Cell class="max-w-md">{t.description}</Table.Cell>
+				<Table.Cell class="max-w-md min-w-56 whitespace-normal">{t.description}</Table.Cell>
 				<Table.Cell class="text-right tabular-nums">{t.debit !== '0.00' ? formatIdr(t.debit) : ''}</Table.Cell>
 				<Table.Cell class="text-right tabular-nums">{t.credit !== '0.00' ? formatIdr(t.credit) : ''}</Table.Cell>
 				<Table.Cell>
 					{#if t.accountCode}
 						{t.accountCode} {t.accountName}
 					{:else if t.suggestedCode}
-						<span class="text-slate-500">Saran: {t.suggestedCode} {t.suggestedName}</span>
+						<span class="text-muted-foreground">Saran: {t.suggestedCode} {t.suggestedName}</span>
 					{:else}
-						<span class="text-slate-400">—</span>
+						<span class="text-muted-foreground/70">—</span>
 					{/if}
 				</Table.Cell>
 				<Table.Cell class="space-x-1">
-					{#if t.journalId}<Badge>Dijurnal</Badge>{:else if t.isConfirmed}<Badge variant="secondary">{t.source}</Badge>{:else}<Badge variant="outline">Menunggu</Badge>{/if}
+					{#if t.journalId}<Badge variant="success">Dijurnal</Badge>{:else if t.isConfirmed}<Badge variant="secondary">{t.source}</Badge>{:else}<Badge variant="warning">Menunggu</Badge>{/if}
 				</Table.Cell>
 			</Table.Row>
 		{/each}
 	</Table.Body>
 </Table.Root>
+</div>

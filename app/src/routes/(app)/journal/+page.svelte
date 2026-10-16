@@ -12,15 +12,16 @@
 
 <PageHeader title="Jurnal Umum" />
 
-<form method="GET" class="mb-4 flex flex-wrap items-end gap-3">
-	<label class="text-sm">Dari<input type="date" name="from" value={data.from} class="{inputClass} mt-1" /></label>
-	<label class="text-sm">Sampai<input type="date" name="to" value={data.to} class="{inputClass} mt-1" /></label>
+<form method="GET" class="panel mb-5 flex flex-wrap items-end gap-3 p-4">
+	<label class="text-xs font-semibold text-ink/70">Dari<input type="date" name="from" value={data.from} class="{inputClass} mt-1" /></label>
+	<label class="text-xs font-semibold text-ink/70">Sampai<input type="date" name="to" value={data.to} class="{inputClass} mt-1" /></label>
 	<Button type="submit" variant="outline">Tampilkan</Button>
 </form>
 
 {#if data.entries.length === 0}
-	<p class="text-slate-500">Belum ada jurnal pada periode ini.</p>
+	<p class="panel p-8 text-center text-muted-foreground">Belum ada jurnal pada periode ini.</p>
 {:else}
+	<div class="panel px-2 py-1">
 	<Table.Root>
 		<Table.Header>
 			<Table.Row>
@@ -40,18 +41,19 @@
 						<Table.Cell class="whitespace-nowrap">
 							{#if i === 0}{e.refNo}{#if e.type === 'OPENING'} <Badge variant="secondary">Saldo awal</Badge>{/if}{/if}
 						</Table.Cell>
-						<Table.Cell class="max-w-sm">{i === 0 ? e.description : ''}</Table.Cell>
+						<Table.Cell class="max-w-sm min-w-48 whitespace-normal">{i === 0 ? e.description : ''}</Table.Cell>
 						<Table.Cell class={l.credit !== '0.00' ? 'pl-8' : ''}>{l.accountCode} {l.accountName}</Table.Cell>
 						<Table.Cell class="text-right tabular-nums">{l.debit !== '0.00' ? formatIdr(l.debit) : ''}</Table.Cell>
 						<Table.Cell class="text-right tabular-nums">{l.credit !== '0.00' ? formatIdr(l.credit) : ''}</Table.Cell>
 					</Table.Row>
 				{/each}
 			{/each}
-			<Table.Row class="border-t-2 font-semibold">
+			<Table.Row class="border-t-2 border-border bg-pale font-bold text-deep hover:bg-pale">
 				<Table.Cell colspan={4}>Total</Table.Cell>
 				<Table.Cell class="text-right tabular-nums">{formatIdr(data.totalDebit)}</Table.Cell>
 				<Table.Cell class="text-right tabular-nums">{formatIdr(data.totalCredit)}</Table.Cell>
 			</Table.Row>
 		</Table.Body>
 	</Table.Root>
+	</div>
 {/if}

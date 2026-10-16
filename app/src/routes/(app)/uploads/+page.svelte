@@ -18,8 +18,9 @@
 </PageHeader>
 
 {#if data.uploads.length === 0}
-	<p class="text-slate-500">Belum ada eStatement yang diunggah.</p>
+	<p class="panel p-8 text-center text-muted-foreground">Belum ada eStatement yang diunggah.</p>
 {:else}
+	<div class="panel px-2 py-1">
 	<Table.Root>
 		<Table.Header>
 			<Table.Row>
@@ -34,7 +35,7 @@
 		<Table.Body>
 			{#each data.uploads as u (u.id)}
 				<Table.Row>
-					<Table.Cell><a class="text-blue-600 hover:underline" href="/uploads/{u.id}">{u.filename}</a></Table.Cell>
+					<Table.Cell><a class="font-medium text-deep hover:underline" href="/uploads/{u.id}">{u.filename}</a></Table.Cell>
 					<Table.Cell>{u.accountNo}</Table.Cell>
 					<Table.Cell>{formatDate(u.periodStart)} – {formatDate(u.periodEnd)}</Table.Cell>
 					<Table.Cell><StatusBadge status={u.status} /></Table.Cell>
@@ -44,4 +45,5 @@
 			{/each}
 		</Table.Body>
 	</Table.Root>
+	</div>
 {/if}

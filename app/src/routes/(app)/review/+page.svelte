@@ -87,34 +87,34 @@
 {#if errorMessage}<Alert.Root variant="destructive" class="mb-4"><Alert.Description>{errorMessage}</Alert.Description></Alert.Root>{/if}
 
 {#if data.transactions.length === 0}
-	<p class="text-slate-500">Tidak ada transaksi yang menunggu konfirmasi.</p>
+	<p class="panel p-8 text-center text-muted-foreground">Tidak ada transaksi yang menunggu konfirmasi.</p>
 {/if}
 
 {#each groups as g (g.uploadId)}
 	<Card.Root class="mb-6">
-		<Card.Header class="flex flex-row items-center justify-between gap-4">
-			<Card.Title class="text-base"><a href="/uploads/{g.uploadId}" class="hover:underline">{g.filename}</a> · {g.items.length} transaksi</Card.Title>
+		<Card.Header class="flex flex-row flex-wrap items-center justify-between gap-3">
+			<Card.Title class="min-w-0 text-base"><a href="/uploads/{g.uploadId}" class="text-deep hover:underline">{g.filename}</a> · {g.items.length} transaksi</Card.Title>
 			<Button variant="outline" size="sm" disabled={busyId !== null} onclick={() => bulk(g.uploadId)}>Konfirmasi semua saran ≥ 80%</Button>
 		</Card.Header>
 		<Card.Content class="space-y-4">
 			{#each g.items as t (t.id)}
 				{@const c = choice(t)}
 				{@const isDebit = t.debit !== '0.00'}
-				<div class="grid gap-3 rounded-md border p-3 md:grid-cols-[1fr_18rem]">
+				<div class="grid gap-4 rounded-2xl border border-border bg-[#fbfcfb] p-4 transition-shadow hover:shadow-[0_12px_24px_-18px_rgb(30_60_25/0.4)] md:grid-cols-[minmax(0,1fr)_18rem]">
 					<div>
 						<div class="flex flex-wrap items-center gap-2 text-sm">
-							<span class="text-slate-500">{formatDate(t.txnDate)}</span>
-							<Badge variant={isDebit ? 'destructive' : 'default'}>{isDebit ? 'Keluar' : 'Masuk'}</Badge>
-							<span class="font-medium tabular-nums">Rp {formatIdr(isDebit ? t.debit : t.credit)}</span>
+							<span class="text-muted-foreground">{formatDate(t.txnDate)}</span>
+							<Badge variant={isDebit ? 'destructive' : 'success'}>{isDebit ? 'Keluar' : 'Masuk'}</Badge>
+							<span class="font-bold tabular-nums {isDebit ? 'text-destructive' : 'text-green'}">Rp {formatIdr(isDebit ? t.debit : t.credit)}</span>
 						</div>
-						<p class="mt-1">{t.description}</p>
+						<p class="mt-1.5 font-medium break-words">{t.description}</p>
 						{#if t.suggestedCode}
-							<p class="mt-1 text-xs text-slate-500">
+							<p class="mt-1 text-xs text-muted-foreground">
 								Saran AI: <strong>{t.suggestedCode} {t.suggestedName}</strong>
 								({Math.round(Number(t.aiConfidence ?? 0) * 100)}%){t.aiReason ? ` — ${t.aiReason}` : ''}
 							</p>
 						{:else}
-							<p class="mt-1 text-xs text-slate-400">Tidak ada saran AI</p>
+							<p class="mt-1 text-xs text-muted-foreground/70">Tidak ada saran AI</p>
 						{/if}
 					</div>
 					<div class="space-y-2">

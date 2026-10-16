@@ -12,18 +12,19 @@
 
 <PageHeader title="Neraca Saldo">
 	{#snippet actions()}
-		<Badge variant={tb.balanced ? 'default' : 'destructive'}>{tb.balanced ? 'Balance' : 'Tidak balance'}</Badge>
+		<Badge variant={tb.balanced ? 'success' : 'destructive'}>{tb.balanced ? 'Balance' : 'Tidak balance'}</Badge>
 	{/snippet}
 </PageHeader>
 
-<form method="GET" class="mb-4 flex items-end gap-3">
-	<label class="text-sm">Per tanggal<input type="date" name="as_of" value={tb.asOf} class="{inputClass} mt-1" /></label>
+<form method="GET" class="panel mb-5 flex flex-wrap items-end gap-3 p-4">
+	<label class="text-xs font-semibold text-ink/70">Per tanggal<input type="date" name="as_of" value={tb.asOf} class="{inputClass} mt-1" /></label>
 	<Button type="submit" variant="outline">Tampilkan</Button>
 </form>
 
 {#if tb.rows.length === 0}
-	<p class="text-slate-500">Belum ada saldo pada tanggal ini.</p>
+	<p class="panel p-8 text-center text-muted-foreground">Belum ada saldo pada tanggal ini.</p>
 {:else}
+	<div class="panel px-2 py-1">
 	<Table.Root>
 		<Table.Header>
 			<Table.Row>
@@ -42,11 +43,12 @@
 					<Table.Cell class="text-right tabular-nums">{r.credit !== '0.00' ? formatIdr(r.credit) : ''}</Table.Cell>
 				</Table.Row>
 			{/each}
-			<Table.Row class="border-t-2 font-semibold">
+			<Table.Row class="border-t-2 border-border bg-pale font-bold text-deep hover:bg-pale">
 				<Table.Cell colspan={2}>Total</Table.Cell>
 				<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totalDebit)}</Table.Cell>
 				<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totalCredit)}</Table.Cell>
 			</Table.Row>
 		</Table.Body>
 	</Table.Root>
+	</div>
 {/if}
