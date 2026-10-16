@@ -27,3 +27,6 @@ playwright-report/
 
 # OS
 .DS_Store
+
+# Superpowers scratch (brainstorm mockups, plan ledgers)
+.superpowers/
