@@ -7,6 +7,7 @@ import * as journal from '../../src/routes/api/journal/+server';
 import * as journalGenerate from '../../src/routes/api/journal/generate/+server';
 import * as opening from '../../src/routes/api/opening-balance/+server';
 import * as ledger from '../../src/routes/api/reports/ledger/+server';
+import * as balanceSheet from '../../src/routes/api/reports/balance-sheet/+server';
 import * as trialBalance from '../../src/routes/api/reports/trial-balance/+server';
 import * as rules from '../../src/routes/api/rules/+server';
 import * as ruleOne from '../../src/routes/api/rules/[id]/+server';
@@ -49,6 +50,7 @@ const ENDPOINTS: Array<{ name: string; handler: H; method: string; min: Level; b
 	{ name: 'GET /journal', handler: journal.GET, method: 'GET', min: 'viewer' },
 	{ name: 'GET /reports/ledger', handler: ledger.GET, method: 'GET', min: 'viewer' },
 	{ name: 'GET /reports/trial-balance', handler: trialBalance.GET, method: 'GET', min: 'viewer' },
+	{ name: 'GET /reports/balance-sheet', handler: balanceSheet.GET, method: 'GET', min: 'viewer' },
 	{ name: 'GET /opening-balance', handler: opening.GET, method: 'GET', min: 'viewer' },
 	{ name: 'PUT /opening-balance', handler: opening.PUT, method: 'PUT', min: 'accountant', body: {} },
 	{ name: 'GET /users', handler: users.GET, method: 'GET', min: 'admin' },

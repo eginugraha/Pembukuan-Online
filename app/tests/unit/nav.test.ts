@@ -5,6 +5,7 @@ test('viewer does not see write menus', () => {
 	const hrefs = visibleNav('viewer').flatMap((g) => g.items.map((i) => i.href));
 	expect(hrefs).toContain('/uploads');
 	expect(hrefs).toContain('/trial-balance');
+	expect(hrefs).toContain('/balance-sheet');
 	expect(hrefs).not.toContain('/uploads/new');
 	expect(hrefs).not.toContain('/review');
 	expect(hrefs).not.toContain('/settings/users');

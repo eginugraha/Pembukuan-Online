@@ -10,7 +10,7 @@ export interface NavGroup {
 	items: NavItem[];
 }
 
-// Menu laporan keuangan, CALK, export, dan preferensi sistem belum dibangun di slice ini.
+// Laporan keuangan selain Neraca, CALK, export, dan preferensi sistem belum dibangun di slice ini.
 export const NAV: NavGroup[] = [
 	{ label: null, items: [{ label: 'Dashboard', href: '/dashboard', min: 'viewer' }] },
 	{
@@ -29,6 +29,7 @@ export const NAV: NavGroup[] = [
 			{ label: 'Neraca Saldo', href: '/trial-balance', min: 'viewer' }
 		]
 	},
+	{ label: 'Laporan Keuangan', items: [{ label: 'Posisi Keuangan (Neraca)', href: '/balance-sheet', min: 'viewer' }] },
 	{
 		label: 'Pengaturan',
 		items: [
