@@ -90,7 +90,7 @@
 				{/if}
 				<div class="ml-auto flex items-center gap-3">
 					<span class="hidden text-sm font-semibold sm:inline">Halo, {ctx.user.name.split(' ')[0]}</span>
-					<span class="tile-3d size-10 text-sm font-bold" title={ctx.user.name}>{initials}</span>
+					<span class="tile-3d tile-3d-deep size-10 text-sm font-bold" title={ctx.user.name}>{initials}</span>
 				</div>
 			</header>
 

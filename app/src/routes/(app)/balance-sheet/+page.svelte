@@ -19,16 +19,16 @@
 {#snippet line(l: BalanceSheetLine, depth: number)}
 	{#if l.children.length === 0}
 		<Table.Row>
-			<Table.Cell style={indent(depth)}>{l.name}</Table.Cell>
+			<Table.Cell class="whitespace-normal" style={indent(depth)}>{l.name}</Table.Cell>
 			<Table.Cell class="text-right tabular-nums">{amount(l.amount)}</Table.Cell>
 		</Table.Row>
 	{:else}
 		<Table.Row>
-			<Table.Cell style={indent(depth)} colspan={2}>{l.name}</Table.Cell>
+			<Table.Cell class="whitespace-normal" style={indent(depth)} colspan={2}>{l.name}</Table.Cell>
 		</Table.Row>
 		{#each l.children as c (c.accountId)}{@render line(c, depth + 1)}{/each}
 		<Table.Row class="text-ink/70">
-			<Table.Cell style={indent(depth)}>Jumlah {l.name}</Table.Cell>
+			<Table.Cell class="whitespace-normal" style={indent(depth)}>Jumlah {l.name}</Table.Cell>
 			<Table.Cell class="border-t text-right tabular-nums">{amount(l.amount)}</Table.Cell>
 		</Table.Row>
 	{/if}
@@ -43,14 +43,14 @@
 		<Table.Row><Table.Cell colspan={2} class="pl-8 text-muted-foreground/70">—</Table.Cell></Table.Row>
 	{/if}
 	<Table.Row class="font-medium">
-		<Table.Cell>Jumlah {s.title}</Table.Cell>
+		<Table.Cell class="whitespace-normal">Jumlah {s.title}</Table.Cell>
 		<Table.Cell class="border-t text-right tabular-nums">{amount(s.total)}</Table.Cell>
 	</Table.Row>
 {/snippet}
 
 {#snippet grandTotal(label: string, value: string)}
 	<Table.Row class="border-t-2 border-border bg-pale font-bold text-deep hover:bg-pale">
-		<Table.Cell>{label}</Table.Cell>
+		<Table.Cell class="whitespace-normal">{label}</Table.Cell>
 		<Table.Cell class="text-right tabular-nums">{amount(value)}</Table.Cell>
 	</Table.Row>
 {/snippet}
