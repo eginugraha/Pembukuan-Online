@@ -26,3 +26,17 @@ export function formatIdr(v: MoneyValue | null | undefined): string {
 	const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 	return `${negative ? '-' : ''}${grouped},${frac}`;
 }
+
+/** Ringkas untuk kartu statistik: "Rp 30 rb", "Rp 2,5 jt", "Rp 1,25 M" (maks. 2 desimal, tanpa nol di belakang). */
+export function formatIdrShort(v: MoneyValue): string {
+	const n = new Decimal(v);
+	const abs = n.abs();
+	const units: Array<[number, string]> = [
+		[1e9, ' M'],
+		[1e6, ' jt'],
+		[1e3, ' rb']
+	];
+	const [div, suffix] = units.find(([d]) => abs.gte(d)) ?? [1, ''];
+	const scaled = abs.div(div).toDecimalPlaces(div === 1 ? 0 : 2, Decimal.ROUND_HALF_UP);
+	return `${n.isNeg() ? '−' : ''}Rp ${scaled.toString().replace('.', ',')}${suffix}`;
+}

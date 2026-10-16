@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { D, formatIdr, isZero, sumMoney, toMoney } from '$lib/money';
+import { D, formatIdr, formatIdrShort, isZero, sumMoney, toMoney } from '$lib/money';
 
 describe('money', () => {
 	test('sumMoney adds without float error', () => {
@@ -20,4 +20,14 @@ describe('money', () => {
 		expect(isZero('0.00')).toBe(true);
 		expect(isZero('0.01')).toBe(false);
 	});
+});
+
+test('formatIdrShort abbreviates to rb / jt / M with Indonesian decimals', () => {
+	expect(formatIdrShort('0')).toBe('Rp 0');
+	expect(formatIdrShort('850')).toBe('Rp 850');
+	expect(formatIdrShort('30000')).toBe('Rp 30 rb');
+	expect(formatIdrShort('2500000')).toBe('Rp 2,5 jt');
+	expect(formatIdrShort('2020987.65')).toBe('Rp 2,02 jt');
+	expect(formatIdrShort('1250000000')).toBe('Rp 1,25 M');
+	expect(formatIdrShort('-30000')).toBe('−Rp 30 rb');
 });

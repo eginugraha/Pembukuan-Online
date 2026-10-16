@@ -31,7 +31,7 @@ export const NAV: NavGroup[] = [
 			{ label: 'Neraca Saldo', href: '/trial-balance', min: 'viewer', icon: 'scale' }
 		]
 	},
-	{ label: 'Laporan Keuangan', items: [{ label: 'Posisi Keuangan (Neraca)', href: '/balance-sheet', min: 'viewer', icon: 'landmark' }] },
+	{ label: 'Laporan Keuangan', items: [{ label: 'Posisi Keuangan', href: '/balance-sheet', min: 'viewer', icon: 'landmark' }] },
 	{
 		label: 'Pengaturan',
 		items: [

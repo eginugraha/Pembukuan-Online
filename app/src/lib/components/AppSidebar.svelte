@@ -59,7 +59,7 @@
 		Jurnalku.
 	</a>
 
-	<nav class="flex-1 space-y-1 overflow-y-auto" aria-label="Menu utama">
+	<nav class="flex-1 space-y-1" aria-label="Menu utama">
 		{#each nav as group, gi (gi)}
 			{@const label = groupLabel(group.label, gi)}
 			{#if label}
