@@ -65,6 +65,7 @@
 	</Card.Content>
 </Card.Root>
 
+<div class="panel px-2 py-1">
 <Table.Root>
 	<Table.Header>
 		<Table.Row><Table.Head>Keyword</Table.Head><Table.Head>Arah</Table.Head><Table.Head>Akun</Table.Head><Table.Head>Sumber</Table.Head><Table.Head class="text-right">Prioritas</Table.Head><Table.Head></Table.Head></Table.Row>
@@ -82,3 +83,4 @@
 		{/each}
 	</Table.Body>
 </Table.Root>
+</div>

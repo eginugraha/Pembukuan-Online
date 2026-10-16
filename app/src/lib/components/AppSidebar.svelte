@@ -55,7 +55,7 @@
 
 <div class="flex h-full flex-col px-4 py-6">
 	<a href="/dashboard" onclick={onnavigate} class="mb-6 flex items-center gap-2.5 px-2 text-lg font-extrabold tracking-tight text-green">
-		<span class="tile-3d size-9 rounded-xl font-black text-white">J</span>
+		<span class="tile-3d tile-3d-deep size-9 rounded-xl font-black">J</span>
 		Jurnalku.
 	</a>
 

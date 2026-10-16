@@ -89,6 +89,7 @@
 	</Card.Content>
 </Card.Root>
 
+<div class="panel px-2 py-1">
 <Table.Root>
 	<Table.Header>
 		<Table.Row>
@@ -124,3 +125,4 @@
 		{/each}
 	</Table.Body>
 </Table.Root>
+</div>

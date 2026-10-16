@@ -66,6 +66,7 @@
 
 <label class="mb-4 block max-w-xs text-sm">Tanggal mulai<input type="date" bind:value={date} class="{inputClass} mt-1" /></label>
 
+<div class="panel px-2 py-1">
 <Table.Root>
 	<Table.Header>
 		<Table.Row>
@@ -82,11 +83,12 @@
 				<Table.Cell><input class="{inputClass} text-right" inputmode="decimal" placeholder="0" bind:value={values[a.id].credit} aria-label="Kredit {a.code}" /></Table.Cell>
 			</Table.Row>
 		{/each}
-		<Table.Row class="border-t-2 font-semibold">
+		<Table.Row class="border-t-2 border-border bg-pale font-bold text-deep hover:bg-pale">
 			<Table.Cell>Total</Table.Cell>
 			<Table.Cell class="text-right tabular-nums">{formatIdr(totalDebit)}</Table.Cell>
 			<Table.Cell class="text-right tabular-nums">{formatIdr(totalCredit)}</Table.Cell>
 		</Table.Row>
 	</Table.Body>
 </Table.Root>
-<p class="mt-2 text-xs text-slate-500">Format angka: gunakan titik untuk desimal, tanpa pemisah ribuan (contoh 1500000.50).</p>
+</div>
+<p class="mt-2 text-xs text-muted-foreground">Format angka: gunakan titik untuk desimal, tanpa pemisah ribuan (contoh 1500000.50).</p>

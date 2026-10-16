@@ -76,6 +76,7 @@
 	</Card.Content>
 </Card.Root>
 
+<div class="panel px-2 py-1">
 <Table.Root>
 	<Table.Header>
 		<Table.Row><Table.Head>Nama</Table.Head><Table.Head>Email</Table.Head><Table.Head>Role</Table.Head><Table.Head></Table.Head></Table.Row>
@@ -102,3 +103,4 @@
 		{/each}
 	</Table.Body>
 </Table.Root>
+</div>

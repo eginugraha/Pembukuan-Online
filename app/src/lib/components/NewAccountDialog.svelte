@@ -58,7 +58,7 @@
 				<Label for="na-name">Nama</Label>
 				<Input id="na-name" bind:value={name} required />
 			</div>
-			{#if errorMessage}<p class="text-sm text-red-600">{errorMessage}</p>{/if}
+			{#if errorMessage}<p class="text-sm text-destructive">{errorMessage}</p>{/if}
 			<Dialog.Footer>
 				<Button type="submit" disabled={busy}>Simpan</Button>
 			</Dialog.Footer>
