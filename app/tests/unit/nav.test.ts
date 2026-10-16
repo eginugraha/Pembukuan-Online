@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { minRoleForPath, visibleNav } from '$lib/nav';
+import { minRoleForPath, NAV, visibleNav } from '$lib/nav';
 
 test('viewer does not see write menus', () => {
 	const hrefs = visibleNav('viewer').flatMap((g) => g.items.map((i) => i.href));
@@ -24,4 +24,8 @@ test('minRoleForPath uses longest prefix', () => {
 	expect(minRoleForPath('/uploads/new')).toBe('accountant');
 	expect(minRoleForPath('/settings/users')).toBe('admin');
 	expect(minRoleForPath('/unknown')).toBeNull();
+});
+
+test('every nav item has an icon', () => {
+	expect(NAV.flatMap((g) => g.items).every((i) => typeof i.icon === 'string' && i.icon.length > 0)).toBe(true);
 });

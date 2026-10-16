@@ -1,10 +1,15 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
+	import Menu from '@lucide/svelte/icons/menu';
+	import Plus from '@lucide/svelte/icons/plus';
+	import X from '@lucide/svelte/icons/x';
+	import AppSidebar from '$lib/components/AppSidebar.svelte';
 	import { ROLE_LABELS } from '$lib/roles';
 
 	let { data, children } = $props();
 	const ctx = $derived(data.ctx);
+	let drawerOpen = $state(false);
 
 	async function switchCompany(e: Event) {
 		const companyId = (e.currentTarget as HTMLSelectElement).value;
@@ -18,63 +23,79 @@
 	}
 
 	const isActive = (href: string) => page.url.pathname === href || page.url.pathname.startsWith(`${href}/`);
+	const roleLabel = $derived(ctx.user.isSuperAdmin ? 'Super Admin' : ctx.role ? ROLE_LABELS[ctx.role] : '—');
+	const initials = $derived(
+		ctx.user.name
+			.split(/\s+/)
+			.slice(0, 2)
+			.map((w) => w[0]?.toUpperCase() ?? '')
+			.join('')
+	);
+	const closeDrawer = () => (drawerOpen = false);
 </script>
 
-<div class="flex min-h-screen bg-slate-50">
-	<aside class="flex w-64 shrink-0 flex-col border-r bg-white">
-		<div class="border-b p-4">
-			<a href="/dashboard" class="text-lg font-semibold">Jurnalku</a>
-			{#if ctx.companies.length > 0}
-				<select
-					class="mt-3 w-full rounded-md border px-2 py-1.5 text-sm"
-					value={ctx.companyId}
-					onchange={switchCompany}
-					aria-label="Pilih perusahaan"
-				>
-					{#each ctx.companies as c (c.id)}
-						<option value={c.id}>{c.name}</option>
-					{/each}
-				</select>
-			{/if}
-			{#if ctx.user.isSuperAdmin}
-				<a href="/settings/company?new=1" class="mt-2 block text-xs text-blue-600 hover:underline">+ Perusahaan baru</a>
-			{/if}
-		</div>
-		<nav class="flex-1 space-y-4 overflow-y-auto p-3 text-sm">
-			{#each data.nav as group, gi (gi)}
-				<div>
-					{#if group.label}
-						<p class="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-slate-400">{group.label}</p>
-					{/if}
-					{#each group.items as item (item.href)}
-						<a
-							href={item.href}
-							class="block rounded-md px-2 py-1.5 hover:bg-slate-100 {isActive(item.href) ? 'bg-slate-100 font-medium' : ''}"
-						>
-							{item.label}
-						</a>
-					{/each}
-				</div>
-			{/each}
-		</nav>
-		<div class="border-t p-4 text-sm">
-			<p class="font-medium">{ctx.user.name}</p>
-			<p class="text-xs text-slate-500">
-				{ctx.user.isSuperAdmin ? 'Super Admin' : ctx.role ? ROLE_LABELS[ctx.role] : '—'}
-			</p>
-			<form method="POST" action="/logout" class="mt-2">
-				<button class="text-xs text-red-600 hover:underline">Keluar</button>
-			</form>
-		</div>
-	</aside>
-	<main class="min-w-0 flex-1 p-6">
-		{#if ctx.companyId}
-			{@render children()}
-		{:else}
-			<div class="mx-auto mt-20 max-w-md text-center">
-				<h1 class="text-xl font-semibold">Belum terhubung ke perusahaan</h1>
-				<p class="mt-2 text-slate-600">Hubungi admin agar akun Anda ditambahkan ke perusahaan.</p>
+<svelte:window onkeydown={(e) => e.key === 'Escape' && closeDrawer()} />
+
+<div class="min-h-screen bg-white lg:bg-canvas lg:p-6">
+	<div class="flex min-h-screen bg-white lg:min-h-[calc(100vh-3rem)] lg:overflow-hidden lg:rounded-[28px] lg:shadow-[0_30px_60px_-30px_rgb(30_50_30/0.35)]">
+		<!-- Sidebar desktop -->
+		<aside class="hidden w-64 shrink-0 border-r border-border lg:block">
+			<div class="sticky top-0 h-[calc(100vh-3rem)]">
+				<AppSidebar nav={data.nav} {isActive} nextStep={data.nextStep} userName={ctx.user.name} {roleLabel} />
+			</div>
+		</aside>
+
+		<!-- Drawer HP/tablet -->
+		{#if drawerOpen}
+			<div class="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+				<button class="absolute inset-0 bg-ink/40 backdrop-blur-[2px]" aria-label="Tutup menu" onclick={closeDrawer}></button>
+				<aside class="absolute inset-y-0 left-0 w-72 max-w-[85vw] overflow-y-auto bg-white shadow-2xl">
+					<button class="absolute top-5 right-4 rounded-lg p-1.5 text-ink/60 hover:bg-muted" aria-label="Tutup menu" onclick={closeDrawer}>
+						<X class="size-5" />
+					</button>
+					<AppSidebar nav={data.nav} {isActive} nextStep={data.nextStep} userName={ctx.user.name} {roleLabel} onnavigate={closeDrawer} />
+				</aside>
 			</div>
 		{/if}
-	</main>
+
+		<div class="flex min-w-0 flex-1 flex-col bg-[linear-gradient(#f7f9f7_0,#f7f9f7_260px,#fff_260px)]">
+			<header class="flex items-center gap-3 px-4 pt-4 pb-2 sm:px-6 lg:px-8 lg:pt-6">
+				<button class="tile-3d tile-3d-muted size-10 shrink-0 lg:hidden" aria-label="Buka menu" onclick={() => (drawerOpen = true)}>
+					<Menu class="size-5" />
+				</button>
+				{#if ctx.companies.length > 0}
+					<select
+						class="h-10 max-w-[55vw] min-w-0 truncate rounded-xl border-0 bg-white px-3 text-sm font-semibold shadow-[0_4px_14px_-8px_rgb(0_0_0/0.25)] focus-visible:ring-3 focus-visible:ring-green/25 focus-visible:outline-none sm:max-w-xs"
+						value={ctx.companyId}
+						onchange={switchCompany}
+						aria-label="Pilih perusahaan"
+					>
+						{#each ctx.companies as c (c.id)}
+							<option value={c.id}>{c.name}</option>
+						{/each}
+					</select>
+				{/if}
+				{#if ctx.user.isSuperAdmin}
+					<a href="/settings/company?new=1" class="hidden items-center gap-1 text-sm font-medium text-deep hover:underline sm:flex">
+						<Plus class="size-4" /> Perusahaan baru
+					</a>
+				{/if}
+				<div class="ml-auto flex items-center gap-3">
+					<span class="hidden text-sm font-semibold sm:inline">Halo, {ctx.user.name.split(' ')[0]}</span>
+					<span class="tile-3d size-10 text-sm font-bold" title={ctx.user.name}>{initials}</span>
+				</div>
+			</header>
+
+			<main class="min-w-0 flex-1 px-4 pt-4 pb-10 sm:px-6 lg:px-8">
+				{#if ctx.companyId}
+					{@render children()}
+				{:else}
+					<div class="panel mx-auto mt-20 max-w-md p-8 text-center">
+						<h1 class="text-xl font-bold">Belum terhubung ke perusahaan</h1>
+						<p class="mt-2 text-muted-foreground">Hubungi admin agar akun Anda ditambahkan ke perusahaan.</p>
+					</div>
+				{/if}
+			</main>
+		</div>
+	</div>
 </div>
