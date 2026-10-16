@@ -126,4 +126,19 @@
 	html {
 		@apply font-sans;
 	}
+	/* Tailwind v4 tidak lagi memberi cursor pointer pada button; kembalikan untuk semua elemen yang bisa diklik. */
+	button:not(:disabled),
+	[role='button']:not([aria-disabled='true']),
+	select:not(:disabled),
+	summary,
+	input:is([type='checkbox'], [type='radio'], [type='file'], [type='submit'], [type='reset'], [type='button']):not(:disabled),
+	input::file-selector-button,
+	input::-webkit-calendar-picker-indicator,
+	label:has(> input:is([type='checkbox'], [type='radio']):not(:disabled)) {
+		cursor: pointer;
+	}
+	select:disabled,
+	input:is([type='checkbox'], [type='radio']):disabled {
+		cursor: not-allowed;
+	}
 }
