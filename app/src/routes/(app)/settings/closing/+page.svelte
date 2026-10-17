@@ -83,7 +83,7 @@
 {#if data.years.length === 0}
 	<p class="rounded-xl border border-border p-6 text-center text-sm text-muted-foreground">Belum ada transaksi yang dijurnal.</p>
 {:else}
-	<div class="overflow-x-auto rounded-xl border border-border">
+	<div class="relative overflow-x-auto rounded-xl border border-border">
 		<table class="w-full text-sm">
 			<thead class="bg-muted/50 text-left text-xs text-muted-foreground">
 				<tr>
