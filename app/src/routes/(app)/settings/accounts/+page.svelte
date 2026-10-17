@@ -6,7 +6,8 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import * as Table from '$lib/components/ui/table/index.js';
+	import DataTable from '$lib/components/DataTable.svelte';
+	import type { Column } from '$lib/table';
 	import { apiFetch } from '$lib/api-client';
 	import FormField from '$lib/components/FormField.svelte';
 	import { FormState } from '$lib/forms/form-state.svelte';
@@ -25,6 +26,14 @@
 		{ value: 'OPERATING', label: 'Operasional' },
 		{ value: 'INVESTING', label: 'Investasi' },
 		{ value: 'FINANCING', label: 'Pendanaan' }
+	];
+	const ACCOUNT_COLUMNS: Column<Account>[] = [
+		{ key: 'code', label: 'Kode', searchable: true, text: (a) => a.code },
+		{ key: 'name', label: 'Nama', searchable: true, text: (a) => a.name },
+		{ key: 'type', label: 'Tipe' },
+		{ key: 'normalBal', label: 'Saldo normal' },
+		{ key: 'cashFlow', label: 'Arus kas' },
+		{ key: 'actions', label: '', align: 'right' }
 	];
 	const parentOptions = $derived(accountOptions(data.accounts.filter((a) => a.isActive)));
 	type Account = (typeof data.accounts)[number];
@@ -117,48 +126,31 @@
 	</Card.Content>
 </Card.Root>
 
-<div class="panel px-2 py-1">
-<Table.Root>
-	<Table.Header>
-		<Table.Row>
-			<Table.Head>Kode</Table.Head><Table.Head>Nama</Table.Head><Table.Head>Tipe</Table.Head><Table.Head>Saldo normal</Table.Head><Table.Head>Arus kas</Table.Head><Table.Head></Table.Head>
-		</Table.Row>
-	</Table.Header>
-	<Table.Body>
-		{#each data.accounts as a (a.id)}
-			<Table.Row class={a.isActive ? '' : 'opacity-50'}>
-				<Table.Cell class="whitespace-nowrap">{a.code}</Table.Cell>
-				<Table.Cell style="padding-left: {(depth.get(a.id) ?? 0) * 1.25 + 0.5}rem" class={a.isLeaf ? '' : 'font-medium'}>
-					{a.name} {#if !a.isActive}<Badge variant="outline">Nonaktif</Badge>{/if}
-				</Table.Cell>
-				<Table.Cell>{a.type}</Table.Cell>
-				<Table.Cell>
-					<SimpleSelect
-						class="w-28"
-						value={a.normalBal}
-						options={NORMAL_BAL}
-						aria-label="Saldo normal {a.code}"
-						onchange={(v) => patch(a.id, { normalBal: v }, 'Saldo normal diperbarui.')}
-					/>
-				</Table.Cell>
-				<Table.Cell>
-					<SimpleSelect
-						class="w-36"
-						value={a.cashFlowCat ?? ''}
-						options={CASH_FLOW}
-						aria-label="Arus kas {a.code}"
-						onchange={(v) => patch(a.id, { cashFlowCat: v || null }, 'Kategori arus kas diperbarui.')}
-					/>
-				</Table.Cell>
-				<Table.Cell class="text-right">
-					{#if a.isActive}
-						<Button size="sm" variant="ghost" onclick={() => deactivate(a.id)}>Nonaktifkan</Button>
-					{:else}
-						<Button size="sm" variant="ghost" onclick={() => patch(a.id, { isActive: true }, 'Akun diaktifkan.')}>Aktifkan</Button>
-					{/if}
-				</Table.Cell>
-			</Table.Row>
-		{/each}
-	</Table.Body>
-</Table.Root>
-</div>
+<DataTable
+	rows={data.accounts}
+	columns={ACCOUNT_COLUMNS}
+	rowKey={(a) => a.id}
+	sortable={false}
+	searchPlaceholder="Cari di tabel akun…"
+	rowClass={(a) => (a.isActive ? '' : 'opacity-50')}
+>
+	{#snippet cell(a, c)}
+		{#if c.key === 'code'}{a.code}
+		{:else if c.key === 'name'}
+			<span class="block {a.isLeaf ? '' : 'font-medium'}" style="padding-left: {(depth.get(a.id) ?? 0) * 1.25}rem">
+				{a.name} {#if !a.isActive}<Badge variant="outline">Nonaktif</Badge>{/if}
+			</span>
+		{:else if c.key === 'type'}{a.type}
+		{:else if c.key === 'normalBal'}
+			<SimpleSelect class="w-28" value={a.normalBal} options={NORMAL_BAL} aria-label="Saldo normal {a.code}" onchange={(v) => patch(a.id, { normalBal: v }, 'Saldo normal diperbarui.')} />
+		{:else if c.key === 'cashFlow'}
+			<SimpleSelect class="w-36" value={a.cashFlowCat ?? ''} options={CASH_FLOW} aria-label="Arus kas {a.code}" onchange={(v) => patch(a.id, { cashFlowCat: v || null }, 'Kategori arus kas diperbarui.')} />
+		{:else if c.key === 'actions'}
+			{#if a.isActive}
+				<Button size="sm" variant="ghost" onclick={() => deactivate(a.id)}>Nonaktifkan</Button>
+			{:else}
+				<Button size="sm" variant="ghost" onclick={() => patch(a.id, { isActive: true }, 'Akun diaktifkan.')}>Aktifkan</Button>
+			{/if}
+		{/if}
+	{/snippet}
+</DataTable>

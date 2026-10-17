@@ -7,7 +7,8 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import * as Table from '$lib/components/ui/table/index.js';
+	import DataTable from '$lib/components/DataTable.svelte';
+	import type { Column } from '$lib/table';
 	import { apiFetch } from '$lib/api-client';
 	import { ROLE_LABELS, ROLES, type Role } from '$lib/roles';
 	import FormField from '$lib/components/FormField.svelte';
@@ -17,6 +18,13 @@
 
 	let { data } = $props();
 	const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }));
+	type Member = (typeof data.members)[number];
+	const MEMBER_COLUMNS: Column<Member>[] = [
+		{ key: 'name', label: 'Nama', sortable: true, searchable: true, text: (m) => m.name },
+		{ key: 'email', label: 'Email', sortable: true, searchable: true, text: (m) => m.email },
+		{ key: 'role', label: 'Role', sortable: true, text: (m) => ROLE_LABELS[m.role] },
+		{ key: 'actions', label: '', align: 'right' }
+	];
 	const EMPTY = { email: '', name: '', password: '', role: 'viewer' as Role };
 	const toInput = (v: typeof EMPTY) => ({ email: v.email, role: v.role, name: v.name || undefined, password: v.password || undefined });
 	const form = new FormState(AddMemberInput, { ...EMPTY }, toInput);
@@ -91,29 +99,20 @@
 	</Card.Content>
 </Card.Root>
 
-<div class="panel px-2 py-1">
-<Table.Root>
-	<Table.Header>
-		<Table.Row><Table.Head>Nama</Table.Head><Table.Head>Email</Table.Head><Table.Head>Role</Table.Head><Table.Head></Table.Head></Table.Row>
-	</Table.Header>
-	<Table.Body>
-		{#each data.members as m (m.userId)}
-			<Table.Row>
-				<Table.Cell><span class="flex items-center gap-2.5"><UserAvatar name={m.name} image={m.image} class="size-8 text-xs" />{m.name} {#if m.isSuperAdmin}<Badge variant="secondary">Super admin</Badge>{/if}</span></Table.Cell>
-				<Table.Cell>{m.email}</Table.Cell>
-				<Table.Cell>
-					<SimpleSelect class="w-36" value={m.role} options={ROLE_OPTIONS} aria-label="Role {m.email}" onchange={(v) => setRole(m.userId, v)} />
-				</Table.Cell>
-				<Table.Cell class="space-x-2 text-right">
-					{#if data.isSuperAdmin && m.userId !== data.me}
-						<Button size="sm" variant="ghost" onclick={() => toggleSuper(m.userId, !m.isSuperAdmin)}>
-							{m.isSuperAdmin ? 'Cabut super admin' : 'Jadikan super admin'}
-						</Button>
-					{/if}
-					<Button size="sm" variant="ghost" onclick={() => remove(m.userId)}>Lepas</Button>
-				</Table.Cell>
-			</Table.Row>
-		{/each}
-	</Table.Body>
-</Table.Root>
-</div>
+<DataTable rows={data.members} columns={MEMBER_COLUMNS} rowKey={(m) => m.userId} searchPlaceholder="Cari nama atau email…">
+	{#snippet cell(m, c)}
+		{#if c.key === 'name'}<span class="flex items-center gap-2.5"><UserAvatar name={m.name} image={m.image} class="size-8 text-xs" />{m.name} {#if m.isSuperAdmin}<Badge variant="secondary">Super admin</Badge>{/if}</span>
+		{:else if c.key === 'email'}{m.email}
+		{:else if c.key === 'role'}<SimpleSelect class="w-36" value={m.role} options={ROLE_OPTIONS} aria-label="Role {m.email}" onchange={(v) => setRole(m.userId, v)} />
+		{:else if c.key === 'actions'}
+			<span class="flex justify-end gap-2">
+				{#if data.isSuperAdmin && m.userId !== data.me}
+					<Button size="sm" variant="ghost" onclick={() => toggleSuper(m.userId, !m.isSuperAdmin)}>
+						{m.isSuperAdmin ? 'Cabut super admin' : 'Jadikan super admin'}
+					</Button>
+				{/if}
+				<Button size="sm" variant="ghost" onclick={() => remove(m.userId)}>Lepas</Button>
+			</span>
+		{/if}
+	{/snippet}
+</DataTable>

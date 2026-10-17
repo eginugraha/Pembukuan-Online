@@ -5,12 +5,23 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
-	import * as Table from '$lib/components/ui/table/index.js';
+	import DataTable from '$lib/components/DataTable.svelte';
+	import type { Column } from '$lib/table';
 	import { apiFetch } from '$lib/api-client';
 	import { formatDate } from '$lib/dates';
 	import { formatIdr } from '$lib/money';
 
 	let { data } = $props();
+	type Txn = (typeof data.transactions)[number];
+	const txnStatus = (t: Txn) => (t.journalId ? 2 : t.isConfirmed ? 1 : 0);
+	const TXN_COLUMNS: Column<Txn>[] = [
+		{ key: 'date', label: 'Tanggal', sortable: true, sortValue: (t) => `${t.txnDate}-${String(t.lineNo).padStart(5, '0')}` },
+		{ key: 'description', label: 'Keterangan', sortable: true, searchable: true, text: (t) => t.description },
+		{ key: 'debit', label: 'Debit', sortable: true, align: 'right', sortValue: (t) => Number(t.debit) },
+		{ key: 'credit', label: 'Kredit', sortable: true, align: 'right', sortValue: (t) => Number(t.credit) },
+		{ key: 'account', label: 'Akun', sortable: true, searchable: true, text: (t) => (t.accountCode ? `${t.accountCode} ${t.accountName}` : (t.suggestedName ?? '')) },
+		{ key: 'status', label: 'Status', sortable: true, sortValue: txnStatus }
+	];
 	const upload = $derived(data.upload);
 	const unjournaled = $derived(data.transactions.filter((t) => !t.journalId).length);
 	let message = $state<string | null>(null);
@@ -98,39 +109,22 @@
 	</div>
 </div>
 
-<div class="panel px-2 py-1">
-<Table.Root>
-	<Table.Header>
-		<Table.Row>
-			<Table.Head>Tanggal</Table.Head>
-			<Table.Head>Keterangan</Table.Head>
-			<Table.Head class="text-right">Debit</Table.Head>
-			<Table.Head class="text-right">Kredit</Table.Head>
-			<Table.Head>Akun</Table.Head>
-			<Table.Head>Status</Table.Head>
-		</Table.Row>
-	</Table.Header>
-	<Table.Body>
-		{#each data.transactions as t (t.id)}
-			<Table.Row>
-				<Table.Cell class="whitespace-nowrap">{formatDate(t.txnDate)}</Table.Cell>
-				<Table.Cell class="max-w-md min-w-56 whitespace-normal">{t.description}</Table.Cell>
-				<Table.Cell class="text-right tabular-nums">{t.debit !== '0.00' ? formatIdr(t.debit) : ''}</Table.Cell>
-				<Table.Cell class="text-right tabular-nums">{t.credit !== '0.00' ? formatIdr(t.credit) : ''}</Table.Cell>
-				<Table.Cell>
-					{#if t.accountCode}
-						{t.accountCode} {t.accountName}
-					{:else if t.suggestedCode}
-						<span class="text-muted-foreground">Saran: {t.suggestedCode} {t.suggestedName}</span>
-					{:else}
-						<span class="text-muted-foreground/70">—</span>
-					{/if}
-				</Table.Cell>
-				<Table.Cell class="space-x-1">
-					{#if t.journalId}<Badge variant="success">Dijurnal</Badge>{:else if t.isConfirmed}<Badge variant="secondary">{t.source}</Badge>{:else}<Badge variant="warning">Menunggu</Badge>{/if}
-				</Table.Cell>
-			</Table.Row>
-		{/each}
-	</Table.Body>
-</Table.Root>
-</div>
+<DataTable rows={data.transactions} columns={TXN_COLUMNS} rowKey={(t) => t.id} searchPlaceholder="Cari keterangan atau akun…">
+	{#snippet cell(t, c)}
+		{#if c.key === 'date'}{formatDate(t.txnDate)}
+		{:else if c.key === 'description'}<span class="block max-w-md min-w-56 whitespace-normal">{t.description}</span>
+		{:else if c.key === 'debit'}{t.debit !== '0.00' ? formatIdr(t.debit) : ''}
+		{:else if c.key === 'credit'}{t.credit !== '0.00' ? formatIdr(t.credit) : ''}
+		{:else if c.key === 'account'}
+			{#if t.accountCode}
+				{t.accountCode} {t.accountName}
+			{:else if t.suggestedCode}
+				<span class="text-muted-foreground">Saran: {t.suggestedCode} {t.suggestedName}</span>
+			{:else}
+				<span class="text-muted-foreground/70">—</span>
+			{/if}
+		{:else if c.key === 'status'}
+			{#if t.journalId}<Badge variant="success">Dijurnal</Badge>{:else if t.isConfirmed}<Badge variant="secondary">{t.source}</Badge>{:else}<Badge variant="warning">Menunggu</Badge>{/if}
+		{/if}
+	{/snippet}
+</DataTable>

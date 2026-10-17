@@ -2,12 +2,23 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import * as Table from '$lib/components/ui/table/index.js';
+	import DataTable from '$lib/components/DataTable.svelte';
+	import type { Column } from '$lib/table';
 	import { formatDate } from '$lib/dates';
 	import { roleAtLeast } from '$lib/roles';
 	import { page } from '$app/state';
 
 	let { data } = $props();
+	type Upload = (typeof data.uploads)[number];
+	const STATUS_ORDER = { review: 0, processing: 1, error: 2, done: 3 } as const;
+	const UPLOAD_COLUMNS: Column<Upload>[] = [
+		{ key: 'filename', label: 'File', sortable: true, searchable: true, text: (u) => u.filename },
+		{ key: 'accountNo', label: 'Rekening', sortable: true, searchable: true, text: (u) => u.accountNo },
+		{ key: 'period', label: 'Periode', sortable: true, sortValue: (u) => u.periodStart },
+		{ key: 'status', label: 'Status', sortable: true, sortValue: (u) => STATUS_ORDER[u.status] },
+		{ key: 'pending', label: 'Belum dikonfirmasi', sortable: true, align: 'right', sortValue: (u) => u.pending },
+		{ key: 'uploadedAt', label: 'Diunggah', sortable: true, sortValue: (u) => new Date(u.uploadedAt).getTime() }
+	];
 	const canUpload = $derived(roleAtLeast(page.data.ctx?.role, 'accountant'));
 </script>
 
@@ -20,30 +31,15 @@
 {#if data.uploads.length === 0}
 	<p class="panel p-8 text-center text-muted-foreground">Belum ada eStatement yang diunggah.</p>
 {:else}
-	<div class="panel px-2 py-1">
-	<Table.Root>
-		<Table.Header>
-			<Table.Row>
-				<Table.Head>File</Table.Head>
-				<Table.Head>Rekening</Table.Head>
-				<Table.Head>Periode</Table.Head>
-				<Table.Head>Status</Table.Head>
-				<Table.Head class="text-right">Belum dikonfirmasi</Table.Head>
-				<Table.Head>Diunggah</Table.Head>
-			</Table.Row>
-		</Table.Header>
-		<Table.Body>
-			{#each data.uploads as u (u.id)}
-				<Table.Row>
-					<Table.Cell><a class="font-medium text-deep hover:underline" href="/uploads/{u.id}">{u.filename}</a></Table.Cell>
-					<Table.Cell>{u.accountNo}</Table.Cell>
-					<Table.Cell>{formatDate(u.periodStart)} – {formatDate(u.periodEnd)}</Table.Cell>
-					<Table.Cell><StatusBadge status={u.status} /></Table.Cell>
-					<Table.Cell class="text-right tabular-nums">{u.pending} / {u.total}</Table.Cell>
-					<Table.Cell>{new Date(u.uploadedAt).toLocaleString('id-ID')}</Table.Cell>
-				</Table.Row>
-			{/each}
-		</Table.Body>
-	</Table.Root>
-	</div>
+	<DataTable rows={data.uploads} columns={UPLOAD_COLUMNS} rowKey={(u) => u.id} searchPlaceholder="Cari file atau rekening…">
+		{#snippet cell(u, c)}
+			{#if c.key === 'filename'}<a class="font-medium text-deep hover:underline" href="/uploads/{u.id}">{u.filename}</a>
+			{:else if c.key === 'accountNo'}{u.accountNo}
+			{:else if c.key === 'period'}{formatDate(u.periodStart)} – {formatDate(u.periodEnd)}
+			{:else if c.key === 'status'}<StatusBadge status={u.status} />
+			{:else if c.key === 'pending'}{u.pending} / {u.total}
+			{:else if c.key === 'uploadedAt'}{new Date(u.uploadedAt).toLocaleString('id-ID')}
+			{/if}
+		{/snippet}
+	</DataTable>
 {/if}

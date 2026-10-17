@@ -6,7 +6,8 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import * as Table from '$lib/components/ui/table/index.js';
+	import DataTable from '$lib/components/DataTable.svelte';
+	import type { Column } from '$lib/table';
 	import { apiFetch } from '$lib/api-client';
 	import FormField from '$lib/components/FormField.svelte';
 	import { FormState } from '$lib/forms/form-state.svelte';
@@ -22,6 +23,15 @@
 	let message = $state<string | null>(null);
 	let errorMessage = $state<string | null>(null);
 	const directionLabel = { DB: 'Keluar', CR: 'Masuk' } as const;
+	type Rule = (typeof data.rules)[number];
+	const RULE_COLUMNS: Column<Rule>[] = [
+		{ key: 'keyword', label: 'Keyword', sortable: true, searchable: true, text: (r) => r.keywordPattern },
+		{ key: 'direction', label: 'Arah', sortable: true, text: (r) => (r.direction ? directionLabel[r.direction] : 'Semua') },
+		{ key: 'account', label: 'Akun', sortable: true, searchable: true, text: (r) => `${r.accountCode} ${r.accountName}` },
+		{ key: 'source', label: 'Sumber', sortable: true, text: (r) => r.source },
+		{ key: 'priority', label: 'Prioritas', sortable: true, align: 'right', sortValue: (r) => r.priority },
+		{ key: 'actions', label: '' }
+	];
 
 	async function run(fn: () => Promise<string>) {
 		message = errorMessage = null;
@@ -90,22 +100,20 @@
 	</Card.Content>
 </Card.Root>
 
-<div class="panel px-2 py-1">
-<Table.Root>
-	<Table.Header>
-		<Table.Row><Table.Head>Keyword</Table.Head><Table.Head>Arah</Table.Head><Table.Head>Akun</Table.Head><Table.Head>Sumber</Table.Head><Table.Head class="text-right">Prioritas</Table.Head><Table.Head></Table.Head></Table.Row>
-	</Table.Header>
-	<Table.Body>
-		{#each data.rules as r (r.id)}
-			<Table.Row>
-				<Table.Cell class="font-mono">{r.keywordPattern}</Table.Cell>
-				<Table.Cell>{r.direction ? directionLabel[r.direction] : 'Semua'}</Table.Cell>
-				<Table.Cell>{r.accountCode} {r.accountName} {#if !r.accountActive}<Badge variant="outline">Akun nonaktif</Badge>{/if}</Table.Cell>
-				<Table.Cell><Badge variant={r.source === 'USER' ? 'default' : 'secondary'}>{r.source}</Badge></Table.Cell>
-				<Table.Cell class="text-right">{r.priority}</Table.Cell>
-				<Table.Cell class="text-right">{#if data.canDelete}<Button size="sm" variant="ghost" onclick={() => remove(r.id)}>Hapus</Button>{/if}</Table.Cell>
-			</Table.Row>
-		{/each}
-	</Table.Body>
-</Table.Root>
-</div>
+<DataTable
+	rows={data.rules}
+	columns={RULE_COLUMNS}
+	rowKey={(r) => r.id}
+	searchPlaceholder="Cari keyword atau akun…"
+	emptyText="Belum ada rule."
+>
+	{#snippet cell(r, c)}
+		{#if c.key === 'keyword'}<span class="font-mono">{r.keywordPattern}</span>
+		{:else if c.key === 'direction'}{r.direction ? directionLabel[r.direction] : 'Semua'}
+		{:else if c.key === 'account'}{r.accountCode} {r.accountName} {#if !r.accountActive}<Badge variant="outline">Akun nonaktif</Badge>{/if}
+		{:else if c.key === 'source'}<Badge variant={r.source === 'USER' ? 'default' : 'secondary'}>{r.source}</Badge>
+		{:else if c.key === 'priority'}{r.priority}
+		{:else if c.key === 'actions' && data.canDelete}<Button size="sm" variant="ghost" onclick={() => remove(r.id)}>Hapus</Button>
+		{/if}
+	{/snippet}
+</DataTable>
