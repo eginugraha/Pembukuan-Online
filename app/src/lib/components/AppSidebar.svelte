@@ -27,8 +27,7 @@
 		userName,
 		userImage,
 		roleLabel,
-		onnavigate,
-		animateActive = false
+		onnavigate
 	}: {
 		nav: NavGroup[];
 		isActive: (href: string) => boolean;
@@ -37,9 +36,20 @@
 		userImage?: string | null;
 		roleLabel: string;
 		onnavigate?: () => void;
-		/** Beri sorotan aktif view-transition-name agar meluncur antar-menu. Hanya untuk satu instance (sidebar desktop). */
-		animateActive?: boolean;
 	} = $props();
+
+	// Satu indikator aktif di bawah teks menu, digeser dengan transisi CSS ke menu yang aktif.
+	let navEl = $state<HTMLElement | null>(null);
+	let indicator = $state<{ top: number; height: number } | null>(null);
+	let animate = $state(false);
+	const activeHref = $derived(nav.flatMap((g) => g.items).find((i) => isActive(i.href))?.href ?? null);
+	$effect(() => {
+		void activeHref;
+		const el = navEl?.querySelector<HTMLElement>('[aria-current="page"]');
+		indicator = el ? { top: el.offsetTop, height: el.offsetHeight } : null;
+		// Posisi pertama dipasang tanpa animasi agar tidak meluncur dari atas saat halaman dibuka.
+		if (indicator && !animate) requestAnimationFrame(() => (animate = true));
+	});
 
 	const ICONS: Record<string, Component<{ class?: string }>> = {
 		dashboard: LayoutDashboard,
@@ -65,7 +75,17 @@
 		Jurnalku.
 	</a>
 
-	<nav class="flex-1 space-y-1" aria-label="Menu utama">
+	<nav bind:this={navEl} class="relative flex-1 space-y-1" aria-label="Menu utama">
+		{#if indicator}
+			<span
+				class="nav-indicator pointer-events-none absolute inset-x-0 top-0 rounded-xl bg-pale {animate ? 'is-animated' : ''}"
+				style:transform="translateY({indicator.top}px)"
+				style:height="{indicator.height}px"
+				aria-hidden="true"
+			>
+				<span class="absolute top-1.5 bottom-1.5 -left-4 w-1 rounded-r bg-green"></span>
+			</span>
+		{/if}
 		{#each nav as group, gi (gi)}
 			{@const label = groupLabel(group.label, gi)}
 			{#if label}
@@ -80,15 +100,9 @@
 					aria-current={active ? 'page' : undefined}
 					class="group relative flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm transition-colors duration-200 {active
 						? 'font-semibold text-deep'
-						: 'text-ink/65 hover:bg-pale/60 hover:text-deep'}"
+						: 'text-ink/65 hover:bg-pale/50 hover:text-deep'}"
 				>
-					{#if active}
-						<!-- Sorotan aktif flat: latar pucat polos + garis hijau di kiri. -->
-						<span class="absolute inset-0 rounded-xl bg-pale" style:view-transition-name={animateActive ? 'nav-active' : undefined} aria-hidden="true">
-							<span class="absolute top-1.5 bottom-1.5 -left-4 w-1 rounded-r bg-green"></span>
-						</span>
-					{/if}
-					<span class="relative flex size-7 shrink-0 items-center justify-center rounded-lg {active ? 'icon-tile icon-tile-solid' : 'bg-muted text-ink/55 group-hover:text-deep'}">
+					<span class="relative flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors duration-200 {active ? 'icon-tile icon-tile-solid' : 'bg-muted text-ink/55 group-hover:text-deep'}">
 						<Icon class="size-4" />
 					</span>
 					<span class="relative min-w-0 flex-1 truncate">{item.label}</span>

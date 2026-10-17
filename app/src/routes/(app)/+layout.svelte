@@ -83,12 +83,12 @@
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && closeDrawer()} />
 
-<div class="min-h-screen bg-white lg:bg-canvas lg:p-6">
-	<div class="flex min-h-screen bg-white lg:min-h-[calc(100vh-3rem)] lg:overflow-hidden lg:rounded-[28px] lg:shadow-[0_30px_60px_-30px_rgb(30_50_30/0.35)]">
-		<!-- Sidebar desktop -->
-		<aside class="hidden w-64 shrink-0 border-r border-border lg:block">
-			<div class="h-full">
-				<AppSidebar nav={data.nav} {isActive} nextStep={data.nextStep} userName={ctx.user.name} userImage={ctx.user.image} {roleLabel} animateActive />
+<div class="min-h-screen bg-white">
+	<div class="flex min-h-screen">
+		<!-- Sidebar desktop: menempel setinggi layar; hanya konten yang ikut scroll. -->
+		<aside class="hidden w-64 shrink-0 border-r border-border bg-white lg:block">
+			<div class="sticky top-0 h-screen overflow-y-auto overscroll-contain">
+				<AppSidebar nav={data.nav} {isActive} nextStep={data.nextStep} userName={ctx.user.name} userImage={ctx.user.image} {roleLabel} />
 			</div>
 		</aside>
 

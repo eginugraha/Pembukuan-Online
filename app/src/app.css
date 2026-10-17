@@ -216,10 +216,11 @@
 	::view-transition-new(main-content) {
 		animation: 240ms cubic-bezier(0.2, 0.7, 0.2, 1) both jk-slide-in;
 	}
-	/* Sorotan menu aktif meluncur ke menu yang baru diklik. */
-	::view-transition-group(nav-active) {
-		animation-duration: 280ms;
-		animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+	/* Indikator menu aktif meluncur ke menu yang baru diklik (di bawah teks, jadi teks tetap terbaca). */
+	.nav-indicator.is-animated {
+		transition:
+			transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+			height 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
 	}
 
 	.drawer-panel {
