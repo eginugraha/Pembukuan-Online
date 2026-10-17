@@ -27,7 +27,7 @@
 	<AccountCard upload={d.latestUpload} {companyName} canUpload={roleAtLeast(role, 'accountant')} />
 </div>
 
-<section class="mt-6 rounded-2xl border border-border bg-card p-5">
+<section class="mt-6 rounded-[20px] bg-surface-soft p-5">
 	<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 		<div>
 			<h2 class="text-base font-semibold text-ink">Laba Rugi</h2>
@@ -45,7 +45,7 @@
 </section>
 
 <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-	<section class="rounded-2xl border border-border bg-card p-5">
+	<section class="rounded-[20px] bg-surface-soft p-5">
 		<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
 			<h2 class="text-base font-semibold text-ink">Komposisi</h2>
 			<div role="radiogroup" aria-label="Jenis komposisi" class="inline-flex rounded-lg border border-border p-0.5 text-sm">
@@ -65,7 +65,7 @@
 		<DonutChart slices={comp.slices} total={comp.total} {kind} />
 	</section>
 	{#if d.bankTrend}
-		<section class="rounded-2xl border border-border bg-card p-5">
+		<section class="rounded-[20px] bg-surface-soft p-5">
 			<h2 class="mb-1 text-base font-semibold text-ink">Tren saldo bank</h2>
 			<p class="mb-3 text-sm text-muted-foreground">12 bulan terakhir</p>
 			<TrendLine points={d.bankTrend} />

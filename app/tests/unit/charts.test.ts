@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { barGeometry, donutArcs, linePath, niceMax } from '$lib/charts';
+import { barGeometry, donutArcs, linePath, monthHref, monthLabel, niceMax } from '$lib/charts';
 
 describe('charts', () => {
 	test('niceMax', () => {
@@ -29,5 +29,12 @@ describe('charts', () => {
 		expect(linePath([1, 2, 3], 100, 50).startsWith('M')).toBe(true);
 		expect(linePath([], 100, 50)).toBe('');
 		expect(linePath([5], 100, 50).startsWith('M')).toBe(true);
+	});
+	test('month helpers', () => {
+		expect(monthHref('2027-02')).toBe('/income-statement?from=2027-02-01&to=2027-02-28');
+		expect(monthHref('2026-12')).toBe('/income-statement?from=2026-12-01&to=2026-12-31');
+		expect(monthHref('2028-02')).toBe('/income-statement?from=2028-02-01&to=2028-02-29');
+		expect(monthLabel('2027-02')).toBe('Feb');
+		expect(monthLabel('2027-02', true)).toBe('Feb 27');
 	});
 });

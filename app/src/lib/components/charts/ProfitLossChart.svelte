@@ -1,19 +1,17 @@
 <script lang="ts">
-	import { barGeometry, niceMax } from '$lib/charts';
+	import { barGeometry, monthFull as full, monthHref as href, monthLabel, niceMax } from '$lib/charts';
 	import { formatIdr, formatIdrShort } from '$lib/money';
 
 	type Row = { month: string; revenue: string; expense: string; netProfit: string; future: boolean };
 	let { rows }: { rows: Row[] } = $props();
 
-	const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-	const FULL = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-
-	const W = 720;
-	const H = 300;
+	let width = $state(720);
+	const W = $derived(Math.max(width, 300));
+	const H = 260;
 	const left = 52;
 	const top = 14;
 	const bottom = 30;
-	const plotW = W - left - 8;
+	const plotW = $derived(W - left - 8);
 	const plotH = H - top - bottom;
 
 	const nums = $derived(
@@ -42,23 +40,9 @@
 	);
 	const crossYear = $derived(rows.length > 0 && rows[0].month.slice(0, 4) !== rows[rows.length - 1].month.slice(0, 4));
 
-	function parts(month: string) {
-		return { y: Number(month.slice(0, 4)), m: Number(month.slice(5, 7)) - 1 };
-	}
-	function label(month: string) {
-		const { y, m } = parts(month);
-		return crossYear ? `${MONTHS[m]} ${String(y).slice(2)}` : MONTHS[m];
-	}
-	function full(month: string) {
-		const { y, m } = parts(month);
-		return `${FULL[m]} ${y}`;
-	}
-	function href(month: string) {
-		const { y, m } = parts(month);
-		const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-		const mm = String(m + 1).padStart(2, '0');
-		return `/income-statement?from=${y}-${mm}-01&to=${y}-${mm}-${String(last).padStart(2, '0')}`;
-	}
+	const narrow = $derived(slot < 44);
+	const label = (month: string) => monthLabel(month, crossYear);
+	const showLabel = (i: number) => !narrow || i % 2 === 0;
 	const aria = (r: Row) =>
 		`${full(r.month)}: pendapatan Rp${formatIdr(r.revenue)}, beban Rp${formatIdr(r.expense)}, laba Rp${formatIdr(r.netProfit)}`;
 
@@ -70,17 +54,17 @@
 {#if empty}
 	<p class="py-12 text-center text-sm text-muted-foreground">Belum ada jurnal di tahun buku ini</p>
 {:else}
-	<div class="relative">
+	<div class="relative" bind:clientWidth={width}>
 		<svg
 			viewBox="0 0 {W} {H}"
 			width="100%"
-			role="img"
+			role="group"
 			aria-label="Grafik Laba Rugi per bulan: pendapatan, beban dan laba bersih"
 			class="block h-auto w-full"
 		>
 			{#each ticks as t (t.v)}
 				<line x1={left} x2={W - 8} y1={t.y} y2={t.y} stroke="var(--border)" stroke-width="1" />
-				<text x={left - 6} y={t.y + 3} text-anchor="end" font-size="10" fill="var(--muted-foreground)">{formatIdrShort(t.v)}</text>
+				<text x={left - 6} y={t.y + 3} text-anchor="end" font-size="11" fill="var(--muted-foreground)">{formatIdrShort(t.v)}</text>
 			{/each}
 			{#if negMax > 0}
 				<line x1={left} x2={W - 8} y1={zeroY} y2={zeroY} stroke="var(--muted-foreground)" stroke-width="1" />
@@ -90,13 +74,13 @@
 				{#snippet group()}
 					<rect x={left + slot * i} y={top} width={slot} height={plotH} fill="transparent" />
 					{#if active === i}
-						<rect x={left + slot * i} y={top} width={slot} height={plotH} fill="var(--muted)" opacity="0.5" />
+						<rect x={left + slot * i} y={top} width={slot} height={plotH} fill="var(--muted)" opacity="0.5" stroke="var(--ring)" stroke-width="2" rx="4" />
 					{/if}
 					{#if !r.future}
 						<rect x={cx(i) - barW - 1} y={top + revG[i].y} width={barW} height={revG[i].h} rx="2" fill="var(--green)" />
 						<rect x={cx(i) + 1} y={top + expG[i].y} width={barW} height={expG[i].h} rx="2" fill="var(--destructive)" opacity="0.7" />
 					{/if}
-					<text x={cx(i)} y={H - 10} text-anchor="middle" font-size="11" fill="var(--muted-foreground)">{label(r.month)}</text>
+					{#if showLabel(i)}<text x={cx(i)} y={H - 10} text-anchor="middle" font-size="11" fill="var(--muted-foreground)">{label(r.month)}</text>{/if}
 				{/snippet}
 				{#if r.future}
 					<g role="presentation">{@render group()}</g>
@@ -125,11 +109,11 @@
 			{#if active !== null}
 				{@const r = rows[active]}
 				<g transform="translate({tipX}, {top})" pointer-events="none">
-					<rect width={tipW} height="62" rx="6" fill="var(--popover)" stroke="var(--border)" />
+					<rect width={tipW} height="66" rx="6" fill="var(--popover)" stroke="var(--border)" />
 					<text x="8" y="16" font-size="11" font-weight="600" fill="var(--ink)">{full(r.month)}</text>
-					<text x="8" y="31" font-size="10" fill="var(--green)">Pendapatan {formatIdrShort(r.revenue)}</text>
-					<text x="8" y="44" font-size="10" fill="var(--destructive)">Beban {formatIdrShort(r.expense)}</text>
-					<text x="8" y="57" font-size="10" fill="var(--ink)">Laba {formatIdrShort(r.netProfit)}</text>
+					<text x="8" y="31" font-size="11" fill="var(--green)">Pendapatan {formatIdrShort(r.revenue)}</text>
+					<text x="8" y="44" font-size="11" fill="var(--destructive)">Beban {formatIdrShort(r.expense)}</text>
+					<text x="8" y="60" font-size="11" fill="var(--ink)">Laba {formatIdrShort(r.netProfit)}</text>
 				</g>
 			{/if}
 		</svg>

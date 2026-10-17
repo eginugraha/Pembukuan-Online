@@ -69,3 +69,28 @@ export function linePath(values: number[], width: number, height: number): strin
 		.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
 		.join(' ');
 }
+
+export const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+export const MONTH_FULL = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+const monthParts = (month: string) => ({ y: Number(month.slice(0, 4)), m: Number(month.slice(5, 7)) - 1 });
+
+/** 'Feb' atau, bila withYear, 'Feb 27'. */
+export function monthLabel(month: string, withYear = false): string {
+	const { y, m } = monthParts(month);
+	return withYear ? `${MONTH_SHORT[m]} ${String(y).slice(2)}` : MONTH_SHORT[m];
+}
+
+/** 'Februari 2027'. */
+export function monthFull(month: string): string {
+	const { y, m } = monthParts(month);
+	return `${MONTH_FULL[m]} ${y}`;
+}
+
+/** Link laporan laba rugi untuk satu bulan 'YYYY-MM'. */
+export function monthHref(month: string): string {
+	const { y, m } = monthParts(month);
+	const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+	const mm = String(m + 1).padStart(2, '0');
+	return `/income-statement?from=${y}-${mm}-01&to=${y}-${mm}-${String(last).padStart(2, '0')}`;
+}
