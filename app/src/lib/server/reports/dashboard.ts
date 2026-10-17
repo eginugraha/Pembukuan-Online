@@ -147,7 +147,7 @@ export async function getDashboard(
 		}),
 		monthlyFlows(companyId, today),
 		getBalanceSheet(companyId, today),
-		getTrialBalance(companyId, today),
+		getTrialBalance(companyId, { from: monthRange(today).from, to: today }),
 		recentTransactions(companyId),
 		uploadActions(companyId, opening)
 	]);

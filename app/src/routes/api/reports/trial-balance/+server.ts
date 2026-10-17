@@ -10,5 +10,6 @@ export const GET: RequestHandler = (event) =>
 	apiHandler(async () => {
 		const ctx = requireRole(event, 'viewer');
 		const asOf = dateParam(event.url, 'as_of') ?? monthRange(todayIso()).to;
-		return json(await getTrialBalance(ctx.companyId, asOf));
+		// Task 3: replaced by a real period range
+		return json(await getTrialBalance(ctx.companyId, { from: '1900-01-01', to: asOf }));
 	});

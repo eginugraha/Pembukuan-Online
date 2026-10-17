@@ -10,7 +10,7 @@
 	let { data } = $props();
 	const month = monthRange(todayIso());
 	const tb = $derived(data.tb);
-	const active = $derived(tb.asOf !== month.to);
+	const active = $derived(tb.to !== month.to);
 </script>
 
 <PageHeader title="Neraca Saldo">
@@ -20,7 +20,7 @@
 </PageHeader>
 
 <form method="GET" class="panel mb-5 flex flex-wrap items-end gap-3 p-4">
-	<div><span class="text-xs font-semibold text-ink/70">Per tanggal</span><DateField name="as_of" value={tb.asOf} aria-label="Per tanggal" class="mt-1" /></div>
+	<div><span class="text-xs font-semibold text-ink/70">Per tanggal</span><DateField name="as_of" value={tb.to} aria-label="Per tanggal" class="mt-1" /></div>
 	<FilterActions active={active} />
 </form>
 
@@ -42,14 +42,14 @@
 				<Table.Row>
 					<Table.Cell>{r.code}</Table.Cell>
 					<Table.Cell>{r.name}</Table.Cell>
-					<Table.Cell class="text-right tabular-nums">{r.debit !== '0.00' ? formatIdr(r.debit) : ''}</Table.Cell>
-					<Table.Cell class="text-right tabular-nums">{r.credit !== '0.00' ? formatIdr(r.credit) : ''}</Table.Cell>
+					<Table.Cell class="text-right tabular-nums">{r.closingDebit !== '0.00' ? formatIdr(r.closingDebit) : ''}</Table.Cell>
+					<Table.Cell class="text-right tabular-nums">{r.closingCredit !== '0.00' ? formatIdr(r.closingCredit) : ''}</Table.Cell>
 				</Table.Row>
 			{/each}
 			<Table.Row class="total-row">
 				<Table.Cell colspan={2}>Total</Table.Cell>
-				<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totalDebit)}</Table.Cell>
-				<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totalCredit)}</Table.Cell>
+				<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.closingDebit)}</Table.Cell>
+				<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.closingCredit)}</Table.Cell>
 			</Table.Row>
 		</Table.Body>
 	</Table.Root>

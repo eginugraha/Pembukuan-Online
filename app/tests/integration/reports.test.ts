@@ -57,17 +57,17 @@ test('credit-normal account shows positive balance', async () => {
 
 test('trial balance is balanced and places balances on the natural side', async () => {
 	const { companyId } = await booksWithActivity();
-	const tb = await getTrialBalance(companyId, '2026-08-31');
+	const tb = await getTrialBalance(companyId, { from: '2026-01-01', to: '2026-08-31' });
 	expect(tb.balanced).toBe(true);
-	expect(tb.totalDebit).toBe('3500000.00');
-	expect(tb.totalCredit).toBe('3500000.00');
-	const byCode = Object.fromEntries(tb.rows.map((r) => [r.code, [r.debit, r.credit]]));
+	expect(tb.totals.closingDebit).toBe('3500000.00');
+	expect(tb.totals.closingCredit).toBe('3500000.00');
+	const byCode = Object.fromEntries(tb.rows.map((r) => [r.code, [r.closingDebit, r.closingCredit]]));
 	expect(byCode['1-1002']).toEqual(['3470000.00', '0.00']);
 	expect(byCode['5-2010']).toEqual(['30000.00', '0.00']);
 	expect(byCode['3-1001']).toEqual(['0.00', '1000000.00']);
 	expect(byCode['4-1001']).toEqual(['0.00', '2500000.00']);
 
-	const before = await getTrialBalance(companyId, '2026-07-31');
+	const before = await getTrialBalance(companyId, { from: '2026-07-01', to: '2026-07-31' });
 	expect(before.rows).toHaveLength(0);
 	expect(before.balanced).toBe(true);
 });
