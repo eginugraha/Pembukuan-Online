@@ -16,7 +16,7 @@
 	const current = $derived(d.monthly.at(-1)!);
 </script>
 
-<svelte:head><title>Dashboard · Jurnalku</title></svelte:head>
+<svelte:head><title>Dashboard · pena</title></svelte:head>
 
 <div class="mb-6">
 	<h1 class="text-2xl font-bold tracking-tight text-ink">Dashboard</h1>

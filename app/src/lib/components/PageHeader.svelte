@@ -4,6 +4,8 @@
 	let { title, description, actions }: { title: string; description?: string; actions?: Snippet } = $props();
 </script>
 
+<svelte:head><title>{title} · pena</title></svelte:head>
+
 <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
 	<div class="min-w-0">
 		<h1 class="text-2xl font-bold tracking-tight text-ink">{title}</h1>

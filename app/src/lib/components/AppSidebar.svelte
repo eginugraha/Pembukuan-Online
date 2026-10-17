@@ -75,9 +75,9 @@
 </script>
 
 <div class="flex h-full flex-col px-4 py-5 rail-collapsed:px-2">
-	<a href="/dashboard" onclick={onnavigate} aria-label="Jurnalku" class="mb-4 flex shrink-0 items-center gap-2.5 px-2 text-lg font-extrabold tracking-tight text-green rail-collapsed:justify-center rail-collapsed:px-0">
-		<span class="icon-tile icon-tile-deep size-9 shrink-0 rounded-xl font-black">J</span>
-		<span class="rail-collapsed:hidden">Jurnalku.</span>
+	<a href="/dashboard" onclick={onnavigate} aria-label="pena" title="pena — Pembukuan Keuangan Online Gratis" class="mb-4 flex shrink-0 items-center gap-2.5 px-2 text-lg font-extrabold tracking-tight text-green rail-collapsed:justify-center rail-collapsed:px-0">
+		<span class="icon-tile icon-tile-deep size-9 shrink-0 rounded-xl font-black">P</span>
+		<span class="rail-collapsed:hidden">pena.</span>
 	</a>
 
 	<Tooltip.Provider>

@@ -103,8 +103,6 @@
 	}
 </script>
 
-<svelte:head><title>Profil Saya · Jurnalku</title></svelte:head>
-
 <PageHeader title="Profil Saya" description="Foto dan nama yang tampil di aplikasi." />
 
 {#if message}<Alert.Root class="mb-4 max-w-2xl"><Alert.Description>{message}</Alert.Description></Alert.Root>{/if}

@@ -14,7 +14,7 @@ test('logout asks for confirmation; cancelling keeps the session, confirming end
 	await page.getByRole('button', { name: 'Menu profil' }).click();
 	await page.getByRole('menuitem', { name: 'Keluar' }).click();
 
-	const dialog = page.getByRole('dialog', { name: 'Keluar dari Jurnalku?' });
+	const dialog = page.getByRole('dialog', { name: 'Keluar dari pena?' });
 	await expect(dialog).toBeVisible();
 	await dialog.getByRole('button', { name: 'Batal' }).click();
 	await expect(dialog).toBeHidden();
@@ -23,7 +23,7 @@ test('logout asks for confirmation; cancelling keeps the session, confirming end
 
 	await page.getByRole('button', { name: 'Menu profil' }).click();
 	await page.getByRole('menuitem', { name: 'Keluar' }).click();
-	await page.getByRole('dialog', { name: 'Keluar dari Jurnalku?' }).getByRole('button', { name: 'Keluar' }).click();
+	await page.getByRole('dialog', { name: 'Keluar dari pena?' }).getByRole('button', { name: 'Keluar' }).click();
 	await expect(page).toHaveURL(/\/login$/);
 	await page.goto('/dashboard');
 	await expect(page).toHaveURL(/\/login$/);
