@@ -25,5 +25,5 @@ test('rangeParams as_of dan default', () => {
 test('getCompanyReportInfo', async () => {
 	const { companyId } = await makeCompany('PT Laporan');
 	expect(await getCompanyReportInfo(companyId)).toEqual({ name: 'PT Laporan', fiscalYear: 'JANUARY' });
-	expect(getCompanyReportInfo('00000000-0000-4000-8000-000000000000')).rejects.toMatchObject({ status: 404 });
+	await expect(getCompanyReportInfo('00000000-0000-4000-8000-000000000000')).rejects.toMatchObject({ status: 404 });
 });
