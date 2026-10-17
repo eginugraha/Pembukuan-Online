@@ -107,11 +107,11 @@ export async function closeFiscalYear(
 		let retained;
 		try {
 			retained = await assertLeafAccount(tx, companyId, input.retainedEarningsAccountId);
-		} catch {
-			throw invalidRe();
+		} catch (e) {
+			if (e instanceof ApiError) throw invalidRe();
+			throw e;
 		}
-		const [reAcc] = await tx.select({ type: accounts.type }).from(accounts).where(eq(accounts.id, retained.id));
-		if (reAcc?.type !== 'EQUITY') throw invalidRe();
+		if (retained.type !== 'EQUITY') throw invalidRe();
 
 		const balances = await tx
 			.select({

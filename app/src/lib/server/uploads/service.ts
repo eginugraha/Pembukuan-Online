@@ -1,8 +1,8 @@
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { D, formatIdr } from '../../money';
 import { ApiError, notFound } from '../api';
-import { assertPeriodOpen } from '../closing/lock';
 import { normalizeDescription } from '../categorize/normalize';
+import { assertPeriodOpen } from '../closing/lock';
 import { db } from '../db';
 import { companies, journalEntries, statementUploads, transactions } from '../db/schema';
 import { balanceAtStartOf } from '../ledger/balance';

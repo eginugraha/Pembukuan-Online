@@ -1,9 +1,9 @@
 import { and, asc, count, eq, isNull, like, sql } from 'drizzle-orm';
 import { BANK_NOT_ALLOWED_MESSAGE } from '../accounts/queries';
 import { ApiError, notFound } from '../api';
+import { assertPeriodOpen } from '../closing/lock';
 import { db, type Tx } from '../db';
 import { companies, journalEntries, journalLines, statementUploads, transactions } from '../db/schema';
-import { assertPeriodOpen } from '../closing/lock';
 import { assertBalanced, buildTransactionLines } from './lines';
 
 async function maxRefSeq(tx: Tx, companyId: string, yyyymm: string): Promise<number> {

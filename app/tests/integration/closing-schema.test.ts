@@ -22,17 +22,13 @@ test('closing journal type and fiscal_closings row can be stored', async () => {
 		retainedEarningsAccountId: retained
 	});
 
-	await expect(
-		(async () => {
-		await db.insert(fiscalClosings).values({
-			companyId,
-			periodStart: '2026-01-01',
-			periodEnd: '2026-12-31',
-			retainedEarningsAccountId: retained
-		});
-		})()
-	).rejects.toThrow();
+	const dup = await db
+		.insert(fiscalClosings)
+		.values({ companyId, periodStart: '2026-01-01', periodEnd: '2026-12-31', retainedEarningsAccountId: retained })
+		.then(() => null, (e) => e);
+	expect(dup).not.toBeNull();
+	expect((dup.cause ?? dup).code).toBe('23505');
 
 	await db.delete(companies).where(eq(companies.id, companyId));
-	expect(await db.select().from(fiscalClosings)).toHaveLength(0);
+	expect(await db.select().from(fiscalClosings).where(eq(fiscalClosings.companyId, companyId))).toHaveLength(0);
 });

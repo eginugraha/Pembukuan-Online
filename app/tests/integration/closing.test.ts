@@ -1,7 +1,7 @@
 import { beforeEach, expect, test } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
 import { db } from '../../src/lib/server/db';
-import { fiscalClosings, journalEntries, journalLines, transactions } from '../../src/lib/server/db/schema';
+import { accounts, fiscalClosings, journalEntries, journalLines, transactions } from '../../src/lib/server/db/schema';
 import { closeFiscalYear, reopenFiscalYear } from '../../src/lib/server/closing/close';
 import { listFiscalYears } from '../../src/lib/server/closing/years';
 import { generateJournal } from '../../src/lib/server/journal/generate';
@@ -107,7 +107,7 @@ test('closing preconditions', async () => {
 		expect(await code(closeFiscalYear(companyId, userId, { periodStart: start, retainedEarningsAccountId: reId }, TODAY))).toMatchObject({ code: 'previous_year_open' });
 	}
 	await resetDb();
-	// (e), (f)
+	// (e)
 	{
 		const { companyId, userId } = await books();
 		const bad = await accountIdByCode(companyId, '1-1001');
@@ -115,9 +115,76 @@ test('closing preconditions', async () => {
 			code: 'invalid_retained_earnings',
 			field: 'retainedEarningsAccountId'
 		});
-		const re = await accountIdByCode(companyId, '3-1003');
-		expect(await code(closeFiscalYear(companyId, userId, { periodStart: '2026-02-01', retainedEarningsAccountId: re }, TODAY))).toMatchObject({ code: 'invalid_period', field: 'periodStart' });
 	}
+	await resetDb();
+	// (f)
+	{
+		const { companyId, userId, reId } = await books();
+		expect(await code(closeFiscalYear(companyId, userId, { periodStart: '2026-02-01', retainedEarningsAccountId: reId }, TODAY))).toMatchObject({ code: 'invalid_period', field: 'periodStart' });
+	}
+});
+
+test('retained earnings account must be active and a leaf', async () => {
+	const start = '2026-01-01';
+	{
+		const { companyId, userId, reId } = await books();
+		await db.update(accounts).set({ isActive: false }).where(eq(accounts.id, reId));
+		expect(await code(closeFiscalYear(companyId, userId, { periodStart: start, retainedEarningsAccountId: reId }, TODAY))).toEqual({
+			code: 'invalid_retained_earnings',
+			field: 'retainedEarningsAccountId'
+		});
+	}
+	{
+		const { companyId, userId } = await books();
+		const [child] = await db.select({ parentId: accounts.parentId }).from(accounts).where(eq(accounts.id, await accountIdByCode(companyId, '3-1003')));
+		expect(await code(closeFiscalYear(companyId, userId, { periodStart: start, retainedEarningsAccountId: child.parentId! }, TODAY))).toEqual({
+			code: 'invalid_retained_earnings',
+			field: 'retainedEarningsAccountId'
+		});
+	}
+});
+
+test('an upload still processing or in review blocks closing even when no transaction is unconfirmed', async () => {
+	const { companyId, userId, reId } = await books();
+	const { txnIds } = await makeUpload(companyId, userId, [{ date: '2026-09-01', description: 'BELUM SELESAI', debit: '1000' }], { status: 'review', accountNo: '555' });
+	await db.update(transactions).set({ isConfirmed: true, accountId: await accountIdByCode(companyId, '5-2010') }).where(eq(transactions.id, txnIds[0]));
+	const err = await closeFiscalYear(companyId, userId, { periodStart: '2026-01-01', retainedEarningsAccountId: reId }, TODAY).then(() => null, (e) => e);
+	expect(err.code).toBe('pending_transactions');
+	expect(err.message).toBe('Masih ada upload yang sedang diproses sampai akhir tahun buku 2026');
+});
+
+test('closing 2027 while only 2025 is closed is previous_year_open', async () => {
+	const { companyId, userId, reId } = await books({ with2025: true });
+	await closeFiscalYear(companyId, userId, { periodStart: '2025-01-01', retainedEarningsAccountId: reId }, TODAY);
+	expect(await code(closeFiscalYear(companyId, userId, { periodStart: '2027-01-01', retainedEarningsAccountId: reId }, '2028-02-10'))).toMatchObject({ code: 'previous_year_open' });
+});
+
+test('a year with no profit and loss activity closes without a journal', async () => {
+	const { companyId, bankAccountId } = await makeCompany();
+	const u = await makeUser();
+	await saveOpening(companyId, u.id, {
+		date: '2025-01-01',
+		lines: [
+			{ accountId: bankAccountId, debit: '1000', credit: '0' },
+			{ accountId: await accountIdByCode(companyId, '3-1001'), debit: '0', credit: '1000' }
+		]
+	});
+	const { uploadId, txnIds } = await makeUpload(companyId, u.id, [{ date: '2026-03-01', description: 'SETOR MODAL', credit: '500' }], { status: 'done' });
+	await db.update(transactions).set({ isConfirmed: true, accountId: await accountIdByCode(companyId, '3-1001') }).where(eq(transactions.id, txnIds[0]));
+	await generateJournal(companyId, uploadId, u.id);
+	const reId = await accountIdByCode(companyId, '3-1003');
+	expect(await closeFiscalYear(companyId, u.id, { periodStart: '2026-01-01', retainedEarningsAccountId: reId }, TODAY)).toEqual({ journalId: null });
+	const row = await db.query.fiscalClosings.findFirst({ where: eq(fiscalClosings.companyId, companyId) });
+	expect(row).toMatchObject({ periodStart: '2026-01-01', journalId: null });
+	const ys = await listFiscalYears(companyId, TODAY);
+	expect(ys.find((y) => y.periodStart === '2026-01-01')).toMatchObject({ status: 'closed', netProfit: '0.00' });
+});
+
+test('reopening a year that was never closed is 404', async () => {
+	const { companyId } = await books();
+	expect(await code(reopenFiscalYear(companyId, '2026-01-01'))).toMatchObject({ code: 'not_found' });
+	const err = await reopenFiscalYear(companyId, '2026-01-01').then(() => null, (e) => e);
+	expect(err.status).toBe(404);
 });
 
 test('only the latest closed year can be reopened; close-reopen-close is clean', async () => {
