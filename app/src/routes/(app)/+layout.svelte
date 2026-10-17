@@ -108,7 +108,7 @@
 				</button>
 				{#if ctx.companies.length > 0}
 					<select
-						class="h-10 max-w-[45vw] min-w-0 truncate rounded-xl border border-border bg-card px-3 text-sm font-semibold shadow-[0_4px_14px_-8px_rgb(0_0_0/0.25)] focus-visible:ring-3 focus-visible:ring-green/25 focus-visible:outline-none sm:max-w-xs"
+						class="select-chevron h-10 max-w-[45vw] min-w-0 truncate rounded-xl border border-border bg-card pl-3 pr-10 text-sm font-semibold shadow-[0_4px_14px_-8px_rgb(0_0_0/0.25)] focus-visible:ring-3 focus-visible:ring-green/25 focus-visible:outline-none sm:max-w-xs"
 						value={ctx.companyId}
 						onchange={switchCompany}
 						aria-label="Pilih perusahaan"

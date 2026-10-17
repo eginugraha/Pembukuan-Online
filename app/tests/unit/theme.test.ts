@@ -25,3 +25,17 @@ test('dark theme tokens follow the approved palette', () => {
 		expect(dark).toContain(s);
 	}
 });
+
+test('selects use a custom chevron inset from the right edge, themed for light and dark', async () => {
+	const block = css.slice(css.indexOf('.select-chevron {'), css.indexOf('}', css.indexOf('.select-chevron {')));
+	expect(block).toContain('appearance: none');
+	expect(block).toContain('background-position: right 0.875rem center');
+	expect(block).toContain('padding-right: 2.5rem');
+	expect(css).toContain('--select-chevron:');
+	const dark = css.slice(css.indexOf('.dark {'), css.indexOf('}', css.indexOf('.dark {')));
+	expect(dark).toContain('--select-chevron:');
+	const { selectClass } = await import('$lib/ui');
+	expect(selectClass).toContain('select-chevron');
+	const layout = await Bun.file(new URL('../../src/routes/(app)/+layout.svelte', import.meta.url)).text();
+	expect(layout).toMatch(/<select[^>]*class="[^"]*select-chevron/s);
+});
