@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { D, formatIdr } from '../../money';
 import { ApiError, notFound } from '../api';
+import { assertPeriodOpen } from '../closing/lock';
 import { normalizeDescription } from '../categorize/normalize';
 import { db } from '../db';
 import { companies, journalEntries, statementUploads, transactions } from '../db/schema';
@@ -56,6 +57,7 @@ export async function createUpload(
 	const id = await db.transaction(async (tx) => {
 		// Cek duplikat di dalam lock baris perusahaan agar dua upload bersamaan tidak sama-sama lolos.
 		await tx.execute(sql`select id from companies where id = ${company.id} for update`);
+		await assertPeriodOpen(tx, company.id, parsed.transactions.map((t) => t.date));
 		const [duplicate] = await tx
 			.select({ id: statementUploads.id })
 			.from(statementUploads)
@@ -143,11 +145,19 @@ export async function getUpload(companyId: string, uploadId: string) {
 }
 
 export async function deleteUpload(companyId: string, uploadId: string): Promise<void> {
-	const deleted = await db
-		.delete(statementUploads)
-		.where(and(eq(statementUploads.id, uploadId), eq(statementUploads.companyId, companyId)))
-		.returning({ id: statementUploads.id });
-	if (deleted.length === 0) throw notFound('Upload');
+	await db.transaction(async (tx) => {
+		await tx.execute(sql`select id from companies where id = ${companyId} for update`);
+		const upload = await tx.query.statementUploads.findFirst({
+			where: and(eq(statementUploads.id, uploadId), eq(statementUploads.companyId, companyId))
+		});
+		if (!upload) throw notFound('Upload');
+		const dated = await tx
+			.selectDistinct({ d: journalEntries.entryDate })
+			.from(journalEntries)
+			.where(eq(journalEntries.uploadId, uploadId));
+		await assertPeriodOpen(tx, companyId, dated.map((r) => r.d));
+		await tx.delete(statementUploads).where(eq(statementUploads.id, uploadId));
+	});
 }
 
 export async function retryCategorization(

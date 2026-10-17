@@ -2,6 +2,7 @@ import { and, asc, eq, sql } from 'drizzle-orm';
 import { isZero, toMoney } from '../../money';
 import { assertLeafAccount } from '../accounts/queries';
 import { ApiError } from '../api';
+import { assertNoClosing } from '../closing/lock';
 import { db } from '../db';
 import { journalEntries, journalLines } from '../db/schema';
 import { isoDate, moneyString } from '../validation';
@@ -34,6 +35,7 @@ export async function saveOpening(companyId: string, userId: string, input: Open
 	return db.transaction(async (tx) => {
 		// Serialisasi per perusahaan: dua simpan bersamaan tidak boleh menghasilkan dua entry OPENING.
 		await tx.execute(sql`select id from companies where id = ${companyId} for update`);
+		await assertNoClosing(tx, companyId);
 		for (const l of lines) await assertLeafAccount(tx, companyId, l.accountId);
 		await tx
 			.delete(journalEntries)

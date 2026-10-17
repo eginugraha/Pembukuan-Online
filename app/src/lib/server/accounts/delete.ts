@@ -1,8 +1,9 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { D, toMoney } from '../../money';
 import { ApiError, notFound } from '../api';
+import { assertPeriodOpen } from '../closing/lock';
 import { db, type Executor } from '../db';
-import { accounts, categoryRules, companies, journalLines, transactions } from '../db/schema';
+import { accounts, categoryRules, companies, journalEntries, journalLines, transactions } from '../db/schema';
 
 export interface AccountUsage {
 	journalLines: number;
@@ -100,6 +101,13 @@ export async function deleteAccount(companyId: string, accountId: string, moveTo
 			if (targetUsage.isBankAccount) throw moveError('Akun bank perusahaan tidak bisa menjadi tujuan pemindahan');
 			if (target.type !== account.type) throw moveError('Akun tujuan harus bertipe sama');
 			if (target.normalBal !== account.normalBal) throw moveError('Akun tujuan harus bersaldo normal sama');
+
+			const dated = await tx
+				.selectDistinct({ d: journalEntries.entryDate })
+				.from(journalLines)
+				.innerJoin(journalEntries, eq(journalEntries.id, journalLines.journalId))
+				.where(eq(journalLines.accountId, accountId));
+			await assertPeriodOpen(tx, companyId, dated.map((r) => r.d));
 
 			await tx.update(journalLines).set({ accountId: target.id }).where(eq(journalLines.accountId, accountId));
 			await mergeDuplicateLines(tx, target.id);

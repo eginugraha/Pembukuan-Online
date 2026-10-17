@@ -3,6 +3,7 @@ import { BANK_NOT_ALLOWED_MESSAGE } from '../accounts/queries';
 import { ApiError, notFound } from '../api';
 import { db, type Tx } from '../db';
 import { companies, journalEntries, journalLines, statementUploads, transactions } from '../db/schema';
+import { assertPeriodOpen } from '../closing/lock';
 import { assertBalanced, buildTransactionLines } from './lines';
 
 async function maxRefSeq(tx: Tx, companyId: string, yyyymm: string): Promise<number> {
@@ -52,6 +53,8 @@ export async function generateJournal(companyId: string, uploadId: string, userI
 		if (rows.some((t) => t.accountId === company.bankAccountId)) {
 			throw new ApiError(422, 'bank_account_not_allowed', BANK_NOT_ALLOWED_MESSAGE);
 		}
+
+		await assertPeriodOpen(tx, companyId, rows.map((r) => r.txnDate));
 
 		const nextSeq = new Map<string, number>();
 		for (const t of rows) {

@@ -1,8 +1,9 @@
-import { and, eq, gte, isNotNull } from 'drizzle-orm';
+import { and, eq, gte, isNotNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { assertCategoryAccount, listLeafAccounts } from '../accounts/queries';
 import { ApiError, notFound } from '../api';
 import { applyRulesToPending, directionOf, normalizeKeyword, upsertUserRule } from '../categorize/rules';
+import { assertPeriodOpen } from '../closing/lock';
 import { db } from '../db';
 import { companies, journalEntries, statementUploads, transactions } from '../db/schema';
 import { refreshReviewedUploads } from '../uploads/status';
@@ -26,9 +27,11 @@ export async function confirmTransaction(
 	input: ConfirmInput
 ): Promise<{ propagated: number }> {
 	return db.transaction(async (tx) => {
+		await tx.execute(sql`select id from companies where id = ${companyId} for update`);
 		const [t] = await tx
 			.select({
 				id: transactions.id,
+				txnDate: transactions.txnDate,
 				debit: transactions.debit,
 				aiSuggestedAccountId: transactions.aiSuggestedAccountId,
 				journalId: journalEntries.id
@@ -41,6 +44,7 @@ export async function confirmTransaction(
 		if (t.journalId) {
 			throw new ApiError(409, 'transaction_journaled', 'Transaksi sudah dijurnal sehingga kategorinya tidak bisa diubah');
 		}
+		await assertPeriodOpen(tx, companyId, [t.txnDate]);
 		await assertCategoryAccount(tx, companyId, input.accountId);
 
 		let keyword: string | null = null;
@@ -77,6 +81,7 @@ export async function bulkConfirm(
 ): Promise<{ confirmed: number; propagated: number }> {
 	const { uploadId, minConfidence } = BulkConfirmInput.parse(input);
 	return db.transaction(async (tx) => {
+		await tx.execute(sql`select id from companies where id = ${companyId} for update`);
 		const upload = await tx.query.statementUploads.findFirst({
 			where: and(eq(statementUploads.id, uploadId), eq(statementUploads.companyId, companyId))
 		});
@@ -90,6 +95,7 @@ export async function bulkConfirm(
 			await tx
 				.select({
 					id: transactions.id,
+					txnDate: transactions.txnDate,
 					debit: transactions.debit,
 					accountId: transactions.aiSuggestedAccountId,
 					keyword: transactions.aiKeyword,
@@ -105,6 +111,8 @@ export async function bulkConfirm(
 					)
 				)
 		).filter((r) => r.accountId && leaf.has(r.accountId));
+
+		await assertPeriodOpen(tx, companyId, rows.map((r) => r.txnDate));
 
 		const now = new Date();
 		for (const r of rows) {

@@ -1,6 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { assertCategoryAccount } from '../accounts/queries';
 import { ApiError, notFound } from '../api';
+import { assertPeriodOpen } from '../closing/lock';
 import { db } from '../db';
 import { journalEntries, journalLines, transactions } from '../db/schema';
 
@@ -16,6 +17,7 @@ export async function updateJournalAccount(companyId: string, userId: string, en
 			where: and(eq(journalEntries.id, entryId), eq(journalEntries.companyId, companyId))
 		});
 		if (!entry) throw notFound('Jurnal');
+		await assertPeriodOpen(tx, companyId, [entry.entryDate]);
 		if (entry.type !== 'TRANSACTION' || !entry.transactionId) {
 			throw new ApiError(409, 'journal_not_editable', 'Jurnal saldo awal diubah lewat halaman Saldo Awal');
 		}
