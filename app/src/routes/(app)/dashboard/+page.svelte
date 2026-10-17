@@ -8,6 +8,7 @@
 	import DonutChart from '$lib/components/charts/DonutChart.svelte';
 	import TrendLine from '$lib/components/charts/TrendLine.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import { formatAccounting } from '$lib/money';
 	import { fiscalYearEnd, formatPeriod } from '$lib/periods';
 	import { roleAtLeast } from '$lib/roles';
 
@@ -35,7 +36,7 @@
 		</div>
 		<div class="flex flex-wrap items-center gap-2 sm:text-right">
 			<span class="text-sm text-muted-foreground">Laba Tahun Berjalan</span>
-			<span class="text-2xl font-bold {d.profitThisYear.startsWith('-') ? 'text-destructive' : 'text-green'}">{d.profitThisYear}</span>
+			<span class="text-2xl font-bold {d.profitThisYear.startsWith('-') ? 'text-destructive' : 'text-green'}">Rp {formatAccounting(d.profitThisYear)}</span>
 			<span class="rounded-full px-2 py-0.5 text-xs {d.balanced ? 'bg-lime text-on-lime' : 'bg-destructive/10 text-destructive'}">
 				{d.balanced ? 'Balance ✓' : 'Tidak balance'}
 			</span>

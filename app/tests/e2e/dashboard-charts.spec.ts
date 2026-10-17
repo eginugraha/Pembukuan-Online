@@ -50,3 +50,10 @@ test('chart text stays readable at 390px', async ({ page }) => {
 	expect(size).toBeGreaterThanOrEqual(10);
 	expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
 });
+
+test('Laba Tahun Berjalan is formatted as rupiah', async ({ page }) => {
+	const value = page.getByText('Laba Tahun Berjalan').locator('xpath=following-sibling::span[1]');
+	const text = (await value.innerText()).trim();
+	expect(text).toMatch(/^Rp\s?\(?[\d.]+,\d{2}\)?$/);
+	expect(text).not.toMatch(/\d+\.\d{2}$/);
+});
