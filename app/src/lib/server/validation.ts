@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { fiscalYearStart } from '../periods';
 import { ApiError, notFound } from './api';
 
 export { isoDate, moneyString } from '../schemas/common';
@@ -19,4 +20,21 @@ export function dateParam(url: URL, name: string): string | null {
 	const r = isoDateParam.safeParse(v);
 	if (!r.success) throw new ApiError(400, 'validation_error', `Parameter ${name} harus berformat YYYY-MM-DD`);
 	return r.data;
+}
+
+/** Rentang ?from&to; bila hanya ?as_of, rentangnya dari awal tahun buku sampai as_of. */
+export function rangeParams(
+	url: URL,
+	defaults: { from: string; to: string },
+	startMonth: string
+): { from: string; to: string } {
+	const from = dateParam(url, 'from');
+	const to = dateParam(url, 'to');
+	const asOf = dateParam(url, 'as_of');
+	if (!from && !to && asOf) return { from: fiscalYearStart(asOf, startMonth), to: asOf };
+	const range = { from: from ?? defaults.from, to: to ?? defaults.to };
+	if (range.from > range.to) {
+		throw new ApiError(400, 'invalid_range', 'Tanggal awal harus sebelum tanggal akhir', undefined, { field: 'from' });
+	}
+	return range;
 }

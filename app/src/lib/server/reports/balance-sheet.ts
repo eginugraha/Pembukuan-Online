@@ -1,17 +1,10 @@
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { D, sumMoney, toMoney } from '../../money';
 import { db } from '../db';
+import { fiscalYearStart } from '../../periods';
 import { accounts, companies, journalEntries, journalLines } from '../db/schema';
 
-const MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
-
-/** Tanggal awal tahun buku yang memuat `asOf`. `startMonth` = companies.fiscal_year (mis. "JANUARY"). */
-export function fiscalYearStart(asOf: string, startMonth: string): string {
-	const m = Math.max(0, MONTHS.indexOf(startMonth.toUpperCase())) + 1;
-	const [y, mm] = asOf.split('-').map(Number);
-	const year = mm >= m ? y : y - 1;
-	return `${year}-${String(m).padStart(2, '0')}-01`;
-}
+export { fiscalYearStart } from '../../periods';
 
 export interface BalanceSheetLine {
 	accountId: string | null;
