@@ -1,11 +1,12 @@
 <script lang="ts">
-	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
+	import { afterNavigate, goto, invalidateAll, onNavigate } from '$app/navigation';
 	import { tick } from 'svelte';
 	import { page } from '$app/state';
 	import Menu from '@lucide/svelte/icons/menu';
 	import Plus from '@lucide/svelte/icons/plus';
 	import X from '@lucide/svelte/icons/x';
 	import AppSidebar from '$lib/components/AppSidebar.svelte';
+	import ProfileMenu from '$lib/components/ProfileMenu.svelte';
 	import { ROLE_LABELS } from '$lib/roles';
 
 	let { data, children } = $props();
@@ -33,13 +34,6 @@
 	);
 	const isActive = (href: string) => href === activeHref;
 	const roleLabel = $derived(ctx.user.isSuperAdmin ? 'Super Admin' : ctx.role ? ROLE_LABELS[ctx.role] : '—');
-	const initials = $derived(
-		ctx.user.name
-			.split(/\s+/)
-			.slice(0, 2)
-			.map((w) => w[0]?.toUpperCase() ?? '')
-			.join('')
-	);
 	let trigger = $state<HTMLButtonElement | null>(null);
 	let drawerEl = $state<HTMLDivElement | null>(null);
 	let closeBtn = $state<HTMLButtonElement | null>(null);
@@ -72,6 +66,19 @@
 	afterNavigate(() => {
 		drawerOpen = false;
 	});
+
+	// Transisi halus antarhalaman (View Transitions API). Browser tanpa dukungan atau pengguna dengan
+	// "reduce motion" langsung berpindah tanpa animasi.
+	onNavigate((navigation) => {
+		if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		if (navigation.from?.url.pathname === navigation.to?.url.pathname) return;
+		return new Promise((resolve) => {
+			document.startViewTransition(async () => {
+				resolve();
+				await navigation.complete;
+			});
+		});
+	});
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && closeDrawer()} />
@@ -81,19 +88,19 @@
 		<!-- Sidebar desktop -->
 		<aside class="hidden w-64 shrink-0 border-r border-border lg:block">
 			<div class="h-full">
-				<AppSidebar nav={data.nav} {isActive} nextStep={data.nextStep} userName={ctx.user.name} {roleLabel} />
+				<AppSidebar nav={data.nav} {isActive} nextStep={data.nextStep} userName={ctx.user.name} userImage={ctx.user.image} {roleLabel} animateActive />
 			</div>
 		</aside>
 
 		<!-- Drawer HP/tablet -->
 		{#if drawerOpen}
 			<div id="mobile-drawer" bind:this={drawerEl} class="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu" tabindex="-1" onkeydown={trapTab}>
-				<button class="absolute inset-0 bg-ink/40 backdrop-blur-[2px]" tabindex="-1" aria-hidden="true" onclick={closeDrawer}></button>
-				<aside class="absolute inset-y-0 left-0 w-72 max-w-[85vw] overflow-y-auto bg-white shadow-2xl">
+				<button class="drawer-backdrop absolute inset-0 bg-ink/40 backdrop-blur-[2px]" tabindex="-1" aria-hidden="true" onclick={closeDrawer}></button>
+				<aside class="drawer-panel absolute inset-y-0 left-0 w-72 max-w-[85vw] overflow-y-auto bg-white shadow-2xl">
 					<button bind:this={closeBtn} class="absolute top-5 right-4 rounded-lg p-1.5 text-ink/60 hover:bg-muted" aria-label="Tutup menu" onclick={closeDrawer}>
 						<X class="size-5" />
 					</button>
-					<AppSidebar nav={data.nav} {isActive} nextStep={data.nextStep} userName={ctx.user.name} {roleLabel} onnavigate={closeDrawer} />
+					<AppSidebar nav={data.nav} {isActive} nextStep={data.nextStep} userName={ctx.user.name} userImage={ctx.user.image} {roleLabel} onnavigate={closeDrawer} />
 				</aside>
 			</div>
 		{/if}
@@ -102,7 +109,7 @@
 			<header class="flex items-center gap-3 px-4 pt-4 pb-2 sm:px-6 lg:px-8 lg:pt-6">
 				<button
 					bind:this={trigger}
-					class="tile-3d tile-3d-muted size-10 shrink-0 lg:hidden"
+					class="icon-tile icon-tile-muted size-10 shrink-0 lg:hidden"
 					aria-label="Buka menu"
 					aria-expanded={drawerOpen}
 					aria-controls="mobile-drawer"
@@ -132,14 +139,13 @@
 						<Plus class="size-4" /><span class="hidden sm:inline">Perusahaan baru</span>
 					</a>
 				{/if}
-				<div class="ml-auto flex items-center gap-3">
-					<span class="hidden text-sm font-semibold sm:inline">Halo, {ctx.user.name.split(' ')[0]}</span>
-					<span class="tile-3d tile-3d-deep size-10 text-sm font-bold" title={ctx.user.name}>{initials}</span>
+				<div class="ml-auto">
+					<ProfileMenu name={ctx.user.name} image={ctx.user.image} {roleLabel} />
 				</div>
 			</header>
 
-			<main class="min-w-0 flex-1 px-4 pt-4 pb-10 sm:px-6 lg:px-8">
-				{#if ctx.companyId}
+			<main class="min-w-0 flex-1 px-4 pt-4 pb-10 [view-transition-name:main-content] sm:px-6 lg:px-8">
+				{#if ctx.companyId || page.url.pathname === '/profile'}
 					{@render children()}
 				{:else}
 					<div class="panel mx-auto mt-20 max-w-md p-8 text-center">

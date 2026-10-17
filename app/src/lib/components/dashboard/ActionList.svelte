@@ -11,11 +11,11 @@
 	let { actions }: { actions: DashboardAction[] } = $props();
 
 	const STYLE: Record<DashboardAction['kind'], { icon: Component<{ class?: string }>; tile: string }> = {
-		review: { icon: ListChecks, tile: 'tile-3d' },
-		journal: { icon: FileCheck, tile: 'tile-3d tile-3d-deep' },
-		opening: { icon: Wallet, tile: 'tile-3d tile-3d-lime' },
-		balance_warning: { icon: TriangleAlert, tile: 'tile-3d tile-3d-amber' },
-		error: { icon: CircleAlert, tile: 'tile-3d tile-3d-red' }
+		review: { icon: ListChecks, tile: 'icon-tile' },
+		journal: { icon: FileCheck, tile: 'icon-tile icon-tile-deep' },
+		opening: { icon: Wallet, tile: 'icon-tile icon-tile-lime' },
+		balance_warning: { icon: TriangleAlert, tile: 'icon-tile icon-tile-amber' },
+		error: { icon: CircleAlert, tile: 'icon-tile icon-tile-red' }
 	};
 </script>
 
@@ -23,7 +23,7 @@
 	<h2 class="mb-2 text-base font-bold">Perlu Tindakan</h2>
 	{#if actions.length === 0}
 		<div class="flex flex-col items-center py-8 text-center">
-			<span class="tile-3d tile-3d-lime size-12 rounded-2xl"><PartyPopper class="size-6" /></span>
+			<span class="icon-tile icon-tile-lime size-12 rounded-2xl"><PartyPopper class="size-6" /></span>
 			<p class="mt-3 text-sm font-semibold">Tidak ada yang perlu ditindaklanjuti</p>
 			<p class="text-xs text-muted-foreground">Pembukuan Anda sudah rapi.</p>
 		</div>

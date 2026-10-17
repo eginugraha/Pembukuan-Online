@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ListChecks from '@lucide/svelte/icons/list-checks';
 	let { pendingCount, canReview }: { pendingCount: number; canReview: boolean } = $props();
 </script>
 
@@ -10,10 +11,7 @@
 		{/if}
 	</div>
 	<div class="flex items-center gap-4">
-		<!-- Objek 3D: kubus berlian di dalam lingkaran lembut -->
-		<span class="flex size-14 shrink-0 items-center justify-center rounded-full bg-[radial-gradient(circle,#eaffdb,#d2f5b6)]">
-			<span class="size-7 rotate-45 rounded-lg bg-[linear-gradient(145deg,#9be06e,var(--deep))] shadow-[0_6px_8px_-4px_var(--deep),inset_3px_3px_4px_rgb(255_255_255/0.5),inset_-2px_-2px_4px_rgb(0_0_0/0.15)]"></span>
-		</span>
+		<span class="icon-tile icon-tile-solid size-14 shrink-0 rounded-2xl"><ListChecks class="size-7" /></span>
 		<div>
 			{#if pendingCount > 0}
 				<p class="text-xl font-extrabold text-deep">{pendingCount} transaksi</p>

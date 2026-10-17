@@ -7,7 +7,7 @@
 </script>
 
 <div class="relative mt-8 rounded-[20px] bg-[linear-gradient(160deg,#dcfac4,var(--lime))] px-4 pt-8 pb-4 text-center">
-	<span class="tile-3d absolute -top-5 left-1/2 size-10 -translate-x-1/2 rounded-full bg-white! text-deep shadow-[0_10px_18px_-8px_rgb(0_0_0/0.35)]">
+	<span class="icon-tile absolute -top-5 left-1/2 size-10 -translate-x-1/2 rounded-full bg-white! text-deep ring-4 ring-[#dcfac4]">
 		<Sparkles class="size-5" />
 	</span>
 	<p class="text-xs font-semibold tracking-wide text-deep/70 uppercase">Langkah berikutnya</p>

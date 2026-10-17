@@ -54,7 +54,7 @@
 					pick(e.dataTransfer?.files);
 				}}
 			>
-				<span class="tile-3d mb-4 size-16 rounded-2xl">
+				<span class="icon-tile icon-tile-solid mb-4 size-16 rounded-2xl">
 					{#if file}<FileText class="size-7" />{:else}<UploadIcon class="size-7" />{/if}
 				</span>
 				<span class="font-semibold break-all">{file ? file.name : 'Seret file PDF ke sini atau klik untuk memilih'}</span>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import UserAvatar from '$lib/components/UserAvatar.svelte';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
@@ -84,7 +85,7 @@
 	<Table.Body>
 		{#each data.members as m (m.userId)}
 			<Table.Row>
-				<Table.Cell>{m.name} {#if m.isSuperAdmin}<Badge variant="secondary">Super admin</Badge>{/if}</Table.Cell>
+				<Table.Cell><span class="flex items-center gap-2.5"><UserAvatar name={m.name} image={m.image} class="size-8 text-xs" />{m.name} {#if m.isSuperAdmin}<Badge variant="secondary">Super admin</Badge>{/if}</span></Table.Cell>
 				<Table.Cell>{m.email}</Table.Cell>
 				<Table.Cell>
 					<select class="{selectClass} w-36" value={m.role} onchange={(e) => setRole(m.userId, e.currentTarget.value)} aria-label="Role {m.email}">

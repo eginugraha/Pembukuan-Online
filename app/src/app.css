@@ -172,27 +172,21 @@
 			0 1px 2px rgb(20 33 15 / 0.04),
 			0 18px 40px -28px rgb(30 60 25 / 0.35);
 	}
-	/* Tile ikon bergaya 3D: gradien, highlight atas-kiri, bayangan berwarna. */
-	.tile-3d {
-		--tile-from: #e8ffd6;
-		--tile-mid: var(--lime);
-		--tile-to: var(--green);
+	/* Tile ikon flat: warna polos tanpa gradien/bayangan; ikon garis lucide di dalamnya. */
+	.icon-tile {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
 		border-radius: 12px;
-		color: #fff;
-		background: radial-gradient(circle at 30% 25%, var(--tile-from), var(--tile-mid) 45%, var(--tile-to));
-		box-shadow:
-			inset 2px 2px 4px rgb(255 255 255 / 0.55),
-			inset -3px -3px 6px rgb(0 0 0 / 0.12),
-			0 10px 18px -8px color-mix(in oklab, var(--tile-to) 85%, transparent);
+		background: var(--pale);
+		color: var(--deep);
 	}
-	.tile-3d-lime { --tile-from: #f3ffe9; --tile-mid: var(--lime); --tile-to: var(--lime-2); color: var(--deep); }
-	.tile-3d-deep { --tile-from: #b6e08f; --tile-mid: var(--green); --tile-to: var(--deep); }
-	.tile-3d-amber { --tile-from: #fff7d1; --tile-mid: #fcd34d; --tile-to: var(--amber); color: #5b4206; }
-	.tile-3d-red { --tile-from: #ffe1d6; --tile-mid: #fb923c; --tile-to: var(--destructive); }
-	.tile-3d-muted { --tile-from: #ffffff; --tile-mid: #e9eee9; --tile-to: #b9c3bb; color: #4b5a4d; }
+	.icon-tile-solid { background: var(--green); color: #fff; }
+	.icon-tile-deep { background: var(--deep); color: #fff; }
+	.icon-tile-lime { background: var(--lime); color: var(--deep); }
+	.icon-tile-amber { background: #fef3c7; color: #a16207; }
+	.icon-tile-red { background: color-mix(in oklab, var(--destructive) 12%, white); color: var(--destructive); }
+	.icon-tile-muted { background: var(--muted); color: #4b5a4d; }
 	/* Cahaya lembut di bawah elemen; warnanya mengikuti background elemen. */
 	.glow {
 		position: relative;
@@ -207,4 +201,51 @@
 		opacity: 0.55;
 		pointer-events: none;
 	}
+}
+
+/* ── Gerak halus ──────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+	/* Pindah halaman: hanya konten utama yang beranimasi; sidebar & top bar diam. */
+	::view-transition-old(root),
+	::view-transition-new(root) {
+		animation: none;
+	}
+	::view-transition-old(main-content) {
+		animation: 140ms ease-out both jk-fade-out;
+	}
+	::view-transition-new(main-content) {
+		animation: 240ms cubic-bezier(0.2, 0.7, 0.2, 1) both jk-slide-in;
+	}
+	/* Sorotan menu aktif meluncur ke menu yang baru diklik. */
+	::view-transition-group(nav-active) {
+		animation-duration: 280ms;
+		animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+	}
+
+	.drawer-panel {
+		animation: 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both jk-drawer-in;
+	}
+	.drawer-backdrop {
+		animation: 200ms ease-out both jk-fade-in;
+	}
+	.profile-menu {
+		transform-origin: top right;
+		animation: 160ms cubic-bezier(0.2, 0.8, 0.2, 1) both jk-pop-in;
+	}
+}
+
+@keyframes jk-fade-out {
+	to { opacity: 0; transform: translateY(-4px); }
+}
+@keyframes jk-slide-in {
+	from { opacity: 0; transform: translateY(8px); }
+}
+@keyframes jk-fade-in {
+	from { opacity: 0; }
+}
+@keyframes jk-drawer-in {
+	from { transform: translateX(-100%); }
+}
+@keyframes jk-pop-in {
+	from { opacity: 0; transform: translateY(-4px) scale(0.97); }
 }

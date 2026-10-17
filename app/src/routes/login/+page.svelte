@@ -16,7 +16,7 @@
 
 	<Card.Root class="relative w-full max-w-sm rounded-[28px] px-2 py-8 shadow-[0_30px_60px_-30px_rgb(30_50_30/0.45)]">
 		<Card.Header class="items-center text-center">
-			<span class="tile-3d tile-3d-deep mx-auto mb-3 size-14 rounded-2xl text-2xl font-black">J</span>
+			<span class="icon-tile icon-tile-deep mx-auto mb-3 size-14 rounded-2xl text-2xl font-black">J</span>
 			<Card.Title class="text-2xl font-extrabold tracking-tight text-green">Jurnalku.</Card.Title>
 			<Card.Description>Masuk untuk melanjutkan</Card.Description>
 		</Card.Header>
