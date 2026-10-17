@@ -33,7 +33,7 @@ export async function updateCompany(companyId: string, input: UpdateCompanyInput
 				account = null;
 			}
 			if (!account || account.type !== 'ASSET') {
-				throw new ApiError(422, 'invalid_bank_account', 'Akun bank harus akun aset detail (leaf) yang aktif');
+				throw new ApiError(422, 'invalid_bank_account', 'Akun bank harus akun aset detail (leaf) yang aktif', undefined, { field: 'bankAccountId' });
 			}
 		}
 		const updated = await tx

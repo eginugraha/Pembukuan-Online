@@ -33,7 +33,7 @@ export async function createAccount(companyId: string, role: Role, input: Create
 		const parent = await tx.query.accounts.findFirst({
 			where: and(eq(accounts.id, input.parentId), eq(accounts.companyId, companyId))
 		});
-		if (!parent || !parent.isActive) throw new ApiError(422, 'invalid_parent', 'Akun induk tidak valid');
+		if (!parent || !parent.isActive) throw new ApiError(422, 'invalid_parent', 'Akun induk tidak valid', undefined, { field: 'parentId' });
 		if (await accountInUse(tx, parent.id)) {
 			throw new ApiError(409, 'parent_in_use', 'Akun induk sudah dipakai transaksi/jurnal/rule; pilih akun induk lain');
 		}
@@ -53,7 +53,7 @@ export async function createAccount(companyId: string, role: Role, input: Create
 				.returning({ id: accounts.id });
 			return row;
 		} catch (e) {
-			if (isUniqueViolation(e)) throw new ApiError(409, 'duplicate_code', `Kode akun ${input.code} sudah dipakai`);
+			if (isUniqueViolation(e)) throw new ApiError(409, 'duplicate_code', `Kode akun ${input.code} sudah dipakai`, undefined, { field: 'code' });
 			throw e;
 		}
 	});
@@ -77,7 +77,7 @@ export async function updateAccount(companyId: string, accountId: string, input:
 			.returning({ id: accounts.id });
 		if (updated.length === 0) throw new ApiError(404, 'not_found', 'Akun tidak ditemukan');
 	} catch (e) {
-		if (isUniqueViolation(e)) throw new ApiError(409, 'duplicate_code', `Kode akun ${input.code} sudah dipakai`);
+		if (isUniqueViolation(e)) throw new ApiError(409, 'duplicate_code', `Kode akun ${input.code} sudah dipakai`, undefined, { field: 'code' });
 		throw e;
 	}
 }

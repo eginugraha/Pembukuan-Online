@@ -31,7 +31,7 @@ export async function saveOpening(companyId: string, userId: string, input: Open
 	const lines = input.lines
 		.filter((l) => !isZero(l.debit) || !isZero(l.credit))
 		.map((l) => ({ accountId: l.accountId, debit: toMoney(l.debit), credit: toMoney(l.credit) }));
-	if (lines.length === 0) throw new ApiError(422, 'empty_opening', 'Isi minimal satu saldo akun');
+	if (lines.length === 0) throw new ApiError(422, 'empty_opening', 'Isi minimal satu saldo akun', undefined, { field: 'lines' });
 	assertBalanced(lines);
 
 	return db.transaction(async (tx) => {

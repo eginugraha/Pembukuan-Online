@@ -23,3 +23,11 @@ test('throws ClientApiError with server message', async () => {
 	await expect(apiFetch('/api/x')).rejects.toMatchObject({ status: 409, code: 'duplicate_statement', message: 'Sudah ada' });
 	await expect(apiFetch('/api/x')).rejects.toBeInstanceOf(ClientApiError);
 });
+
+test('exposes per-field errors from the server', async () => {
+	globalThis.fetch = (async () =>
+		Response.json({ error: { code: 'duplicate_code', message: 'Kode dipakai', fields: { code: 'Kode dipakai' } } }, { status: 409 })) as unknown as typeof fetch;
+	await expect(apiFetch('/api/x')).rejects.toMatchObject({ fields: { code: 'Kode dipakai' } });
+	globalThis.fetch = (async () => Response.json({ error: { code: 'x', message: 'm' } }, { status: 400 })) as unknown as typeof fetch;
+	await expect(apiFetch('/api/x')).rejects.toMatchObject({ fields: {} });
+});

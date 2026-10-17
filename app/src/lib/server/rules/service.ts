@@ -36,7 +36,7 @@ export async function listRules(companyId: string) {
 
 export async function createRule(companyId: string, input: CreateRuleInput): Promise<{ id: string }> {
 	const keyword = normalizeKeyword(input.keyword);
-	if (!keyword) throw new ApiError(422, 'invalid_keyword', 'Keyword rule minimal 3 karakter');
+	if (!keyword) throw new ApiError(422, 'invalid_keyword', 'Keyword rule minimal 3 karakter', undefined, { field: 'keyword' });
 	await assertCategoryAccount(db, companyId, input.accountId);
 	try {
 		const [row] = await db
@@ -52,7 +52,7 @@ export async function createRule(companyId: string, input: CreateRuleInput): Pro
 			.returning({ id: categoryRules.id });
 		return row;
 	} catch (e) {
-		if (isUniqueViolation(e)) throw new ApiError(409, 'duplicate_rule', `Rule dengan keyword "${keyword}" dan arah yang sama sudah ada`);
+		if (isUniqueViolation(e)) throw new ApiError(409, 'duplicate_rule', `Rule dengan keyword "${keyword}" dan arah yang sama sudah ada`, undefined, { field: 'keyword' });
 		throw e;
 	}
 }

@@ -38,10 +38,10 @@ export async function addMember(companyId: string, input: AddMemberInput): Promi
 				.select({ id: userCompanies.id })
 				.from(userCompanies)
 				.where(and(eq(userCompanies.userId, userId), eq(userCompanies.companyId, companyId)));
-			if (membership) throw new ApiError(409, 'already_member', 'Pengguna sudah terdaftar di perusahaan ini');
+			if (membership) throw new ApiError(409, 'already_member', 'Pengguna sudah terdaftar di perusahaan ini', undefined, { field: 'email' });
 		} else {
 			if (!input.password || !input.name) {
-				throw new ApiError(422, 'password_required', 'Pengguna baru wajib diberi nama dan password awal (min. 8 karakter)');
+				throw new ApiError(422, 'password_required', 'Pengguna baru wajib diberi nama dan password awal (min. 8 karakter)', undefined, { field: 'password' });
 			}
 			userId = (await createUserWithPassword(tx, { email: input.email, name: input.name, password: input.password })).id;
 			created = true;

@@ -20,9 +20,9 @@ function sniffImage(b: Uint8Array): 'image/png' | 'image/jpeg' | 'image/webp' | 
 }
 
 export async function setAvatar(userId: string, content: Uint8Array): Promise<string> {
-	if (content.byteLength > MAX_AVATAR_BYTES) throw new ApiError(400, 'image_too_large', 'Ukuran foto maksimal 512 KB setelah diperkecil');
+	if (content.byteLength > MAX_AVATAR_BYTES) throw new ApiError(400, 'image_too_large', 'Ukuran foto maksimal 512 KB setelah diperkecil', undefined, { field: 'file' });
 	const mime = sniffImage(content);
-	if (!mime) throw new ApiError(400, 'invalid_image', 'Foto harus berformat JPG, PNG, atau WebP');
+	if (!mime) throw new ApiError(400, 'invalid_image', 'Foto harus berformat JPG, PNG, atau WebP', undefined, { field: 'file' });
 	const now = new Date();
 	const url = `/api/users/${userId}/avatar?v=${now.getTime()}`;
 	await db.transaction(async (tx) => {

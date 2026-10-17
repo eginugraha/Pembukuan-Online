@@ -2,7 +2,9 @@ export class ClientApiError extends Error {
 	constructor(
 		public status: number,
 		public code: string,
-		message: string
+		message: string,
+		/** Pesan error per field dari server (`error.fields`). */
+		public fields: Record<string, string> = {}
 	) {
 		super(message);
 	}
@@ -20,7 +22,8 @@ export async function apiFetch<T = unknown>(path: string, init: RequestInit & { 
 		throw new ClientApiError(
 			res.status,
 			data?.error?.code ?? 'error',
-			data?.error?.message ?? `Permintaan gagal (HTTP ${res.status})`
+			data?.error?.message ?? `Permintaan gagal (HTTP ${res.status})`,
+			data?.error?.fields ?? {}
 		);
 	}
 	return data as T;
