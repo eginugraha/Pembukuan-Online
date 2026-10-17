@@ -38,3 +38,29 @@ test('add-account form shows client and server errors under each field', async (
 	await code.fill('1-1099');
 	await expect(page.getByText('Kode akun 1-1001 sudah dipakai')).toHaveCount(0);
 });
+
+test('login shows field errors under Email and Password', async ({ page }) => {
+	await page.goto('/login');
+	await page.getByRole('button', { name: 'Masuk' }).click();
+	await expect(page.getByText('Email wajib diisi')).toBeVisible();
+	await expect(page.getByText('Password wajib diisi')).toBeVisible();
+	await page.getByLabel('Email').fill('bukan-email');
+	await page.getByLabel('Email').blur();
+	await expect(page.getByText('Format email tidak valid')).toBeVisible();
+	await expect(page.getByLabel('Email')).toHaveAttribute('aria-invalid', 'true');
+});
+
+test('rule and profile forms show field errors', async ({ page }) => {
+	await login(page);
+	await page.goto('/settings/rules');
+	const ruleForm = page.locator('form', { has: page.getByRole('button', { name: 'Tambah' }) });
+	await ruleForm.getByLabel('Keyword').fill('ab');
+	await ruleForm.getByRole('button', { name: 'Tambah' }).click();
+	await expect(ruleForm.getByText('Keyword rule minimal 3 karakter')).toBeVisible();
+	await expect(ruleForm.getByText('Akun wajib dipilih')).toBeVisible();
+
+	await page.goto('/profile');
+	await page.getByLabel('Nama').fill('');
+	await page.getByRole('button', { name: 'Simpan' }).click();
+	await expect(page.getByText('Nama wajib diisi')).toBeVisible();
+});

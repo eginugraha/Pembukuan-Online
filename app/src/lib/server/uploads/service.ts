@@ -20,10 +20,10 @@ export interface UploadDeps {
 }
 
 async function validateFile(file: File): Promise<void> {
-	if (!file.name.toLowerCase().endsWith('.pdf')) throw new ApiError(400, 'invalid_file', 'File harus berformat PDF');
-	if (file.size > MAX_BYTES) throw new ApiError(400, 'file_too_large', 'Ukuran file maksimal 10 MB');
+	if (!file.name.toLowerCase().endsWith('.pdf')) throw new ApiError(400, 'invalid_file', 'File harus berformat PDF', undefined, { field: 'file' });
+	if (file.size > MAX_BYTES) throw new ApiError(400, 'file_too_large', 'Ukuran file maksimal 10 MB', undefined, { field: 'file' });
 	const head = new TextDecoder().decode(await file.slice(0, 4).arrayBuffer());
-	if (head !== '%PDF') throw new ApiError(400, 'invalid_file', 'File bukan PDF yang valid');
+	if (head !== '%PDF') throw new ApiError(400, 'invalid_file', 'File bukan PDF yang valid', undefined, { field: 'file' });
 }
 
 async function openingBalanceWarning(

@@ -8,10 +8,15 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { apiFetch } from '$lib/api-client';
+	import FormField from '$lib/components/FormField.svelte';
+	import { FormState } from '$lib/forms/form-state.svelte';
+	import { CreateRuleInput } from '$lib/schemas/rule';
 	import { selectClass } from '$lib/ui';
 
 	let { data } = $props();
-	let form = $state({ keyword: '', accountId: '', direction: '' });
+	const EMPTY = { keyword: '', accountId: '', direction: '' };
+	const toInput = (v: typeof EMPTY) => ({ keyword: v.keyword, accountId: v.accountId, direction: v.direction || null });
+	const form = new FormState(CreateRuleInput, { ...EMPTY }, toInput);
 	let message = $state<string | null>(null);
 	let errorMessage = $state<string | null>(null);
 	const directionLabel = { DB: 'Keluar', CR: 'Masuk' } as const;
@@ -26,17 +31,19 @@
 		}
 	}
 
-	const create = (e: SubmitEvent) => {
+	async function create(e: SubmitEvent) {
 		e.preventDefault();
-		return run(async () => {
-			await apiFetch('/api/rules', {
-				method: 'POST',
-				json: { keyword: form.keyword, accountId: form.accountId, direction: form.direction || null }
-			});
-			form = { keyword: '', accountId: '', direction: '' };
-			return 'Rule dibuat.';
-		});
-	};
+		message = errorMessage = null;
+		if (!form.validateAll()) return;
+		try {
+			await apiFetch('/api/rules', { method: 'POST', json: toInput(form.values) });
+			form.reset({ ...EMPTY });
+			message = 'Rule dibuat.';
+			await invalidateAll();
+		} catch (err) {
+			errorMessage = form.handleServerError(err);
+		}
+	}
 	const remove = (id: string) =>
 		run(async () => {
 			await apiFetch(`/api/rules/${id}`, { method: 'DELETE' });
@@ -51,16 +58,22 @@
 <Card.Root class="mb-6">
 	<Card.Header><Card.Title>Tambah rule</Card.Title></Card.Header>
 	<Card.Content>
-		<form class="grid gap-2 md:grid-cols-4" onsubmit={create}>
-			<Input placeholder="Keyword (min. 3 karakter)" bind:value={form.keyword} required />
-			<select class={selectClass} bind:value={form.accountId} required aria-label="Akun">
-				<option value="" disabled>Akun tujuan…</option>
-				{#each data.accounts as a (a.id)}<option value={a.id}>{a.code} {a.name}</option>{/each}
-			</select>
-			<select class={selectClass} bind:value={form.direction} aria-label="Arah">
-				<option value="">Masuk & keluar</option><option value="CR">Hanya uang masuk</option><option value="DB">Hanya uang keluar</option>
-			</select>
-			<Button type="submit">Tambah</Button>
+		<form class="grid items-start gap-3 md:grid-cols-[1.3fr_1.5fr_1fr_auto]" onsubmit={create} novalidate>
+			<FormField id="rule-keyword" label="Keyword" error={form.error('keyword')} hint="Min. 3 karakter, mis. TOKOPEDIA">
+				<Input bind:value={form.values.keyword} {...form.attrs('keyword', 'rule-keyword')} />
+			</FormField>
+			<FormField id="rule-account" label="Akun tujuan" error={form.error('accountId')}>
+				<select class={selectClass} bind:value={form.values.accountId} {...form.attrs('accountId', 'rule-account')}>
+					<option value="" disabled>Pilih akun…</option>
+					{#each data.accounts as a (a.id)}<option value={a.id}>{a.code} {a.name}</option>{/each}
+				</select>
+			</FormField>
+			<FormField id="rule-direction" label="Arah">
+				<select id="rule-direction" class={selectClass} bind:value={form.values.direction}>
+					<option value="">Masuk & keluar</option><option value="CR">Hanya uang masuk</option><option value="DB">Hanya uang keluar</option>
+				</select>
+			</FormField>
+			<Button type="submit" class="md:mt-[22px]">Tambah</Button>
 		</form>
 	</Card.Content>
 </Card.Root>

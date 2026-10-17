@@ -12,6 +12,9 @@
 	import { apiFetch } from '$lib/api-client';
 	import { AVATAR_ACCEPT, AVATAR_MAX_INPUT_BYTES, squareResize } from '$lib/image';
 	import { ROLE_LABELS } from '$lib/roles';
+	import FormField from '$lib/components/FormField.svelte';
+	import { FormState } from '$lib/forms/form-state.svelte';
+	import { UpdateProfileInput } from '$lib/schemas/profile';
 
 	let { data } = $props();
 	const user = $derived(data.ctx.user);
@@ -19,7 +22,7 @@
 
 	// Nilai awal form diambil sekali (snapshot), lalu diedit lokal.
 	// svelte-ignore state_referenced_locally
-	let name = $state(data.ctx.user.name);
+	const nameForm = new FormState(UpdateProfileInput, { name: data.ctx.user.name });
 	let busy = $state(false);
 	let message = $state<string | null>(null);
 	let errorMessage = $state<string | null>(null);
@@ -66,13 +69,21 @@
 			return 'Foto profil dihapus.';
 		});
 
-	const saveName = (e: SubmitEvent) => {
+	async function saveName(e: SubmitEvent) {
 		e.preventDefault();
-		return run(async () => {
-			await apiFetch('/api/profile', { method: 'PATCH', json: { name } });
-			return 'Nama disimpan.';
-		});
-	};
+		message = errorMessage = null;
+		if (!nameForm.validateAll()) return;
+		busy = true;
+		try {
+			await apiFetch('/api/profile', { method: 'PATCH', json: nameForm.values });
+			message = 'Nama disimpan.';
+			await invalidateAll();
+		} catch (err) {
+			errorMessage = nameForm.handleServerError(err);
+		} finally {
+			busy = false;
+		}
+	}
 </script>
 
 <svelte:head><title>Profil Saya · Jurnalku</title></svelte:head>
@@ -100,11 +111,13 @@
 	<Card.Root>
 		<Card.Header><Card.Title>Informasi akun</Card.Title></Card.Header>
 		<Card.Content>
-			<form class="space-y-4" onsubmit={saveName}>
-				<div class="space-y-1.5"><Label for="p-name">Nama</Label><Input id="p-name" bind:value={name} maxlength={100} required /></div>
+			<form class="space-y-4" onsubmit={saveName} novalidate>
+				<FormField id="p-name" label="Nama" error={nameForm.error('name')}>
+					<Input bind:value={nameForm.values.name} {...nameForm.attrs('name', 'p-name')} />
+				</FormField>
 				<div class="space-y-1.5"><Label for="p-email">Email</Label><Input id="p-email" value={user.email} disabled /></div>
 				<div class="space-y-1.5"><Label>Role</Label><p class="text-sm text-muted-foreground">{roleLabel}</p></div>
-				<Button type="submit" disabled={busy || !name.trim() || name.trim() === user.name}>Simpan</Button>
+				<Button type="submit" disabled={busy || nameForm.values.name.trim() === user.name}>Simpan</Button>
 			</form>
 		</Card.Content>
 	</Card.Root>

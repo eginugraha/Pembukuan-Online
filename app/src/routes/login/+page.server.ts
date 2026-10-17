@@ -3,6 +3,8 @@ import { getAuth } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import { loginThrottle } from '$lib/server/login-throttle';
 import { findUserByEmail } from '$lib/server/users/create';
+import { fieldErrors } from '$lib/forms/validation';
+import { LoginInput } from '$lib/schemas/login';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals }) => {
@@ -14,6 +16,9 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const email = String(form.get('email') ?? '').trim();
 		const password = String(form.get('password') ?? '');
+		// Input kosong/format salah bukan percobaan login: tidak dihitung oleh throttle.
+		const errors = fieldErrors(LoginInput, { email, password });
+		if (Object.keys(errors).length > 0) return fail(400, { email, fieldErrors: errors });
 		const key = `${getClientAddress()}|${email.toLowerCase()}`;
 
 		const gate = loginThrottle.check(key);

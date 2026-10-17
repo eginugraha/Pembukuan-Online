@@ -10,10 +10,15 @@
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { apiFetch } from '$lib/api-client';
 	import { ROLE_LABELS, ROLES, type Role } from '$lib/roles';
+	import FormField from '$lib/components/FormField.svelte';
+	import { FormState } from '$lib/forms/form-state.svelte';
+	import { AddMemberInput } from '$lib/schemas/member';
 	import { selectClass } from '$lib/ui';
 
 	let { data } = $props();
-	let form = $state({ email: '', name: '', password: '', role: 'viewer' as Role });
+	const EMPTY = { email: '', name: '', password: '', role: 'viewer' as Role };
+	const toInput = (v: typeof EMPTY) => ({ email: v.email, role: v.role, name: v.name || undefined, password: v.password || undefined });
+	const form = new FormState(AddMemberInput, { ...EMPTY }, toInput);
 	let message = $state<string | null>(null);
 	let errorMessage = $state<string | null>(null);
 
@@ -27,17 +32,19 @@
 		}
 	}
 
-	const add = (e: SubmitEvent) => {
+	async function add(e: SubmitEvent) {
 		e.preventDefault();
-		return run(async () => {
-			const res = await apiFetch<{ created: boolean }>('/api/users', {
-				method: 'POST',
-				json: { email: form.email, role: form.role, name: form.name || undefined, password: form.password || undefined }
-			});
-			form = { email: '', name: '', password: '', role: 'viewer' };
-			return res.created ? 'Pengguna baru dibuat dan ditambahkan.' : 'Pengguna yang sudah ada ditambahkan ke perusahaan.';
-		});
-	};
+		message = errorMessage = null;
+		if (!form.validateAll()) return;
+		try {
+			const res = await apiFetch<{ created: boolean }>('/api/users', { method: 'POST', json: toInput(form.values) });
+			form.reset({ ...EMPTY });
+			message = res.created ? 'Pengguna baru dibuat dan ditambahkan.' : 'Pengguna yang sudah ada ditambahkan ke perusahaan.';
+			await invalidateAll();
+		} catch (err) {
+			errorMessage = form.handleServerError(err);
+		}
+	}
 	const setRole = (userId: string, role: string) =>
 		run(async () => {
 			await apiFetch(`/api/users/${userId}/role`, { method: 'PATCH', json: { role } });
@@ -65,14 +72,22 @@
 		<Card.Description>Jika email sudah terdaftar, cukup isi email dan role. Pengguna baru wajib diberi nama dan password awal.</Card.Description>
 	</Card.Header>
 	<Card.Content>
-		<form class="grid gap-2 md:grid-cols-5" onsubmit={add}>
-			<Input type="email" placeholder="Email" bind:value={form.email} required />
-			<Input placeholder="Nama (pengguna baru)" bind:value={form.name} />
-			<Input type="password" placeholder="Password awal (min. 8)" bind:value={form.password} />
-			<select class={selectClass} bind:value={form.role} aria-label="Role">
-				{#each ROLES as r (r)}<option value={r}>{ROLE_LABELS[r]}</option>{/each}
-			</select>
-			<Button type="submit">Tambah</Button>
+		<form class="grid items-start gap-3 md:grid-cols-[1.4fr_1.2fr_1.2fr_1fr_auto]" onsubmit={add} novalidate>
+			<FormField id="mem-email" label="Email" error={form.error('email')}>
+				<Input type="email" autocomplete="off" bind:value={form.values.email} {...form.attrs('email', 'mem-email')} />
+			</FormField>
+			<FormField id="mem-name" label="Nama" error={form.error('name')} hint="Wajib untuk pengguna baru">
+				<Input bind:value={form.values.name} {...form.attrs('name', 'mem-name')} />
+			</FormField>
+			<FormField id="mem-password" label="Password awal" error={form.error('password')} hint="Min. 8 karakter, untuk pengguna baru">
+				<Input type="password" autocomplete="new-password" bind:value={form.values.password} {...form.attrs('password', 'mem-password')} />
+			</FormField>
+			<FormField id="mem-role" label="Role">
+				<select id="mem-role" class={selectClass} bind:value={form.values.role}>
+					{#each ROLES as r (r)}<option value={r}>{ROLE_LABELS[r]}</option>{/each}
+				</select>
+			</FormField>
+			<Button type="submit" class="md:mt-[22px]">Tambah</Button>
 		</form>
 	</Card.Content>
 </Card.Root>

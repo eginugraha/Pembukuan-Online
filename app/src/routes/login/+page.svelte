@@ -2,11 +2,17 @@
 	import { enhance } from '$app/forms';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
-	import { Label } from '$lib/components/ui/label/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
+	import FormField from '$lib/components/FormField.svelte';
+	import { FormState } from '$lib/forms/form-state.svelte';
+	import { LoginInput } from '$lib/schemas/login';
 
 	let { form } = $props();
 	let submitting = $state(false);
+	// svelte-ignore state_referenced_locally
+	const fs = new FormState(LoginInput, { email: form?.email ?? '', password: '' });
+	// Tanpa JavaScript, error field datang dari action server.
+	const errorOf = (f: 'email' | 'password') => fs.error(f) ?? form?.fieldErrors?.[f];
 </script>
 
 <div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas p-4">
@@ -24,7 +30,9 @@
 			<form
 				method="POST"
 				class="space-y-4"
-				use:enhance={() => {
+				novalidate
+				use:enhance={({ cancel }) => {
+					if (!fs.validateAll()) return cancel();
 					submitting = true;
 					return async ({ update }) => {
 						await update();
@@ -32,14 +40,12 @@
 					};
 				}}
 			>
-				<div class="space-y-2">
-					<Label for="email">Email</Label>
-					<Input id="email" name="email" type="email" autocomplete="username" value={form?.email ?? ''} required />
-				</div>
-				<div class="space-y-2">
-					<Label for="password">Password</Label>
-					<Input id="password" name="password" type="password" autocomplete="current-password" required />
-				</div>
+				<FormField id="email" label="Email" error={errorOf('email')}>
+					<Input name="email" type="email" autocomplete="username" bind:value={fs.values.email} {...fs.attrs('email', 'email')} />
+				</FormField>
+				<FormField id="password" label="Password" error={errorOf('password')}>
+					<Input name="password" type="password" autocomplete="current-password" bind:value={fs.values.password} {...fs.attrs('password', 'password')} />
+				</FormField>
 				{#if form?.message}
 					<p class="rounded-xl bg-destructive/5 px-3 py-2 text-sm text-destructive">{form.message}</p>
 				{/if}
