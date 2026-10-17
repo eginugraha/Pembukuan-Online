@@ -146,6 +146,9 @@ PRD F-08 sudah meminta laporan ini, dan RUPST membutuhkannya.
   - Di Neraca Saldo baris ini tetap masuk kolom saldo awal.
 - Upload yang transaksinya melewati tahun tertutup ditolak seluruhnya saat generate.
 - Upload berstatus `processing`/`review` dihitung ke syarat `pending_transactions`.
+- (Saat menulis plan Fase 2) **Tanggal terkunci** = tanggal `≤` akhir tahun buku terakhir yang ditutup. Aturan ini juga mengunci upload yang melewati tahun tertutup: upload ditolak seluruhnya saat disimpan, bukan baru saat generate.
+- (Saat menulis plan Fase 2) Format jurnal penutup: refNo `TUTUP-2026`, label tahun buku non-Januari `2025/2026`.
+- (Saat menulis plan Fase 2) API ada di `/api/closings` (GET daftar, POST tutup, DELETE `/:periodStart` buka kembali).
 
 ## Ditinggalkan untuk builder
 - Bentuk persis query (satu query dengan `CASE` atau beberapa query) dan pembagian file service laporan.
