@@ -45,6 +45,14 @@ async function books() {
 	return { companyId, bankAccountId };
 }
 
+async function addTxns(companyId: string, accountNo: string, rows: Array<{ d: string; date: string; debit?: string; credit?: string; code: string }>) {
+	const u = await makeUser();
+	const { uploadId } = await makeUpload(companyId, u.id, rows.map((r) => ({ date: r.date, description: r.d, debit: r.debit, credit: r.credit })), { accountNo });
+	for (const r of rows)
+		await db.update(transactions).set({ isConfirmed: true, accountId: await accountIdByCode(companyId, r.code) }).where(eq(transactions.description, r.d));
+	await generateJournal(companyId, uploadId, u.id);
+}
+
 async function insertClosing(companyId: string, date: string) {
 	const accs = await db.select({ id: accounts.id, type: accounts.type }).from(accounts).where(eq(accounts.companyId, companyId));
 	const type = new Map(accs.map((a) => [a.id, a.type]));
@@ -90,9 +98,21 @@ test('profitLoss months match the income statement', async () => {
 test('profitLoss follows a non-January fiscal year and ignores closing journals', async () => {
 	const { companyId } = await books();
 	await db.update(companies).set({ fiscalYear: 'APRIL' }).where(eq(companies.id, companyId));
+	await addTxns(companyId, 'FY', [
+		{ d: 'FYJUAL', date: '2026-05-10', credit: '2000000', code: '4-1001' },
+		{ d: 'FYBEBAN', date: '2026-08-12', debit: '500000', code: '5-2010' }
+	]);
 	const before = (await getDashboard(companyId, 'admin', TODAY)).profitLoss;
 	expect(before[0].month).toBe('2026-04');
 	expect(before[11].month).toBe('2027-03');
+	expect(before.find((m) => m.month === '2026-05')).toMatchObject({ revenue: '2000000.00', expense: '0.00', netProfit: '2000000.00' });
+	expect(before.find((m) => m.month === '2026-08')).toMatchObject({ revenue: '0.00', expense: '500000.00', netProfit: '-500000.00' });
+	// Data Maret 2026 berada di tahun buku sebelumnya.
+	expect(before.every((m) => m.month !== '2026-03')).toBe(true);
+	for (const m of before.filter((x) => !x.future)) {
+		const last = new Date(Date.UTC(Number(m.month.slice(0, 4)), Number(m.month.slice(5)), 0)).getUTCDate();
+		expect(m.netProfit).toBe((await getIncomeStatement(companyId, { from: `${m.month}-01`, to: `${m.month}-${last}` })).netProfit);
+	}
 	await insertClosing(companyId, '2026-09-30');
 	const after = await getDashboard(companyId, 'admin', TODAY);
 	expect(after.profitLoss).toEqual(before);
@@ -103,8 +123,11 @@ test('composition keeps positive accounts, top five plus Lainnya', async () => {
 	const d = await getDashboard(companyId, 'admin', TODAY);
 	expect(d.composition.expense.slices.map((s) => [s.amount])).toEqual([['1000000.00'], ['400000.00'], ['300000.00']]);
 	expect(d.composition.expense.total).toBe('1700000.00');
+	const rev = new Map(d.composition.revenue.slices.map((s) => [s.accountId, s.amount]));
 	expect(d.composition.revenue.slices).toHaveLength(2);
-	expect(d.composition.revenue.slices.some((s) => s.name.length > 0 && s.amount === '5000000.00')).toBe(true);
+	expect(rev.get(await accountIdByCode(companyId, '4-1001'))).toBe('5000000.00');
+	expect(rev.get(await accountIdByCode(companyId, '4-2001'))).toBe('50000.00');
+	expect(rev.has(await accountIdByCode(companyId, '4-1003'))).toBe(false);
 	expect(d.composition.revenue.total).toBe('5050000.00');
 
 	const u = await makeUser();
@@ -135,6 +158,12 @@ test('bankTrend is cumulative month-end balance and null without a bank account'
 	expect(d.bankTrend![0].month).toBe('2025-11');
 	expect(d.bankTrend!.find((b) => b.month === '2026-02')!.balance).toBe('10000000.00');
 	expect(d.bankTrend!.find((b) => b.month === '2026-03')!.balance).toBe(d.bank!.balance);
+	// Transaksi sebelum jendela 12 bulan masuk ke saldo awal tren (bucket PRE).
+	await addTxns(companyId, 'OLD', [{ d: 'LAMA', date: '2025-06-10', credit: '700000', code: '4-1001' }]);
+	const e = await getDashboard(companyId, 'admin', TODAY);
+	expect(e.bankTrend![0]).toEqual({ month: '2025-11', balance: '700000.00' });
+	expect(e.bankTrend!.find((b) => b.month === '2026-02')!.balance).toBe('10700000.00');
+	expect(e.bankTrend!.at(-1)!.balance).toBe(e.bank!.balance);
 	await db.update(companies).set({ bankAccountId: null }).where(eq(companies.id, companyId));
 	expect((await getDashboard(companyId, 'admin', TODAY)).bankTrend).toBeNull();
 });

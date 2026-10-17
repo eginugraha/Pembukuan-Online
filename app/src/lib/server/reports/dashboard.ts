@@ -81,7 +81,7 @@ function buildComposition(items: Array<{ accountId: string; name: string; amount
 			accountId: i.accountId,
 			name: i.name,
 			amount: toMoney(i.amount),
-			percent: Number(i.amount.div(total).times(100).toFixed(1))
+			percent: total.isZero() ? 0 : Number(i.amount.div(total).times(100).toFixed(1))
 		})),
 		total: toMoney(total)
 	};
