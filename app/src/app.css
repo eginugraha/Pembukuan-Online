@@ -34,7 +34,6 @@
 	--btn-primary-shadow: 0 10px 20px -10px var(--deep);
 	--panel-shadow: 0 1px 2px rgb(20 33 15 / 0.04), 0 18px 40px -28px rgb(30 60 25 / 0.35);
 	--panel-border: transparent;
-	--select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b756d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 
 	--background: #ffffff;
 	--foreground: var(--ink);
@@ -99,7 +98,6 @@
 	--btn-primary-shadow: 0 10px 22px -14px rgb(192 244 151 / 0.55);
 	--panel-shadow: 0 18px 40px -28px rgb(0 0 0 / 0.6);
 	--panel-border: #263127;
-	--select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238d9a8f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 
 	--background: #0e130f;
 	--foreground: var(--ink);
@@ -196,16 +194,6 @@
 	}
 	html {
 		@apply font-sans;
-	}
-	/* Panah <select> bawaan browser menempel di tepi kanan dan tidak bisa diberi jarak;
-	   diganti chevron sendiri dengan jarak dari tepi kanan, warnanya mengikuti tema. */
-	.select-chevron {
-		appearance: none;
-		background-image: var(--select-chevron);
-		background-repeat: no-repeat;
-		background-position: right 0.875rem center;
-		background-size: 1rem;
-		padding-right: 2.5rem;
 	}
 	/* Daftar opsi <select> bawaan browser ikut warna tema. */
 	option {

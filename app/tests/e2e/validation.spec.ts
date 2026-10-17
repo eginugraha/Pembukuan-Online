@@ -29,7 +29,9 @@ test('add-account form shows client and server errors under each field', async (
 	await expect(form.getByText('Kode wajib diisi')).toHaveCount(0);
 
 	// Error dari server muncul di bawah field Kode.
-	await form.getByLabel('Akun induk').selectOption({ label: '1-1000 Aset Lancar' });
+	await form.getByLabel('Akun induk').click();
+	await page.getByPlaceholder('Cari kode atau nama akun…').fill('1-1000');
+	await page.keyboard.press('Enter');
 	await form.getByLabel('Nama').fill('Kas Duplikat');
 	await form.getByRole('button', { name: 'Tambah' }).click();
 	await expect(page.locator(`#${describedBy}`)).toHaveText('Kode akun 1-1001 sudah dipakai');

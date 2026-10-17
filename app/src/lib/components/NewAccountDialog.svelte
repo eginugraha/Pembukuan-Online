@@ -6,9 +6,10 @@
 	import { FormState } from '$lib/forms/form-state.svelte';
 	import { CreateAccountInput } from '$lib/schemas/account';
 	import { apiFetch } from '$lib/api-client';
-	import { selectClass } from '$lib/ui';
+	import SearchSelect from '$lib/components/SearchSelect.svelte';
+	import { accountOptions as toAccountOptions } from '$lib/account-options';
 
-	type Option = { id: string; code: string; name: string };
+	type Option = { id: string; code: string; name: string; type?: string };
 	let {
 		open = $bindable(false),
 		parents,
@@ -46,10 +47,14 @@
 		</Dialog.Header>
 		<form class="space-y-3" onsubmit={save} novalidate>
 			<FormField id="na-parent" label="Akun induk" error={form.error('parentId')}>
-				<select class={selectClass} bind:value={form.values.parentId} {...form.attrs('parentId', 'na-parent')}>
-					<option value="" disabled>Pilih akun induk…</option>
-					{#each parents as p (p.id)}<option value={p.id}>{p.code} {p.name}</option>{/each}
-				</select>
+				<SearchSelect
+					bind:value={form.values.parentId}
+					options={toAccountOptions(parents)}
+					placeholder="Pilih akun induk…"
+					searchPlaceholder="Cari kode atau nama akun…"
+					emptyText="Tidak ada akun yang cocok"
+					{...form.attrs('parentId', 'na-parent')}
+				/>
 			</FormField>
 			<FormField id="na-code" label="Kode" error={form.error('code')}>
 				<Input bind:value={form.values.code} placeholder="5-2014" {...form.attrs('code', 'na-code')} />

@@ -9,7 +9,10 @@
 	import { apiFetch } from '$lib/api-client';
 	import { formatDate } from '$lib/dates';
 	import { formatIdr } from '$lib/money';
-	import { inputClass, selectClass } from '$lib/ui';
+	import { inputClass } from '$lib/ui';
+	import SearchSelect from '$lib/components/SearchSelect.svelte';
+	import { accountOptions as toAccountOptions } from '$lib/account-options';
+
 
 	let { data } = $props();
 	type Txn = (typeof data.transactions)[number];
@@ -118,10 +121,15 @@
 						{/if}
 					</div>
 					<div class="space-y-2">
-						<select class={selectClass} value={c.accountId} onchange={(e) => setChoice(t.id, { accountId: e.currentTarget.value })} aria-label="Akun">
-							<option value="" disabled>Pilih akun…</option>
-							{#each accountOptions as a (a.id)}<option value={a.id}>{a.code} {a.name}</option>{/each}
-						</select>
+						<SearchSelect
+							value={c.accountId}
+							options={toAccountOptions(accountOptions)}
+							placeholder="Pilih akun…"
+							searchPlaceholder="Cari kode atau nama akun…"
+							emptyText="Tidak ada akun yang cocok"
+							aria-label="Akun"
+							onchange={(v) => setChoice(t.id, { accountId: v })}
+						/>
 						<label class="flex items-center gap-2 text-xs">
 							<input type="checkbox" checked={c.makeRule} onchange={(e) => setChoice(t.id, { makeRule: e.currentTarget.checked })} />
 							Buat rule dengan keyword

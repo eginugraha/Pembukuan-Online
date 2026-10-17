@@ -17,6 +17,6 @@ export const load: PageServerLoad = async (event) => {
 	return {
 		transactions,
 		accounts: leaf.filter((a) => a.id !== company?.bankAccountId),
-		parents: all.filter((a) => a.isActive && !a.isLeaf).map((a) => ({ id: a.id, code: a.code, name: a.name }))
+		parents: all.filter((a) => a.isActive && !a.isLeaf).map((a) => ({ id: a.id, code: a.code, name: a.name, type: a.type }))
 	};
 };

@@ -13,9 +13,10 @@
 	import FormField from '$lib/components/FormField.svelte';
 	import { FormState } from '$lib/forms/form-state.svelte';
 	import { AddMemberInput } from '$lib/schemas/member';
-	import { selectClass } from '$lib/ui';
+	import SimpleSelect from '$lib/components/SimpleSelect.svelte';
 
 	let { data } = $props();
+	const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }));
 	const EMPTY = { email: '', name: '', password: '', role: 'viewer' as Role };
 	const toInput = (v: typeof EMPTY) => ({ email: v.email, role: v.role, name: v.name || undefined, password: v.password || undefined });
 	const form = new FormState(AddMemberInput, { ...EMPTY }, toInput);
@@ -83,9 +84,7 @@
 				<Input type="password" autocomplete="new-password" bind:value={form.values.password} {...form.attrs('password', 'mem-password')} />
 			</FormField>
 			<FormField id="mem-role" label="Role">
-				<select id="mem-role" class={selectClass} bind:value={form.values.role}>
-					{#each ROLES as r (r)}<option value={r}>{ROLE_LABELS[r]}</option>{/each}
-				</select>
+				<SimpleSelect id="mem-role" bind:value={form.values.role} options={ROLE_OPTIONS} />
 			</FormField>
 			<Button type="submit" class="md:mt-[22px]">Tambah</Button>
 		</form>
@@ -103,9 +102,7 @@
 				<Table.Cell><span class="flex items-center gap-2.5"><UserAvatar name={m.name} image={m.image} class="size-8 text-xs" />{m.name} {#if m.isSuperAdmin}<Badge variant="secondary">Super admin</Badge>{/if}</span></Table.Cell>
 				<Table.Cell>{m.email}</Table.Cell>
 				<Table.Cell>
-					<select class="{selectClass} w-36" value={m.role} onchange={(e) => setRole(m.userId, e.currentTarget.value)} aria-label="Role {m.email}">
-						{#each ROLES as r (r)}<option value={r}>{ROLE_LABELS[r]}</option>{/each}
-					</select>
+					<SimpleSelect class="w-36" value={m.role} options={ROLE_OPTIONS} aria-label="Role {m.email}" onchange={(v) => setRole(m.userId, v)} />
 				</Table.Cell>
 				<Table.Cell class="space-x-2 text-right">
 					{#if data.isSuperAdmin && m.userId !== data.me}

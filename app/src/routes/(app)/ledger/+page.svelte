@@ -4,7 +4,10 @@
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { formatDate } from '$lib/dates';
 	import { formatIdr } from '$lib/money';
-	import { inputClass, selectClass } from '$lib/ui';
+	import { inputClass } from '$lib/ui';
+	import SearchSelect from '$lib/components/SearchSelect.svelte';
+	import { accountOptions as toAccountOptions } from '$lib/account-options';
+
 
 	let { data } = $props();
 </script>
@@ -12,12 +15,19 @@
 <PageHeader title="Buku Besar" />
 
 <form method="GET" class="panel mb-5 flex flex-wrap items-end gap-3 p-4">
-	<label class="min-w-72 text-xs font-semibold text-ink/70">Akun
-		<select name="account_id" class="{selectClass} mt-1" value={data.accountId} required>
-			<option value="" disabled>Pilih akun…</option>
-			{#each data.accounts as a (a.id)}<option value={a.id}>{a.code} {a.name}</option>{/each}
-		</select>
-	</label>
+	<div class="min-w-72">
+		<label for="ledger-account" class="text-xs font-semibold text-ink/70">Akun</label>
+		<SearchSelect
+			id="ledger-account"
+			name="account_id"
+			class="mt-1"
+			value={data.accountId}
+			options={toAccountOptions(data.accounts)}
+			placeholder="Pilih akun…"
+			searchPlaceholder="Cari kode atau nama akun…"
+			emptyText="Tidak ada akun yang cocok"
+		/>
+	</div>
 	<label class="text-xs font-semibold text-ink/70">Dari<input type="date" name="from" value={data.from} class="{inputClass} mt-1" /></label>
 	<label class="text-xs font-semibold text-ink/70">Sampai<input type="date" name="to" value={data.to} class="{inputClass} mt-1" /></label>
 	<Button type="submit" variant="outline">Tampilkan</Button>

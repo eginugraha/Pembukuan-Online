@@ -9,7 +9,9 @@
 	import FormField from '$lib/components/FormField.svelte';
 	import { FormState } from '$lib/forms/form-state.svelte';
 	import { CreateCompanyInput, UpdateCompanyInput } from '$lib/schemas/company';
-	import { selectClass } from '$lib/ui';
+	import SearchSelect from '$lib/components/SearchSelect.svelte';
+	import SimpleSelect from '$lib/components/SimpleSelect.svelte';
+	import { accountOptions as toAccountOptions } from '$lib/account-options';
 	import { COA_TEMPLATES, type CoaTemplateId } from '$lib/coa-templates';
 
 	let { data } = $props();
@@ -68,9 +70,7 @@
 					<Input bind:value={newForm.values.name} placeholder="PT Nama Perusahaan" {...newForm.attrs('name', 'new-name')} />
 				</FormField>
 				<FormField id="new-template" label="Template bagan akun">
-					<select id="new-template" class={selectClass} bind:value={newForm.values.coaTemplate}>
-						{#each COA_TEMPLATES as t (t.id)}<option value={t.id}>{t.label}</option>{/each}
-					</select>
+					<SimpleSelect id="new-template" bind:value={newForm.values.coaTemplate} options={COA_TEMPLATES.map((t) => ({ value: t.id, label: t.label }))} />
 				</FormField>
 				<Button type="submit" class="sm:mt-[22px]">Buat</Button>
 			</form>
@@ -91,10 +91,14 @@
 				<Input bind:value={form.values.address} {...form.attrs('address', 'c-addr')} />
 			</FormField>
 			<FormField id="c-bank" label="Akun bank (lawan jurnal eStatement)" error={form.error('bankAccountId')}>
-				<select class={selectClass} bind:value={form.values.bankAccountId} {...form.attrs('bankAccountId', 'c-bank')}>
-					<option value="">— belum diatur —</option>
-					{#each data.assetAccounts as a (a.id)}<option value={a.id}>{a.code} {a.name}</option>{/each}
-				</select>
+				<SearchSelect
+					bind:value={form.values.bankAccountId}
+					options={[{ value: '', label: '— belum diatur —' }, ...toAccountOptions(data.assetAccounts)]}
+					placeholder="— belum diatur —"
+					searchPlaceholder="Cari kode atau nama akun…"
+					emptyText="Tidak ada akun yang cocok"
+					{...form.attrs('bankAccountId', 'c-bank')}
+				/>
 			</FormField>
 			<Button type="submit">Simpan</Button>
 		</form>

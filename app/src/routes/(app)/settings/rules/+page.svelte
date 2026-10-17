@@ -11,7 +11,9 @@
 	import FormField from '$lib/components/FormField.svelte';
 	import { FormState } from '$lib/forms/form-state.svelte';
 	import { CreateRuleInput } from '$lib/schemas/rule';
-	import { selectClass } from '$lib/ui';
+	import SearchSelect from '$lib/components/SearchSelect.svelte';
+	import SimpleSelect from '$lib/components/SimpleSelect.svelte';
+	import { accountOptions as toAccountOptions } from '$lib/account-options';
 
 	let { data } = $props();
 	const EMPTY = { keyword: '', accountId: '', direction: '' };
@@ -63,15 +65,25 @@
 				<Input bind:value={form.values.keyword} {...form.attrs('keyword', 'rule-keyword')} />
 			</FormField>
 			<FormField id="rule-account" label="Akun tujuan" error={form.error('accountId')}>
-				<select class={selectClass} bind:value={form.values.accountId} {...form.attrs('accountId', 'rule-account')}>
-					<option value="" disabled>Pilih akun…</option>
-					{#each data.accounts as a (a.id)}<option value={a.id}>{a.code} {a.name}</option>{/each}
-				</select>
+				<SearchSelect
+					bind:value={form.values.accountId}
+					options={toAccountOptions(data.accounts)}
+					placeholder="Pilih akun…"
+					searchPlaceholder="Cari kode atau nama akun…"
+					emptyText="Tidak ada akun yang cocok"
+					{...form.attrs('accountId', 'rule-account')}
+				/>
 			</FormField>
 			<FormField id="rule-direction" label="Arah">
-				<select id="rule-direction" class={selectClass} bind:value={form.values.direction}>
-					<option value="">Masuk & keluar</option><option value="CR">Hanya uang masuk</option><option value="DB">Hanya uang keluar</option>
-				</select>
+				<SimpleSelect
+					id="rule-direction"
+					bind:value={form.values.direction}
+					options={[
+						{ value: '', label: 'Masuk & keluar' },
+						{ value: 'CR', label: 'Hanya uang masuk' },
+						{ value: 'DB', label: 'Hanya uang keluar' }
+					]}
+				/>
 			</FormField>
 			<Button type="submit" class="md:mt-[22px]">Tambah</Button>
 		</form>

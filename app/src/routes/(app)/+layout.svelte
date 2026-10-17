@@ -8,14 +8,14 @@
 	import AppSidebar from '$lib/components/AppSidebar.svelte';
 	import ProfileMenu from '$lib/components/ProfileMenu.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+	import SimpleSelect from '$lib/components/SimpleSelect.svelte';
 	import { ROLE_LABELS } from '$lib/roles';
 
 	let { data, children } = $props();
 	const ctx = $derived(data.ctx);
 	let drawerOpen = $state(false);
 
-	async function switchCompany(e: Event) {
-		const companyId = (e.currentTarget as HTMLSelectElement).value;
+	async function switchCompany(companyId: string) {
 		await fetch('/api/companies/switch', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
@@ -107,16 +107,13 @@
 					<Menu class="size-5" />
 				</button>
 				{#if ctx.companies.length > 0}
-					<select
-						class="select-chevron h-10 max-w-[45vw] min-w-0 truncate rounded-xl border border-border bg-card pl-3 pr-10 text-sm font-semibold shadow-[0_4px_14px_-8px_rgb(0_0_0/0.25)] focus-visible:ring-3 focus-visible:ring-green/25 focus-visible:outline-none sm:max-w-xs"
-						value={ctx.companyId}
-						onchange={switchCompany}
+					<SimpleSelect
+						class="max-w-[45vw] border-border bg-card font-semibold sm:max-w-xs"
+						value={ctx.companyId ?? ''}
+						options={ctx.companies.map((c) => ({ value: c.id, label: c.name }))}
 						aria-label="Pilih perusahaan"
-					>
-						{#each ctx.companies as c (c.id)}
-							<option value={c.id}>{c.name}</option>
-						{/each}
-					</select>
+						onchange={switchCompany}
+					/>
 				{/if}
 				{#if ctx.user.isSuperAdmin}
 					<a

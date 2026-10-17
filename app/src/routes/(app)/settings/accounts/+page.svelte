@@ -11,9 +11,22 @@
 	import FormField from '$lib/components/FormField.svelte';
 	import { FormState } from '$lib/forms/form-state.svelte';
 	import { CreateAccountInput } from '$lib/schemas/account';
-	import { selectClass } from '$lib/ui';
+	import SearchSelect from '$lib/components/SearchSelect.svelte';
+	import SimpleSelect from '$lib/components/SimpleSelect.svelte';
+	import { accountOptions } from '$lib/account-options';
 
 	let { data } = $props();
+	const NORMAL_BAL = [
+		{ value: 'DEBIT', label: 'Debit' },
+		{ value: 'CREDIT', label: 'Kredit' }
+	];
+	const CASH_FLOW = [
+		{ value: '', label: '—' },
+		{ value: 'OPERATING', label: 'Operasional' },
+		{ value: 'INVESTING', label: 'Investasi' },
+		{ value: 'FINANCING', label: 'Pendanaan' }
+	];
+	const parentOptions = $derived(accountOptions(data.accounts.filter((a) => a.isActive)));
 	type Account = (typeof data.accounts)[number];
 
 	const depth = $derived.by(() => {
@@ -81,10 +94,14 @@
 	<Card.Content>
 		<form class="grid items-start gap-3 md:grid-cols-[1.4fr_1fr_1.4fr_1.2fr_auto]" onsubmit={create} novalidate>
 			<FormField id="acc-parent" label="Akun induk" error={form.error('parentId')}>
-				<select class={selectClass} bind:value={form.values.parentId} {...form.attrs('parentId', 'acc-parent')}>
-					<option value="" disabled>Pilih akun induk…</option>
-					{#each data.accounts.filter((a) => a.isActive) as a (a.id)}<option value={a.id}>{a.code} {a.name}</option>{/each}
-				</select>
+				<SearchSelect
+					bind:value={form.values.parentId}
+					options={parentOptions}
+					placeholder="Pilih akun induk…"
+					searchPlaceholder="Cari kode atau nama akun…"
+					emptyText="Tidak ada akun yang cocok"
+					{...form.attrs('parentId', 'acc-parent')}
+				/>
 			</FormField>
 			<FormField id="acc-code" label="Kode" error={form.error('code')}>
 				<Input placeholder="mis. 1-1008" bind:value={form.values.code} {...form.attrs('code', 'acc-code')} />
@@ -93,11 +110,7 @@
 				<Input placeholder="mis. Kas Kecil" bind:value={form.values.name} {...form.attrs('name', 'acc-name')} />
 			</FormField>
 			<FormField id="acc-normal" label="Saldo normal">
-				<select id="acc-normal" class={selectClass} bind:value={form.values.normalBal}>
-					<option value="">Ikut akun induk</option>
-					<option value="DEBIT">Debit</option>
-					<option value="CREDIT">Kredit</option>
-				</select>
+				<SimpleSelect id="acc-normal" bind:value={form.values.normalBal} options={[{ value: '', label: 'Ikut akun induk' }, ...NORMAL_BAL]} />
 			</FormField>
 			<Button type="submit" class="md:mt-[22px]">Tambah</Button>
 		</form>
@@ -120,14 +133,22 @@
 				</Table.Cell>
 				<Table.Cell>{a.type}</Table.Cell>
 				<Table.Cell>
-					<select class="{selectClass} w-28" value={a.normalBal} onchange={(e) => patch(a.id, { normalBal: e.currentTarget.value }, 'Saldo normal diperbarui.')} aria-label="Saldo normal {a.code}">
-						<option value="DEBIT">Debit</option><option value="CREDIT">Kredit</option>
-					</select>
+					<SimpleSelect
+						class="w-28"
+						value={a.normalBal}
+						options={NORMAL_BAL}
+						aria-label="Saldo normal {a.code}"
+						onchange={(v) => patch(a.id, { normalBal: v }, 'Saldo normal diperbarui.')}
+					/>
 				</Table.Cell>
 				<Table.Cell>
-					<select class="{selectClass} w-36" value={a.cashFlowCat ?? ''} onchange={(e) => patch(a.id, { cashFlowCat: e.currentTarget.value || null }, 'Kategori arus kas diperbarui.')} aria-label="Arus kas {a.code}">
-						<option value="">—</option><option value="OPERATING">Operasional</option><option value="INVESTING">Investasi</option><option value="FINANCING">Pendanaan</option>
-					</select>
+					<SimpleSelect
+						class="w-36"
+						value={a.cashFlowCat ?? ''}
+						options={CASH_FLOW}
+						aria-label="Arus kas {a.code}"
+						onchange={(v) => patch(a.id, { cashFlowCat: v || null }, 'Kategori arus kas diperbarui.')}
+					/>
 				</Table.Cell>
 				<Table.Cell class="text-right">
 					{#if a.isActive}
