@@ -42,3 +42,15 @@ test('balance sheet shows a comparative column', async ({ page }) => {
 	await expect(page.getByRole('columnheader', { name: '31 Desember 2025' })).toBeVisible();
 	await expect(page.getByText('JUMLAH ASET', { exact: true })).toBeVisible();
 });
+
+test('income statement shows PSAK sections with a comparative period', async ({ page }) => {
+	await login(page);
+	await page.goto('/income-statement?from=2026-01-01&to=2026-12-31');
+	await expect(page.getByRole('link', { name: 'Laba Rugi' })).toBeVisible();
+	for (const t of ['Pendapatan Usaha', 'Laba Kotor', 'Laba Usaha', 'Laba Sebelum Pajak', 'Laba Bersih'])
+		await expect(page.getByText(t, { exact: true }).first()).toBeVisible();
+	await expect(page.getByRole('columnheader', { name: /2026/ })).toBeVisible();
+	await expect(page.getByRole('columnheader', { name: /2025/ })).toBeVisible();
+	await page.getByRole('link', { name: 'Reset' }).click();
+	await expect(page).toHaveURL(/\/income-statement$/);
+});

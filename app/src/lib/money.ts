@@ -27,6 +27,12 @@ export function formatIdr(v: MoneyValue | null | undefined): string {
 	return `${negative ? '-' : ''}${grouped},${frac}`;
 }
 
+/** Format laporan keuangan: angka negatif dalam kurung. */
+export function formatAccounting(v: MoneyValue): string {
+	const s = formatIdr(v);
+	return s.startsWith('-') ? `(${s.slice(1)})` : s;
+}
+
 /** Ringkas untuk kartu statistik: "Rp 30 rb", "Rp 2,5 jt", "Rp 1,25 M" (maks. 2 desimal, tanpa nol di belakang). */
 export function formatIdrShort(v: MoneyValue): string {
 	const n = new Decimal(v);

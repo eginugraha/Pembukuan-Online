@@ -6,7 +6,9 @@ import { generateJournal } from '../../src/lib/server/journal/generate';
 import { saveOpening } from '../../src/lib/server/journal/opening';
 import { getBalanceSheet } from '../../src/lib/server/reports/balance-sheet';
 import { getIncomeStatement, getIncomeStatementComparative } from '../../src/lib/server/reports/income-statement';
-import { accountIdByCode, makeCompany, makeUpload, makeUser } from './factory';
+import { GET } from '../../src/routes/api/reports/income-statement/+server';
+import { accountIdByCode, addMember, contextFor, makeCompany, makeUpload, makeUser } from './factory';
+import { call, fakeEvent } from './event';
 import { resetDb } from './db';
 
 beforeEach(resetDb);
@@ -93,4 +95,32 @@ test('non-January fiscal year: period is whatever range is passed', async () => 
 	await db.update(companies).set({ fiscalYear: 'JULY' }).where(eq(companies.id, companyId));
 	const is = await getIncomeStatement(companyId, { from: '2025-07-01', to: '2026-06-30' });
 	expect(is.netProfit).toBe('3150000.00');
+});
+
+async function viewerCtx(companyId: string) {
+	const v = await makeUser();
+	await addMember(v.id, companyId, 'viewer');
+	return contextFor(v, companyId);
+}
+
+test('API requires a session', async () => {
+	const res = await call(GET, fakeEvent({ ctx: null, path: '/api/reports/income-statement?from=2026-01-01&to=2026-12-31' }));
+	expect(res.status).toBe(401);
+});
+
+test('API returns current and comparative for a viewer', async () => {
+	const { companyId } = await books();
+	const ctx = await viewerCtx(companyId);
+	const res = await call(GET, fakeEvent({ ctx, path: '/api/reports/income-statement?from=2026-01-01&to=2026-12-31' }));
+	expect(res.status).toBe(200);
+	expect(res.body.current.netProfit).toBe('3150000.00');
+	expect(res.body.comparative.from).toBe('2025-01-01');
+});
+
+test('API rejects from after to', async () => {
+	const { companyId } = await books();
+	const ctx = await viewerCtx(companyId);
+	const res = await call(GET, fakeEvent({ ctx, path: '/api/reports/income-statement?from=2026-09-01&to=2026-08-01' }));
+	expect(res.status).toBe(400);
+	expect(res.body.error.code).toBe('invalid_range');
 });

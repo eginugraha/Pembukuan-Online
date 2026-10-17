@@ -4,7 +4,7 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { formatDateLong } from '$lib/periods';
-	import { formatIdr } from '$lib/money';
+	import { formatAccounting as amount } from '$lib/money';
 	import type { BalanceSheetLine, BalanceSheetSection } from '$lib/server/reports/balance-sheet';
 	import DateField from '$lib/components/DateField.svelte';
 	import FilterActions from '$lib/components/FilterActions.svelte';
@@ -18,8 +18,6 @@
 	// Nilai awal field tanggal; DateField dikendalikan lewat URL (form GET).
 	const asOfValue = untrack(() => data.current.asOf);
 
-	// Format laporan keuangan: angka negatif (mis. akumulasi penyusutan) dalam kurung.
-	const amount = (v: string) => (v.startsWith('-') ? `(${formatIdr(v.slice(1))})` : formatIdr(v));
 	const indent = (depth: number) => `padding-left: ${1 + depth * 1.25}rem`;
 </script>
 

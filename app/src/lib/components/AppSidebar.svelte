@@ -4,6 +4,7 @@
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import History from '@lucide/svelte/icons/history';
 	import Landmark from '@lucide/svelte/icons/landmark';
+	import TrendingUp from '@lucide/svelte/icons/trending-up';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
 	import Library from '@lucide/svelte/icons/library';
 	import ListChecks from '@lucide/svelte/icons/list-checks';
@@ -61,6 +62,7 @@
 		ledger: Library,
 		scale: Scale,
 		landmark: Landmark,
+		income: TrendingUp,
 		company: Building2,
 		users: Users,
 		accounts: ListTree,
