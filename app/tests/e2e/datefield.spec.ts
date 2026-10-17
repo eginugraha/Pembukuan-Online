@@ -48,3 +48,16 @@ test('opening balance date can be typed, and "Hapus" clears it and triggers vali
 	await page.getByRole('button', { name: 'Simpan' }).click();
 	await expect(page.getByText('Tanggal wajib diisi')).toBeVisible();
 });
+
+test('clearing a date on a GET filter falls back to the default range without errors', async ({ page }) => {
+	await login(page);
+	await page.goto('/journal?from=2026-08-01&to=2026-08-31');
+	const dari = page.getByRole('group', { name: 'Dari' });
+	await dari.getByRole('button', { name: 'Buka kalender' }).click();
+	await page.getByRole('button', { name: 'Hapus' }).click();
+	await page.getByRole('button', { name: 'Tampilkan' }).click();
+	await expect(page).toHaveURL(/[?&]from=(&|$)/);
+	await expect(page.getByRole('heading', { name: 'Jurnal Umum' })).toBeVisible();
+	// Server memakai default (awal bulan berjalan), jadi field Dari terisi lagi.
+	await expect(dari.getByRole('spinbutton').first()).not.toHaveAttribute('aria-valuetext', 'Empty');
+});
