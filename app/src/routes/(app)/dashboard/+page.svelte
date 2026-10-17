@@ -4,16 +4,12 @@
 	import BankCard from '$lib/components/dashboard/BankCard.svelte';
 	import RecentTransactions from '$lib/components/dashboard/RecentTransactions.svelte';
 	import ReviewCard from '$lib/components/dashboard/ReviewCard.svelte';
-	import StatBars from '$lib/components/dashboard/StatBars.svelte';
-	import { formatDate } from '$lib/dates';
 	import { roleAtLeast } from '$lib/roles';
 
 	let { data } = $props();
 	const d = $derived(data.dash);
 	const role = $derived(data.ctx.role);
 	const companyName = $derived(data.ctx.companies.find((c) => c.id === data.ctx.companyId)?.name ?? '');
-	const months = $derived(d.monthly.map((m) => m.month));
-	const current = $derived(d.monthly.at(-1)!);
 </script>
 
 <svelte:head><title>Dashboard · pena</title></svelte:head>
@@ -29,36 +25,12 @@
 	<AccountCard upload={d.latestUpload} {companyName} canUpload={roleAtLeast(role, 'accountant')} />
 </div>
 
-<div class="mt-8 grid grid-cols-1 gap-6 border-y border-border py-6 md:grid-cols-2 xl:grid-cols-3 xl:gap-10">
-	<StatBars
-		label="Pemasukan"
-		value={current.income}
-		valueClass="text-green"
-		caption="Arus bank masuk bulan ini"
-		values={d.monthly.map((m) => m.income)}
-		{months}
-		barColor="var(--green)"
-	/>
-	<StatBars
-		label="Pengeluaran"
-		value={current.expense}
-		valueClass="text-deep"
-		caption="Arus bank keluar bulan ini"
-		values={d.monthly.map((m) => m.expense)}
-		{months}
-		barColor="var(--deep)"
-	/>
-	<StatBars
-		label="Laba Tahun Berjalan"
-		value={d.profitThisYear}
-		valueClass={d.profitThisYear.startsWith('-') ? 'text-destructive' : 'text-green'}
-		caption="Tahun buku mulai {formatDate(d.fiscalYearStart)}"
-		tag={d.balanced ? 'Balance ✓' : 'Tidak balance'}
-		tagClass={d.balanced ? 'bg-lime text-on-lime' : 'bg-destructive/10 text-destructive'}
-		values={d.monthly.map((m) => (Number(m.income) - Number(m.expense)).toFixed(2))}
-		{months}
-		barColor="var(--lime-2)"
-	/>
+<div class="mt-8 flex items-baseline gap-3 border-y border-border py-6">
+	<span class="text-sm text-muted-foreground">Laba Tahun Berjalan</span>
+	<span class="text-2xl font-bold {d.profitThisYear.startsWith('-') ? 'text-destructive' : 'text-green'}">{d.profitThisYear}</span>
+	<span class="rounded-full px-2 py-0.5 text-xs {d.balanced ? 'bg-lime text-on-lime' : 'bg-destructive/10 text-destructive'}">
+		{d.balanced ? 'Balance ✓' : 'Tidak balance'}
+	</span>
 </div>
 
 <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">

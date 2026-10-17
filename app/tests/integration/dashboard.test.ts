@@ -36,15 +36,15 @@ async function booksWithActivity() {
 	return { companyId, bankAccountId, u, uploadId };
 }
 
-test('full books: bank balance, 6-month flows, profit and recent transactions', async () => {
+test('full books: bank balance, profit/loss series, profit and recent transactions', async () => {
 	const { companyId, uploadId } = await booksWithActivity();
 	const d = await getDashboard(companyId, 'admin', '2026-08-20');
 	expect(d.bank?.balance).toBe('3470000.00');
 	expect(d.bank?.name).toBe('Bank BCA');
 	expect(d.pendingCount).toBe(0);
-	expect(d.monthly.map((m) => m.month)).toEqual(['2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08']);
-	expect(d.monthly[5]).toEqual({ month: '2026-08', income: '2500000.00', expense: '30000.00' });
-	expect(d.monthly[4]).toEqual({ month: '2026-07', income: '0.00', expense: '0.00' });
+	expect(d.profitLoss).toHaveLength(12);
+	expect(d.profitLoss[7]).toEqual({ month: '2026-08', revenue: '2500000.00', expense: '30000.00', netProfit: '2470000.00', future: false });
+	expect(d.profitLoss[8].future).toBe(true);
 	expect(d.profitThisYear).toBe('2470000.00');
 	expect(d.balanced).toBe(true);
 	expect(d.recentTransactions.map((t) => [t.amount, t.accountName])).toEqual([
@@ -60,8 +60,8 @@ test('empty company: no data, only the opening-balance action', async () => {
 	const d = await getDashboard(companyId, 'admin', '2026-08-20');
 	expect(d.latestUpload).toBeNull();
 	expect(d.recentTransactions).toEqual([]);
-	expect(d.monthly).toHaveLength(6);
-	expect(d.monthly.every((m) => m.income === '0.00' && m.expense === '0.00')).toBe(true);
+	expect(d.profitLoss).toHaveLength(12);
+	expect(d.profitLoss.every((m) => m.revenue === '0.00' && m.expense === '0.00')).toBe(true);
 	expect(d.profitThisYear).toBe('0.00');
 	expect(d.bank?.balance).toBe('0.00');
 	expect(d.actions.map((a) => [a.kind, a.href])).toEqual([['opening', '/settings/opening-balance']]);
@@ -119,7 +119,8 @@ test('next step: opening first, then review, then upload', async () => {
 test('works when the current month has 30 days', async () => {
 	const { companyId } = await makeCompany();
 	const d = await getDashboard(companyId, 'admin', '2026-06-15');
-	expect(d.monthly.map((m) => m.month)).toEqual(['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06']);
+	expect(d.profitLoss.map((m) => m.month)[0]).toBe('2026-01');
+	expect(d.bankTrend?.at(-1)?.month).toBe('2026-06');
 });
 
 test('pending count ignores transactions of uploads that are still processing', async () => {
