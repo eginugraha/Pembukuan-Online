@@ -1,0 +1,52 @@
+import { expect, test } from 'bun:test';
+import { fieldErrors } from '$lib/forms/validation';
+import { CreateAccountInput } from '$lib/schemas/account';
+import { CreateCompanyInput, UpdateCompanyInput } from '$lib/schemas/company';
+import { LoginInput } from '$lib/schemas/login';
+import { AddMemberInput } from '$lib/schemas/member';
+import { OpeningInput } from '$lib/schemas/opening';
+import { UpdateProfileInput } from '$lib/schemas/profile';
+import { CreateRuleInput } from '$lib/schemas/rule';
+import { DEFAULT_COA } from '../../src/lib/server/company/coa-data';
+import { IT_COA } from '../../src/lib/server/company/coa-it';
+
+const UUID = '00000000-0000-4000-8000-000000000000';
+const noEnglish = (errs: Record<string, string>) => Object.values(errs).every((m) => !/\b(Too|Invalid|Required|expected)\b/.test(m));
+
+test('fieldErrors returns {} for valid input', () => {
+	expect(fieldErrors(CreateAccountInput, { code: '1-1008', name: 'Kas Kecil', parentId: UUID })).toEqual({});
+});
+
+test('account: empty form reports every required field in Indonesian', () => {
+	const e = fieldErrors(CreateAccountInput, {});
+	expect(Object.keys(e).sort()).toEqual(['code', 'name', 'parentId']);
+	expect(e.code).toBe('Kode wajib diisi');
+	expect(e.name).toBe('Nama wajib diisi');
+	expect(e.parentId).toBe('Akun induk wajib dipilih');
+	expect(fieldErrors(CreateAccountInput, { code: '1-10A', name: 'X', parentId: UUID }).code).toBe('Kode hanya boleh angka dan tanda hubung, mis. 1-1008');
+});
+
+test('every template account code passes the code rule', () => {
+	for (const a of [...DEFAULT_COA, ...IT_COA]) expect(CreateAccountInput.shape.code.safeParse(a.code).success).toBe(true);
+});
+
+test('login messages', () => {
+	expect(fieldErrors(LoginInput, { email: 'x', password: '' })).toEqual({ email: 'Format email tidak valid', password: 'Password wajib diisi' });
+	expect(fieldErrors(LoginInput, { email: '', password: 'a' }).email).toBe('Email wajib diisi');
+});
+
+test('rule keyword must have at least 3 characters after trim', () => {
+	expect(fieldErrors(CreateRuleInput, { keyword: ' ab ', accountId: UUID }).keyword).toBe('Keyword rule minimal 3 karakter');
+	expect(fieldErrors(CreateRuleInput, { keyword: 'abc' }).accountId).toBe('Akun wajib dipilih');
+});
+
+test('member, company, profile, opening speak Indonesian', () => {
+	const m = fieldErrors(AddMemberInput, { email: 'x', password: '123', role: 'admin' });
+	expect(m).toEqual({ email: 'Format email tidak valid', password: 'Password minimal 8 karakter' });
+	expect(fieldErrors(CreateCompanyInput, { name: ' ' }).name).toBe('Nama perusahaan wajib diisi');
+	expect(fieldErrors(UpdateCompanyInput, { name: 'PT A', npwp: 'x'.repeat(21) }).npwp).toBe('NPWP maksimal 20 karakter');
+	expect(fieldErrors(UpdateProfileInput, { name: '  ' }).name).toBe('Nama wajib diisi');
+	const o = fieldErrors(OpeningInput, { date: '', lines: [] });
+	expect(o.date).toBe('Tanggal wajib diisi');
+	for (const e of [m, o]) expect(noEnglish(e)).toBe(true);
+});

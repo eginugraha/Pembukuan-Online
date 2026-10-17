@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { z } from 'zod';
+import { issuesToFields } from '../forms/validation';
 
 export class ApiError extends Error {
 	/** Field form yang bermasalah; dikirim ke klien sebagai `error.fields`. */
@@ -16,15 +17,6 @@ export class ApiError extends Error {
 	}
 }
 
-/** Pesan pertama per field (path[0]) dari issue Zod. */
-export function zodFieldErrors(issues: z.core.$ZodIssue[]): Record<string, string> {
-	const fields: Record<string, string> = {};
-	for (const issue of issues) {
-		const key = String(issue.path[0] ?? '_');
-		fields[key] ??= issue.message;
-	}
-	return fields;
-}
 
 export function notFound(what = 'Data'): ApiError {
 	return new ApiError(404, 'not_found', `${what} tidak ditemukan`);
@@ -42,7 +34,7 @@ export async function apiHandler(fn: () => Promise<Response>): Promise<Response>
 		}
 		if (e instanceof z.ZodError) {
 			return json(
-				{ error: { code: 'validation_error', message: 'Input tidak valid', details: e.issues, fields: zodFieldErrors(e.issues) } },
+				{ error: { code: 'validation_error', message: 'Input tidak valid', details: e.issues, fields: issuesToFields(e.issues) } },
 				{ status: 400 }
 			);
 		}

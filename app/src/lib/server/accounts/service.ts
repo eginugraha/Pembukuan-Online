@@ -1,19 +1,13 @@
 import { and, eq, sql } from 'drizzle-orm';
-import { z } from 'zod';
 import type { Role } from '../../roles';
 import { ApiError } from '../api';
 import { db, type Executor } from '../db';
 import { isUniqueViolation } from '../db/errors';
 import { accounts, categoryRules, companies, journalLines, transactions } from '../db/schema';
 
-export const CreateAccountInput = z.object({
-	code: z.string().trim().min(1).max(20),
-	name: z.string().trim().min(1).max(200),
-	parentId: z.uuid(),
-	normalBal: z.enum(['DEBIT', 'CREDIT']).optional(),
-	cashFlowCat: z.enum(['OPERATING', 'INVESTING', 'FINANCING']).nullable().optional()
-});
-export type CreateAccountInput = z.infer<typeof CreateAccountInput>;
+import { CreateAccountInput, UpdateAccountInput } from '../../schemas/account';
+
+export { CreateAccountInput, UpdateAccountInput };
 
 /** Akun dianggap terpakai bila direferensikan jurnal, transaksi, rule, atau sebagai akun bank perusahaan. */
 export async function accountInUse(ex: Executor, accountId: string): Promise<boolean> {
@@ -59,14 +53,6 @@ export async function createAccount(companyId: string, role: Role, input: Create
 	});
 }
 
-export const UpdateAccountInput = z.object({
-	code: z.string().trim().min(1).max(20).optional(),
-	name: z.string().trim().min(1).max(200).optional(),
-	normalBal: z.enum(['DEBIT', 'CREDIT']).optional(),
-	cashFlowCat: z.enum(['OPERATING', 'INVESTING', 'FINANCING']).nullable().optional(),
-	isActive: z.boolean().optional()
-});
-export type UpdateAccountInput = z.infer<typeof UpdateAccountInput>;
 
 export async function updateAccount(companyId: string, accountId: string, input: UpdateAccountInput): Promise<void> {
 	try {

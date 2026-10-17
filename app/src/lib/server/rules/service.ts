@@ -1,5 +1,4 @@
 import { and, asc, desc, eq } from 'drizzle-orm';
-import { z } from 'zod';
 import { assertCategoryAccount } from '../accounts/queries';
 import { ApiError, notFound } from '../api';
 import { normalizeKeyword } from '../categorize/rules';
@@ -7,13 +6,9 @@ import { db } from '../db';
 import { isUniqueViolation } from '../db/errors';
 import { accounts, categoryRules } from '../db/schema';
 
-export const CreateRuleInput = z.object({
-	keyword: z.string(),
-	accountId: z.uuid(),
-	direction: z.enum(['DB', 'CR']).nullable().optional(),
-	priority: z.number().int().min(0).max(1000).optional()
-});
-export type CreateRuleInput = z.infer<typeof CreateRuleInput>;
+import { CreateRuleInput } from '../../schemas/rule';
+
+export { CreateRuleInput };
 
 export async function listRules(companyId: string) {
 	return db

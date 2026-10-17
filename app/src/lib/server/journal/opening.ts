@@ -1,5 +1,4 @@
 import { and, asc, eq, sql } from 'drizzle-orm';
-import { z } from 'zod';
 import { isZero, toMoney } from '../../money';
 import { assertLeafAccount } from '../accounts/queries';
 import { ApiError } from '../api';
@@ -8,11 +7,9 @@ import { journalEntries, journalLines } from '../db/schema';
 import { isoDate, moneyString } from '../validation';
 import { assertBalanced, type JournalLineInput } from './lines';
 
-export const OpeningInput = z.object({
-	date: isoDate,
-	lines: z.array(z.object({ accountId: z.uuid(), debit: moneyString, credit: moneyString }))
-});
-export type OpeningInput = z.infer<typeof OpeningInput>;
+import { OpeningInput } from '../../schemas/opening';
+
+export { OpeningInput };
 
 export async function getOpening(companyId: string): Promise<{ date: string; lines: JournalLineInput[] } | null> {
 	const entry = await db.query.journalEntries.findFirst({

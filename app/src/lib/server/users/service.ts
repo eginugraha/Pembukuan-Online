@@ -1,22 +1,13 @@
 import { and, asc, count, eq } from 'drizzle-orm';
-import { z } from 'zod';
 import type { Role } from '../../roles';
 import { ApiError, notFound } from '../api';
 import { db, type Executor } from '../db';
 import { user, userCompanies } from '../db/schema';
 import { createUserWithPassword, findUserByEmail } from './create';
 
-const roleEnum = z.enum(['admin', 'accountant', 'viewer']);
+import { AddMemberInput, ChangeRoleInput, SuperAdminInput } from '../../schemas/member';
 
-export const AddMemberInput = z.object({
-	email: z.email(),
-	name: z.string().trim().min(1).max(200).optional(),
-	password: z.string().min(8).optional(),
-	role: roleEnum
-});
-export type AddMemberInput = z.infer<typeof AddMemberInput>;
-export const ChangeRoleInput = z.object({ role: roleEnum });
-export const SuperAdminInput = z.object({ value: z.boolean() });
+export { AddMemberInput, ChangeRoleInput, SuperAdminInput };
 
 export async function listMembers(companyId: string) {
 	return db

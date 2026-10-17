@@ -1,5 +1,4 @@
 import { eq } from 'drizzle-orm';
-import { z } from 'zod';
 import { ApiError } from '../api';
 import { db } from '../db';
 import { user, userAvatars } from '../db/schema';
@@ -7,7 +6,7 @@ import { user, userAvatars } from '../db/schema';
 // Klien sudah memotong & mengecilkan ke 256×256 WebP (biasanya < 50 KB); batas ini hanya pagar pengaman.
 export const MAX_AVATAR_BYTES = 512 * 1024;
 
-export const UpdateProfileInput = z.object({ name: z.string().trim().min(1).max(100) });
+export { UpdateProfileInput } from '../../schemas/profile';
 
 const startsWith = (b: Uint8Array, sig: number[], offset = 0) => sig.every((v, i) => b[offset + i] === v);
 
