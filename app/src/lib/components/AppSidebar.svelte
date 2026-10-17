@@ -6,6 +6,7 @@
 	import Landmark from '@lucide/svelte/icons/landmark';
 	import TrendingUp from '@lucide/svelte/icons/trending-up';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
+	import Lock from '@lucide/svelte/icons/lock';
 	import Library from '@lucide/svelte/icons/library';
 	import ListChecks from '@lucide/svelte/icons/list-checks';
 	import ListTree from '@lucide/svelte/icons/list-tree';
@@ -67,7 +68,8 @@
 		users: Users,
 		accounts: ListTree,
 		rules: WandSparkles,
-		wallet: Wallet
+		wallet: Wallet,
+		closing: Lock
 	};
 	const groupLabel = (label: string | null, i: number) => label ?? (i === 0 ? 'Menu Utama' : null);
 </script>

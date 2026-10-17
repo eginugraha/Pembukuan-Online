@@ -45,7 +45,8 @@ export const NAV: NavGroup[] = [
 			{ label: 'Pengguna & Role', href: '/settings/users', min: 'admin', icon: 'users' },
 			{ label: 'Chart of Accounts', href: '/settings/accounts', min: 'admin', icon: 'accounts' },
 			{ label: 'Category Rules', href: '/settings/rules', min: 'accountant', icon: 'rules' },
-			{ label: 'Saldo Awal', href: '/settings/opening-balance', min: 'accountant', icon: 'wallet' }
+			{ label: 'Saldo Awal', href: '/settings/opening-balance', min: 'accountant', icon: 'wallet' },
+			{ label: 'Tutup Buku', href: '/settings/closing', min: 'admin', icon: 'closing' }
 		]
 	}
 ];
