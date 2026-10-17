@@ -31,6 +31,40 @@
 	} = $props();
 
 	let open = $state(false);
+	let groupEl = $state<HTMLElement | null>(null);
+	// Tanggal belum lengkap: ada segmen terisi tetapi nilai belum terbentuk (mis. hari & bulan tanpa tahun).
+	let partial = $state(false);
+	const partialId = $derived(`${id ?? 'datefield'}-partial`);
+
+	// Segmen kosong ditandai bits-ui lewat aria-valuetext="Empty" (bukan atribut data-placeholder).
+	const filledSegments = () => [...(groupEl?.querySelectorAll('[role="spinbutton"]') ?? [])].filter((s) => s.getAttribute('aria-valuetext') !== 'Empty').length;
+	function recheck() {
+		queueMicrotask(() => (partial = !value && filledSegments() > 0));
+	}
+	$effect(() => {
+		if (value) partial = false;
+	});
+	// Form filter (GET) tidak boleh terkirim dengan tanggal setengah jadi: tahan submit dan fokuskan field.
+	$effect(() => {
+		const form = groupEl?.closest('form');
+		if (!form) return;
+		const onsubmit = (e: SubmitEvent) => {
+			if (!value && filledSegments() > 0) {
+				e.preventDefault();
+				partial = true;
+				groupEl?.querySelector<HTMLElement>('[role="spinbutton"]')?.focus();
+			}
+		};
+		form.addEventListener('submit', onsubmit);
+		return () => form.removeEventListener('submit', onsubmit);
+	});
+	// "onblur" untuk validasi: fokus benar-benar meninggalkan field (bukan sedang memilih di kalender).
+	function onfocusout() {
+		recheck();
+		setTimeout(() => {
+			if (!open && !groupEl?.contains(document.activeElement)) onblur?.(new FocusEvent('blur'));
+		}, 0);
+	}
 	const dateValue = $derived.by(() => {
 		try {
 			return value ? parseDate(value) : undefined;
@@ -60,9 +94,12 @@
 >
 	<DatePicker.Input
 		{id}
+		bind:ref={groupEl}
+		onkeyup={recheck}
+		onfocusout={onfocusout}
 		aria-label={ariaLabel}
-		aria-invalid={ariaInvalid}
-		aria-describedby={ariaDescribedby}
+		aria-invalid={partial ? 'true' : ariaInvalid}
+		aria-describedby={partial ? partialId : ariaDescribedby}
 		class={cn(
 			'dropdown-trigger flex h-10 w-full min-w-40 items-center gap-0.5 rounded-xl border border-input bg-field pr-1.5 pl-3 text-sm tabular-nums shadow-[0_2px_8px_-6px_rgb(20_33_15/0.25)] transition-[border-color,box-shadow] focus-within:border-green focus-within:ring-3 focus-within:ring-green/25 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20',
 			open && 'border-green ring-3 ring-green/25',
@@ -142,3 +179,6 @@
 		</DatePicker.Content>
 	</DatePicker.Portal>
 </DatePicker.Root>
+{#if partial}
+	<p id={partialId} role="alert" class="mt-1.5 text-xs font-medium text-destructive">Lengkapi tanggal (hari, bulan, dan tahun)</p>
+{/if}

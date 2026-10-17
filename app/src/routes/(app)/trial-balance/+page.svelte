@@ -3,11 +3,14 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { formatIdr } from '$lib/money';
+	import { monthRange, todayIso } from '$lib/dates';
 	import DateField from '$lib/components/DateField.svelte';
 	import FilterActions from '$lib/components/FilterActions.svelte';
 
 	let { data } = $props();
+	const month = monthRange(todayIso());
 	const tb = $derived(data.tb);
+	const active = $derived(tb.asOf !== month.to);
 </script>
 
 <PageHeader title="Neraca Saldo">
@@ -18,7 +21,7 @@
 
 <form method="GET" class="panel mb-5 flex flex-wrap items-end gap-3 p-4">
 	<div><span class="text-xs font-semibold text-ink/70">Per tanggal</span><DateField name="as_of" value={tb.asOf} aria-label="Per tanggal" class="mt-1" /></div>
-	<FilterActions />
+	<FilterActions active={active} />
 </form>
 
 {#if tb.rows.length === 0}
@@ -43,7 +46,7 @@
 					<Table.Cell class="text-right tabular-nums">{r.credit !== '0.00' ? formatIdr(r.credit) : ''}</Table.Cell>
 				</Table.Row>
 			{/each}
-			<Table.Row class="border-t-2 border-border bg-pale font-bold text-deep hover:bg-pale">
+			<Table.Row class="total-row">
 				<Table.Cell colspan={2}>Total</Table.Cell>
 				<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totalDebit)}</Table.Cell>
 				<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totalCredit)}</Table.Cell>

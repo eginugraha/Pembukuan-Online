@@ -121,7 +121,7 @@
 				{/each}
 			</Table.Row>
 		{/each}
-		<Table.Row class="border-t-2 border-border bg-pale font-bold text-deep hover:bg-pale">
+		<Table.Row class="total-row">
 			<Table.Cell>Total</Table.Cell>
 			<Table.Cell class="text-right tabular-nums">{formatIdr(totalDebit)}</Table.Cell>
 			<Table.Cell class="text-right tabular-nums">{formatIdr(totalCredit)}</Table.Cell>

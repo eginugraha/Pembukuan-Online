@@ -142,7 +142,7 @@
 	rowClass={(a) => (a.isActive ? '' : 'opacity-50')}
 >
 	{#snippet cell(a, c)}
-		{#if c.key === 'code'}{a.code}
+		{#if c.key === 'code'}<span class="whitespace-nowrap">{a.code}</span>
 		{:else if c.key === 'name'}
 			<span class="block {a.isLeaf ? '' : 'font-medium'}" style="padding-left: {(depth.get(a.id) ?? 0) * 1.25}rem">
 				{a.name} {#if !a.isActive}<Badge variant="outline">Nonaktif</Badge>{/if}

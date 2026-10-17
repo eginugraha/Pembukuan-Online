@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 import { ClientApiError } from '$lib/api-client';
-import { fieldErrors } from './validation';
+import { fieldErrors, splitServerFields } from './validation';
 
 /**
  * State validasi satu form.
@@ -56,12 +56,12 @@ export class FormState<T extends Record<string, unknown>> {
 	 */
 	handleServerError(err: unknown): string | null {
 		if (!(err instanceof ClientApiError)) return err instanceof Error ? err.message : 'Terjadi kesalahan';
+		const { matched, unmatched } = splitServerFields(err.fields, Object.keys(this.values));
 		const next: Record<string, { message: string; value: unknown }> = {};
-		for (const [field, message] of Object.entries(err.fields)) {
-			if (field in this.values) next[field] = { message, value: this.values[field as keyof T] };
-		}
+		for (const [field, message] of Object.entries(matched)) next[field] = { message, value: this.values[field as keyof T] };
 		this.#server = next;
-		return Object.keys(next).length > 0 ? null : err.message;
+		// Error yang tidak terkait field form (atau tanpa field sama sekali) tetap tampil di kotak pesan umum.
+		return Object.keys(next).length > 0 && unmatched.length === 0 ? null : err.message;
 	}
 
 	reset(values: T) {

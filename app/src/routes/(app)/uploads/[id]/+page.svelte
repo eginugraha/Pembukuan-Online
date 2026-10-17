@@ -6,6 +6,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import DataTable from '$lib/components/DataTable.svelte';
+	import { accountSearchText } from '$lib/account-options';
 	import type { Column } from '$lib/table';
 	import { apiFetch } from '$lib/api-client';
 	import { formatDate } from '$lib/dates';
@@ -19,7 +20,7 @@
 		{ key: 'description', label: 'Keterangan', sortable: true, searchable: true, text: (t) => t.description },
 		{ key: 'debit', label: 'Debit', sortable: true, align: 'right', sortValue: (t) => Number(t.debit) },
 		{ key: 'credit', label: 'Kredit', sortable: true, align: 'right', sortValue: (t) => Number(t.credit) },
-		{ key: 'account', label: 'Akun', sortable: true, searchable: true, text: (t) => (t.accountCode ? `${t.accountCode} ${t.accountName}` : (t.suggestedName ?? '')) },
+		{ key: 'account', label: 'Akun', sortable: true, searchable: true, text: accountSearchText },
 		{ key: 'status', label: 'Status', sortable: true, sortValue: txnStatus }
 	];
 	const upload = $derived(data.upload);

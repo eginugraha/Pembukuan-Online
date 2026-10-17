@@ -14,6 +14,12 @@
 	const fs = new FormState(LoginInput, { email: form?.email ?? '', password: '' });
 	// Tanpa JavaScript, error field datang dari action server.
 	const errorOf = (f: 'email' | 'password') => fs.error(f) ?? form?.fieldErrors?.[f];
+	// aria-invalid/describedby ikut error dari server juga, supaya benar tanpa JavaScript.
+	const attrs = (f: 'email' | 'password') => ({
+		...fs.attrs(f, f),
+		'aria-invalid': errorOf(f) ? ('true' as const) : undefined,
+		'aria-describedby': errorOf(f) ? `${f}-error` : undefined
+	});
 </script>
 
 <div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas p-4">
@@ -47,10 +53,10 @@
 				}}
 			>
 				<FormField id="email" label="Email" error={errorOf('email')}>
-					<Input name="email" type="email" autocomplete="username" bind:value={fs.values.email} {...fs.attrs('email', 'email')} />
+					<Input name="email" type="email" autocomplete="username" bind:value={fs.values.email} {...attrs('email')} />
 				</FormField>
 				<FormField id="password" label="Password" error={errorOf('password')}>
-					<Input name="password" type="password" autocomplete="current-password" bind:value={fs.values.password} {...fs.attrs('password', 'password')} />
+					<Input name="password" type="password" autocomplete="current-password" bind:value={fs.values.password} {...attrs('password')} />
 				</FormField>
 				{#if form?.message}
 					<p class="rounded-xl bg-destructive/5 px-3 py-2 text-sm text-destructive">{form.message}</p>

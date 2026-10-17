@@ -53,7 +53,7 @@
 	<Card.Content class="pt-6">
 		<form class="space-y-4" onsubmit={submit}>
 			<label
-				class="flex cursor-pointer flex-col items-center justify-center rounded-[20px] border-2 border-dashed p-10 text-center transition-colors {fileError ? 'border-destructive/60' : dragging ? 'border-green bg-pale' : 'border-green/35 bg-surface-soft hover:border-green/60 hover:bg-pale/50'}"
+				class="flex cursor-pointer flex-col items-center justify-center rounded-[20px] border-2 border-dashed p-10 text-center transition-colors has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-green/40 {fileError ? 'border-destructive/60' : dragging ? 'border-green bg-pale' : 'border-green/35 bg-surface-soft hover:border-green/60 hover:bg-pale/50'}"
 				ondragover={(e) => {
 					e.preventDefault();
 					dragging = true;
@@ -70,7 +70,11 @@
 				</span>
 				<span class="font-semibold break-all">{file ? file.name : 'Seret file PDF ke sini atau klik untuk memilih'}</span>
 				<span class="mt-1 text-xs text-muted-foreground">Maksimal 10 MB</span>
-				<input type="file" accept="application/pdf,.pdf" class="sr-only" aria-invalid={fileError ? 'true' : undefined} aria-describedby={fileError ? 'file-error' : undefined} onchange={(e) => pick(e.currentTarget.files)} />
+				<input type="file" accept="application/pdf,.pdf" class="sr-only" aria-invalid={fileError ? 'true' : undefined} aria-describedby={fileError ? 'file-error' : undefined} onchange={(e) => {
+						pick(e.currentTarget.files);
+						// Kosongkan input agar memilih ulang file yang sama (mis. setelah ditolak) tetap memicu pengecekan.
+						e.currentTarget.value = '';
+					}} />
 			</label>
 			{#if fileError}<p id="file-error" role="alert" class="flex items-center gap-1.5 text-sm font-medium text-destructive"><CircleAlert class="size-4" aria-hidden="true" />{fileError}</p>{/if}
 			{#if errorMessage}

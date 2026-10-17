@@ -2,14 +2,16 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
-	import { formatDate } from '$lib/dates';
+	import { formatDate, monthRange, todayIso } from '$lib/dates';
 	import { formatIdr } from '$lib/money';
 	import type { BalanceSheetLine, BalanceSheetSection } from '$lib/server/reports/balance-sheet';
 	import DateField from '$lib/components/DateField.svelte';
 	import FilterActions from '$lib/components/FilterActions.svelte';
 
 	let { data } = $props();
+	const month = monthRange(todayIso());
 	const bs = $derived(data.bs);
+	const active = $derived(bs.asOf !== month.to);
 
 	// Format laporan keuangan: angka negatif (mis. akumulasi penyusutan) dalam kurung.
 	const amount = (v: string) => (v.startsWith('-') ? `(${formatIdr(v.slice(1))})` : formatIdr(v));
@@ -49,7 +51,7 @@
 {/snippet}
 
 {#snippet grandTotal(label: string, value: string)}
-	<Table.Row class="border-t-2 border-border bg-pale font-bold text-deep hover:bg-pale">
+	<Table.Row class="total-row">
 		<Table.Cell class="whitespace-normal">{label}</Table.Cell>
 		<Table.Cell class="text-right tabular-nums">{amount(value)}</Table.Cell>
 	</Table.Row>
@@ -63,7 +65,7 @@
 
 <form method="GET" class="panel mb-5 flex flex-wrap items-end gap-3 p-4">
 	<div><span class="text-xs font-semibold text-ink/70">Per tanggal</span><DateField name="as_of" value={bs.asOf} aria-label="Per tanggal" class="mt-1" /></div>
-	<FilterActions />
+	<FilterActions active={active} />
 </form>
 
 <div class="max-w-3xl">

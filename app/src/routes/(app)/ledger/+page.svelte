@@ -1,7 +1,7 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import * as Table from '$lib/components/ui/table/index.js';
-	import { formatDate } from '$lib/dates';
+	import { formatDate, monthRange, todayIso } from '$lib/dates';
 	import { formatIdr } from '$lib/money';
 	import DateField from '$lib/components/DateField.svelte';
 	import FilterActions from '$lib/components/FilterActions.svelte';
@@ -10,6 +10,8 @@
 
 
 	let { data } = $props();
+	const month = monthRange(todayIso());
+	const active = $derived(data.from !== month.from || data.to !== month.to || data.accountId !== '');
 </script>
 
 <PageHeader title="Buku Besar" />
@@ -30,7 +32,7 @@
 	</div>
 	<div><span class="text-xs font-semibold text-ink/70">Dari</span><DateField name="from" value={data.from} aria-label="Dari" class="mt-1" /></div>
 	<div><span class="text-xs font-semibold text-ink/70">Sampai</span><DateField name="to" value={data.to} aria-label="Sampai" class="mt-1" /></div>
-	<FilterActions />
+	<FilterActions active={active} />
 </form>
 
 {#if data.ledger}
@@ -63,7 +65,7 @@
 					<Table.Cell class="text-right tabular-nums">{formatIdr(line.balance)}</Table.Cell>
 				</Table.Row>
 			{/each}
-			<Table.Row class="border-t-2 border-border bg-pale font-bold text-deep hover:bg-pale">
+			<Table.Row class="total-row">
 				<Table.Cell colspan={3}>Mutasi & saldo akhir per {formatDate(data.to)}</Table.Cell>
 				<Table.Cell class="text-right tabular-nums">{formatIdr(l.totalDebit)}</Table.Cell>
 				<Table.Cell class="text-right tabular-nums">{formatIdr(l.totalCredit)}</Table.Cell>

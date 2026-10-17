@@ -76,3 +76,37 @@ test('login works when fields are filled without input events (browser/password-
 	await page.getByRole('button', { name: 'Masuk' }).click();
 	await expect(page).toHaveURL(/\/dashboard$/);
 });
+
+test('login field errors are wired to their inputs even without JavaScript', async ({ page }) => {
+	await page.route('**/_app/**/*.js', (route) => route.abort());
+	await page.goto('/login');
+	await page.getByRole('button', { name: 'Masuk' }).click();
+	const email = page.getByLabel('Email');
+	await expect(email).toHaveAttribute('aria-invalid', 'true');
+	const describedBy = await email.getAttribute('aria-describedby');
+	await expect(page.locator(`#${describedBy}`)).toHaveText('Email wajib diisi');
+	await expect(page.getByLabel('Password')).toHaveAttribute('aria-invalid', 'true');
+});
+
+test('picking the same rejected upload file twice re-runs the check (input is reset)', async ({ page }) => {
+	await login(page);
+	await page.goto('/uploads/new');
+	const input = page.locator('input[type=file]');
+	await input.setInputFiles({ name: 'catatan.txt', mimeType: 'text/plain', buffer: Buffer.from('bukan pdf') });
+	await expect(page.getByText('File harus berformat PDF')).toBeVisible();
+	expect(await input.evaluate((el: HTMLInputElement) => el.value)).toBe('');
+	// Fokus keyboard pada dropzone terlihat (cincin fokus pada label pembungkus).
+	await input.focus();
+	await page.keyboard.press('Shift+Tab');
+	await page.keyboard.press('Tab');
+	const ring = await page.locator('label', { has: input }).evaluate((el) => getComputedStyle(el).boxShadow);
+	expect(ring).not.toBe('none');
+});
+
+test('account codes in the chart of accounts table never wrap', async ({ page }) => {
+	await login(page);
+	await page.goto('/settings/accounts');
+	await page.setViewportSize({ width: 600, height: 800 });
+	const ws = await page.locator('tbody tr').first().locator('td').first().evaluate((el) => getComputedStyle(el.firstElementChild ?? el).whiteSpace);
+	expect(ws).toBe('nowrap');
+});

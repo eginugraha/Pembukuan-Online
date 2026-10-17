@@ -15,3 +15,14 @@ export function fieldErrors(schema: z.ZodType, values: unknown): Record<string, 
 	const r = schema.safeParse(values);
 	return r.success ? {} : issuesToFields(r.error.issues);
 }
+
+/** Pisahkan error server per field menjadi yang cocok dengan field form dan key yang tidak dikenal. */
+export function splitServerFields(fields: Record<string, string>, known: string[]): { matched: Record<string, string>; unmatched: string[] } {
+	const matched: Record<string, string> = {};
+	const unmatched: string[] = [];
+	for (const [key, message] of Object.entries(fields)) {
+		if (known.includes(key)) matched[key] = message;
+		else unmatched.push(key);
+	}
+	return { matched, unmatched };
+}

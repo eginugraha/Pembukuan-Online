@@ -61,3 +61,49 @@ test('clearing a date on a GET filter falls back to the default range without er
 	// Server memakai default (awal bulan berjalan), jadi field Dari terisi lagi.
 	await expect(dari.getByRole('spinbutton').first()).not.toHaveAttribute('aria-valuetext', 'Empty');
 });
+
+test('a half-typed date blocks the filter submit and says so', async ({ page }) => {
+	await login(page);
+	await page.goto('/journal');
+	const dari = page.getByRole('group', { name: 'Dari' });
+	await dari.getByRole('button', { name: 'Buka kalender' }).click();
+	await page.getByRole('button', { name: 'Hapus' }).click();
+	await dari.getByRole('spinbutton').first().focus();
+	await page.keyboard.type('12');
+	await page.getByRole('heading', { name: 'Jurnal Umum' }).click();
+	await expect(page.getByText('Lengkapi tanggal')).toBeVisible();
+	await expect(dari).toHaveAttribute('aria-invalid', 'true');
+	await page.getByRole('button', { name: 'Tampilkan' }).click();
+	await expect(page).toHaveURL(/\/journal$/);
+});
+
+test('clicking the "Tanggal mulai" label focuses the first date segment', async ({ page }) => {
+	await login(page);
+	await page.goto('/settings/opening-balance');
+	await page.getByText('Tanggal mulai', { exact: true }).click();
+	await expect(page.getByRole('group', { name: 'Tanggal mulai' }).getByRole('spinbutton').first()).toBeFocused();
+});
+
+test('leaving a typed date with Tab validates the field (opening balance)', async ({ page }) => {
+	await login(page);
+	await page.goto('/settings/opening-balance');
+	const field = page.getByRole('group', { name: 'Tanggal mulai' });
+	await field.getByRole('button', { name: 'Buka kalender' }).click();
+	await page.getByRole('button', { name: 'Hapus' }).click();
+	await field.getByRole('spinbutton').first().focus();
+	await page.keyboard.press('Tab');
+	await page.keyboard.press('Tab');
+	await page.keyboard.press('Tab');
+	await page.keyboard.press('Tab');
+	await expect(page.getByText('Tanggal wajib diisi')).toBeVisible();
+});
+
+test('Reset stays disabled while the filter equals its defaults, even with a query string', async ({ page }) => {
+	await login(page);
+	await page.goto('/journal');
+	await page.getByRole('button', { name: 'Tampilkan' }).click();
+	await expect(page).toHaveURL(/from=.*to=/);
+	await expect(page.getByRole('button', { name: 'Reset' })).toBeDisabled();
+	await page.goto('/journal?from=2026-08-01&to=2026-08-31');
+	await expect(page.getByRole('link', { name: 'Reset' })).toBeVisible();
+});

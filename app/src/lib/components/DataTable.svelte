@@ -144,7 +144,7 @@
 			</button>
 			{#each pages as p, i (i)}
 				{#if p === '…'}
-					<span class="px-1">…</span>
+					<span class="px-1" aria-hidden="true">…</span>
 				{:else}
 					<button
 						type="button"

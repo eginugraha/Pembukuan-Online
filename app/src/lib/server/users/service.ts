@@ -32,7 +32,10 @@ export async function addMember(companyId: string, input: AddMemberInput): Promi
 			if (membership) throw new ApiError(409, 'already_member', 'Pengguna sudah terdaftar di perusahaan ini', undefined, { field: 'email' });
 		} else {
 			if (!input.password || !input.name) {
-				throw new ApiError(422, 'password_required', 'Pengguna baru wajib diberi nama dan password awal (min. 8 karakter)', undefined, { field: 'password' });
+				// Tunjuk field yang benar-benar kosong (nama lebih dulu agar urutan sama dengan form).
+				const field = !input.name ? 'name' : 'password';
+				const message = !input.name ? 'Nama wajib diisi untuk pengguna baru' : 'Password awal wajib diisi untuk pengguna baru (min. 8 karakter)';
+				throw new ApiError(422, 'password_required', message, undefined, { field });
 			}
 			userId = (await createUserWithPassword(tx, { email: input.email, name: input.name, password: input.password })).id;
 			created = true;

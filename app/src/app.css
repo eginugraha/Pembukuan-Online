@@ -230,6 +230,26 @@
 		border: 1px solid var(--panel-border);
 		box-shadow: var(--panel-shadow);
 	}
+	/* Baris total tabel laporan: latar pucat di setiap sel dengan sudut kiri/kanan membulat,
+	   agar serasi dengan panel yang sudutnya bulat (latar pada <tr> selalu kotak). */
+	.total-row {
+		font-weight: 700;
+		color: var(--deep);
+	}
+	.total-row > * {
+		background: var(--pale);
+	}
+	.total-row > :first-child {
+		border-top-left-radius: 12px;
+		border-bottom-left-radius: 12px;
+	}
+	.total-row > :last-child {
+		border-top-right-radius: 12px;
+		border-bottom-right-radius: 12px;
+	}
+	.total-row:hover > * {
+		background: var(--pale);
+	}
 	/* Tile ikon flat: warna polos tanpa gradien/bayangan; ikon garis lucide di dalamnya. */
 	.icon-tile {
 		display: inline-flex;

@@ -1,6 +1,7 @@
 import { beforeEach, expect, test } from 'bun:test';
 import { POST as POST_ACCOUNT } from '../../src/routes/api/accounts/+server';
 import { POST as POST_RULE } from '../../src/routes/api/rules/+server';
+import { POST as POST_USER } from '../../src/routes/api/users/+server';
 import { accountIdByCode, addMember, contextFor, makeCompany, makeUser } from './factory';
 import { call, fakeEvent } from './event';
 import { resetDb } from './db';
@@ -38,4 +39,14 @@ test('too-short rule keyword is reported on the keyword field', async () => {
 	const res = await call(POST_RULE, fakeEvent({ ctx, method: 'POST', body: { keyword: 'ab', accountId } }));
 	expect(res.status).toBeGreaterThanOrEqual(400);
 	expect(res.body.error.fields?.keyword).toBe('Keyword rule minimal 3 karakter');
+});
+
+test('adding a brand-new member reports the missing name or password on the right field', async () => {
+	const { ctx } = await adminCtx();
+	const noName = await call(POST_USER, fakeEvent({ ctx, method: 'POST', body: { email: 'baru@x.test', role: 'viewer', password: 'rahasia123' } }));
+	expect(noName.status).toBe(422);
+	expect(Object.keys(noName.body.error.fields)).toEqual(['name']);
+	const noPassword = await call(POST_USER, fakeEvent({ ctx, method: 'POST', body: { email: 'baru@x.test', role: 'viewer', name: 'Baru' } }));
+	expect(noPassword.status).toBe(422);
+	expect(Object.keys(noPassword.body.error.fields)).toEqual(['password']);
 });
