@@ -14,6 +14,7 @@
 	import { CreateAccountInput } from '$lib/schemas/account';
 	import SearchSelect from '$lib/components/SearchSelect.svelte';
 	import SimpleSelect from '$lib/components/SimpleSelect.svelte';
+	import DeleteAccountDialog from '$lib/components/DeleteAccountDialog.svelte';
 	import { accountOptions } from '$lib/account-options';
 
 	let { data } = $props();
@@ -35,6 +36,12 @@
 		{ key: 'cashFlow', label: 'Arus kas' },
 		{ key: 'actions', label: '', align: 'right' }
 	];
+	let deleteOpen = $state(false);
+	let deleting = $state<Account | null>(null);
+	function askDelete(a: Account) {
+		deleting = a;
+		deleteOpen = true;
+	}
 	const parentOptions = $derived(accountOptions(data.accounts.filter((a) => a.isActive)));
 	type Account = (typeof data.accounts)[number];
 
@@ -146,11 +153,26 @@
 		{:else if c.key === 'cashFlow'}
 			<SimpleSelect class="w-36" value={a.cashFlowCat ?? ''} options={CASH_FLOW} aria-label="Arus kas {a.code}" onchange={(v) => patch(a.id, { cashFlowCat: v || null }, 'Kategori arus kas diperbarui.')} />
 		{:else if c.key === 'actions'}
-			{#if a.isActive}
-				<Button size="sm" variant="ghost" onclick={() => deactivate(a.id)}>Nonaktifkan</Button>
-			{:else}
-				<Button size="sm" variant="ghost" onclick={() => patch(a.id, { isActive: true }, 'Akun diaktifkan.')}>Aktifkan</Button>
-			{/if}
+			<span class="flex justify-end gap-1">
+				{#if a.isActive}
+					<Button size="sm" variant="ghost" onclick={() => deactivate(a.id)}>Nonaktifkan</Button>
+				{:else}
+					<Button size="sm" variant="ghost" onclick={() => patch(a.id, { isActive: true }, 'Akun diaktifkan.')}>Aktifkan</Button>
+				{/if}
+				<Button size="sm" variant="ghost" class="text-destructive hover:bg-destructive/10 hover:text-destructive" aria-label="Hapus {a.code}" onclick={() => askDelete(a)}>Hapus</Button>
+			</span>
 		{/if}
 	{/snippet}
 </DataTable>
+
+<DeleteAccountDialog
+	bind:open={deleteOpen}
+	account={deleting}
+	accounts={data.accounts}
+	bankAccountId={data.bankAccountId}
+	ondeleted={() => {
+		message = 'Akun dihapus.';
+		errorMessage = null;
+		invalidateAll();
+	}}
+/>

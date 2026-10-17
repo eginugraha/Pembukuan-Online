@@ -1,6 +1,8 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 import * as accounts from '../../src/routes/api/accounts/+server';
 import * as accountOne from '../../src/routes/api/accounts/[id]/+server';
+import * as accountDelete from '../../src/routes/api/accounts/[id]/delete/+server';
+import * as accountUsage from '../../src/routes/api/accounts/[id]/usage/+server';
 import * as companies from '../../src/routes/api/companies/+server';
 import * as companyOne from '../../src/routes/api/companies/[id]/+server';
 import * as journal from '../../src/routes/api/journal/+server';
@@ -44,6 +46,8 @@ const ENDPOINTS: Array<{ name: string; handler: H; method: string; min: Level; b
 	{ name: 'POST /accounts', handler: accounts.POST, method: 'POST', min: 'accountant', body: {} },
 	{ name: 'PATCH /accounts/:id', handler: accountOne.PATCH, method: 'PATCH', min: 'admin', params: { id: RID }, body: {} },
 	{ name: 'DELETE /accounts/:id', handler: accountOne.DELETE, method: 'DELETE', min: 'admin', params: { id: RID } },
+	{ name: 'GET /accounts/:id/usage', handler: accountUsage.GET, method: 'GET', min: 'admin', params: { id: RID } },
+	{ name: 'POST /accounts/:id/delete', handler: accountDelete.POST, method: 'POST', min: 'admin', params: { id: RID }, body: {} },
 	{ name: 'GET /rules', handler: rules.GET, method: 'GET', min: 'viewer' },
 	{ name: 'POST /rules', handler: rules.POST, method: 'POST', min: 'accountant', body: {} },
 	{ name: 'DELETE /rules/:id', handler: ruleOne.DELETE, method: 'DELETE', min: 'admin', params: { id: RID } },
