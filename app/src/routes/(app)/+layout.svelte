@@ -5,6 +5,7 @@
 	import Menu from '@lucide/svelte/icons/menu';
 	import Plus from '@lucide/svelte/icons/plus';
 	import X from '@lucide/svelte/icons/x';
+	import AppFooter from '$lib/components/AppFooter.svelte';
 	import AppSidebar from '$lib/components/AppSidebar.svelte';
 	import ProfileMenu from '$lib/components/ProfileMenu.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
@@ -72,11 +73,13 @@
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && closeDrawer()} />
 
-<div class="min-h-screen bg-background">
-	<div class="flex min-h-screen">
-		<!-- Sidebar desktop: menempel setinggi layar; hanya konten yang ikut scroll. -->
-		<aside class="hidden w-64 shrink-0 border-r border-border bg-background lg:block">
-			<div class="sticky top-0 h-screen overflow-y-auto overscroll-contain">
+<!-- pb-10 = tinggi footer tetap, agar konten paling bawah tidak tertutup. -->
+<div class="min-h-screen bg-background pb-10">
+	<div class="flex min-h-[calc(100vh-2.5rem)]">
+		<!-- Sidebar desktop: terkunci ke viewport di atas footer (fixed, bukan sticky, agar tidak bergeser
+		     di ujung scroll); logo & bagian bawah tetap, hanya menu yang scroll. -->
+		<aside class="fixed top-0 bottom-10 left-0 z-20 hidden w-64 border-r border-border bg-background lg:block">
+			<div class="h-full">
 				<AppSidebar nav={data.nav} {isActive} nextStep={data.nextStep} userName={ctx.user.name} userImage={ctx.user.image} {roleLabel} />
 			</div>
 		</aside>
@@ -85,7 +88,7 @@
 		{#if drawerOpen}
 			<div id="mobile-drawer" bind:this={drawerEl} class="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu" tabindex="-1" onkeydown={trapTab}>
 				<button class="drawer-backdrop absolute inset-0 bg-ink/40 backdrop-blur-[2px]" tabindex="-1" aria-hidden="true" onclick={closeDrawer}></button>
-				<aside class="drawer-panel absolute inset-y-0 left-0 w-72 max-w-[85vw] overflow-y-auto bg-background shadow-2xl">
+				<aside class="drawer-panel absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-background shadow-2xl">
 					<button bind:this={closeBtn} class="absolute top-5 right-4 rounded-lg p-1.5 text-ink/60 hover:bg-muted" aria-label="Tutup menu" onclick={closeDrawer}>
 						<X class="size-5" />
 					</button>
@@ -94,8 +97,8 @@
 			</div>
 		{/if}
 
-		<div class="flex min-w-0 flex-1 flex-col bg-[linear-gradient(var(--header-tint)_0,var(--header-tint)_260px,var(--background)_260px)]">
-			<header class="flex items-center gap-3 px-4 pt-4 pb-2 sm:px-6 lg:px-8 lg:pt-6">
+		<div class="flex min-w-0 flex-1 flex-col lg:pl-64 bg-[linear-gradient(var(--header-tint)_0,var(--header-tint)_260px,var(--background)_260px)]">
+			<header class="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
 				<button
 					bind:this={trigger}
 					class="icon-tile icon-tile-muted size-10 shrink-0 lg:hidden"
@@ -147,4 +150,5 @@
 			</main>
 		</div>
 	</div>
+	<AppFooter />
 </div>

@@ -48,6 +48,8 @@
 		const el = navEl?.querySelector<HTMLElement>('[aria-current="page"]');
 		// Hanya menulis state di sini (tidak membacanya) agar effect tidak memicu dirinya sendiri.
 		const next = el ? { top: el.offsetTop, height: el.offsetHeight } : null;
+		// Menu aktif yang berada di luar area scroll sidebar digulir agar terlihat.
+		el?.scrollIntoView({ block: 'nearest' });
 		indicator = next;
 		// Posisi pertama dipasang tanpa animasi agar tidak meluncur dari atas saat halaman dibuka.
 		if (next && !untrack(() => animate)) requestAnimationFrame(() => (animate = true));
@@ -71,16 +73,16 @@
 	const groupLabel = (label: string | null, i: number) => label ?? (i === 0 ? 'Menu Utama' : null);
 </script>
 
-<div class="flex h-full flex-col px-4 py-6">
-	<a href="/dashboard" onclick={onnavigate} class="mb-6 flex items-center gap-2.5 px-2 text-lg font-extrabold tracking-tight text-green">
+<div class="flex h-full flex-col px-4 py-5">
+	<a href="/dashboard" onclick={onnavigate} class="mb-4 flex shrink-0 items-center gap-2.5 px-2 text-lg font-extrabold tracking-tight text-green">
 		<span class="icon-tile icon-tile-deep size-9 rounded-xl font-black">J</span>
 		Jurnalku.
 	</a>
 
-	<nav bind:this={navEl} class="relative flex-1 space-y-1" aria-label="Menu utama">
+	<nav bind:this={navEl} class="relative -mx-4 min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-4 pb-2" aria-label="Menu utama">
 		{#if indicator}
 			<span
-				class="nav-indicator pointer-events-none absolute inset-x-0 top-0 rounded-xl bg-pale {animate ? 'is-animated' : ''}"
+				class="nav-indicator pointer-events-none absolute inset-x-4 top-0 rounded-xl bg-pale {animate ? 'is-animated' : ''}"
 				style:transform="translateY({indicator.top}px)"
 				style:height="{indicator.height}px"
 				aria-hidden="true"
@@ -114,6 +116,8 @@
 		{/each}
 	</nav>
 
+	<!-- Bagian bawah tetap terlihat; hanya daftar menu di atasnya yang scroll. -->
+	<div class="shrink-0">
 	{#if nextStep}
 		<NextStepCard step={nextStep} {onnavigate} />
 	{/if}
@@ -131,5 +135,6 @@
 				<LogOut class="size-3.5" /> Keluar
 			</button>
 		</form>
+	</div>
 	</div>
 </div>
