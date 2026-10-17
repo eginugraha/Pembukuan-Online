@@ -8,14 +8,19 @@ beforeEach(resetDb);
 
 const d = { from: '2026-01-01', to: '2026-10-31' };
 
+const thrown = (fn: () => unknown): unknown => {
+	try {
+		fn();
+	} catch (e) {
+		return e;
+	}
+	return undefined;
+};
+
 test('rangeParams menolak from > to', () => {
 	const run = () => rangeParams(new URL('http://x/?from=2026-02-01&to=2026-01-01'), d, 'JANUARY');
 	expect(run).toThrow();
-	try {
-		run();
-	} catch (e) {
-		expect(e).toMatchObject({ code: 'invalid_range', status: 400 });
-	}
+	expect(thrown(run)).toMatchObject({ code: 'invalid_range', status: 400 });
 });
 
 test('rangeParams as_of dan default', () => {

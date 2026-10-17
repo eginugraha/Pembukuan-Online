@@ -27,7 +27,9 @@ test('closing journal type and fiscal_closings row can be stored', async () => {
 		.values({ companyId, periodStart: '2026-01-01', periodEnd: '2026-12-31', retainedEarningsAccountId: retained })
 		.then(() => null, (e) => e);
 	expect(dup).not.toBeNull();
-	expect((dup.cause ?? dup).code).toBe('23505');
+	const pg = dup.cause ?? dup;
+	expect(pg.code).toBe('23505');
+	if (pg.constraint_name ?? pg.constraint) expect(pg.constraint_name ?? pg.constraint).toBe('fiscal_closings_company_start_uq');
 
 	await db.delete(companies).where(eq(companies.id, companyId));
 	expect(await db.select().from(fiscalClosings).where(eq(fiscalClosings.companyId, companyId))).toHaveLength(0);

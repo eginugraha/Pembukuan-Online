@@ -1,8 +1,9 @@
 import { beforeEach, expect, test } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
 import { db } from '../../src/lib/server/db';
-import { accounts, fiscalClosings, journalEntries, journalLines, transactions } from '../../src/lib/server/db/schema';
+import { accounts, companies, fiscalClosings, journalEntries, journalLines, transactions } from '../../src/lib/server/db/schema';
 import { closeFiscalYear, reopenFiscalYear } from '../../src/lib/server/closing/close';
+import { getIncomeStatement } from '../../src/lib/server/reports/income-statement';
 import { listFiscalYears } from '../../src/lib/server/closing/years';
 import { generateJournal } from '../../src/lib/server/journal/generate';
 import { saveOpening } from '../../src/lib/server/journal/opening';
@@ -243,4 +244,43 @@ test('unconfirmed or unjournaled transactions of EARLIER years block closing a l
 		await db.update(transactions).set({ isConfirmed: true, accountId: await accountIdByCode(companyId, '5-2010') }).where(eq(transactions.id, txnIds[0]));
 		expect(await code(closeFiscalYear(companyId, userId, { periodStart: start, retainedEarningsAccountId: reId }, TODAY))).toMatchObject({ code: 'journal_not_generated' });
 	}
+});
+
+test('listFiscalYears netProfit equals the income statement for an April fiscal year with OPENING P&L lines', async () => {
+	const { companyId, bankAccountId } = await makeCompany();
+	await db.update(companies).set({ fiscalYear: 'APRIL' }).where(eq(companies.id, companyId));
+	const u = await makeUser();
+	await saveOpening(companyId, u.id, {
+		date: '2026-06-01',
+		lines: [
+			{ accountId: bankAccountId, debit: '1000', credit: '0' },
+			{ accountId: await accountIdByCode(companyId, '5-2010'), debit: '200', credit: '0' },
+			{ accountId: await accountIdByCode(companyId, '4-1001'), debit: '0', credit: '700' },
+			{ accountId: await accountIdByCode(companyId, '3-1001'), debit: '0', credit: '500' }
+		]
+	});
+	const rows = [
+		{ d: 'JUAL A', date: '2025-09-10', credit: '4000', code: '4-1001' },
+		{ d: 'OPS A', date: '2025-10-10', debit: '1500', code: '5-2010' },
+		{ d: 'JUAL B', date: '2026-08-10', credit: '9000', code: '4-1001' },
+		{ d: 'OPS B', date: '2027-01-10', debit: '2500', code: '5-2010' }
+	];
+	const { uploadId, txnIds } = await makeUpload(
+		companyId,
+		u.id,
+		rows.map((r) => ({ date: r.date, description: r.d, debit: r.debit, credit: r.credit })),
+		{ status: 'done' }
+	);
+	for (const [i, r] of rows.entries())
+		await db.update(transactions).set({ isConfirmed: true, accountId: await accountIdByCode(companyId, r.code) }).where(eq(transactions.id, txnIds[i]));
+	await generateJournal(companyId, uploadId, u.id);
+
+	const ys = await listFiscalYears(companyId, TODAY);
+	expect(ys.map((y) => y.periodStart)).toEqual(['2025-04-01', '2026-04-01']);
+	for (const y of ys) {
+		const is = await getIncomeStatement(companyId, { from: y.periodStart, to: y.periodEnd });
+		expect(y.netProfit).toBe(is.netProfit);
+	}
+	// 2026/27 memuat baris OPENING: 9000 + 700 - 2500 - 200.
+	expect(ys[1].netProfit).toBe('7000.00');
 });
