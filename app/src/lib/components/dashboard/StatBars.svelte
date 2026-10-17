@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatIdr, formatIdrShort } from '$lib/money';
+	import { barSpecs } from '$lib/stat-bars';
 
 	let {
 		label,
@@ -25,8 +26,7 @@
 
 	const BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 	const monthLabel = (ym: string) => `${BULAN[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`;
-	const max = $derived(Math.max(...values.map((v) => Math.abs(Number(v))), 1));
-	const pct = (v: string) => (Number(v) === 0 ? 6 : Math.max(14, Math.round((Math.abs(Number(v)) / max) * 100)));
+	const bars = $derived(barSpecs(values));
 </script>
 
 <div class="flex items-end justify-between gap-4">
@@ -41,9 +41,10 @@
 	<div class="flex h-16 shrink-0 items-end gap-1.5" role="img" aria-label="{label} 6 bulan terakhir">
 		{#each values as v, i (i)}
 			{@const last = i === values.length - 1}
+			{@const bar = bars[i]}
 			<span
-				class="w-2.5 rounded-[4px] {last ? (Number(v) !== 0 ? 'glow' : '') : 'bg-muted'}"
-				style="height: {pct(v)}%; {last ? `background: ${barColor}` : ''}"
+				class="w-2.5 rounded-[4px] {last ? (Number(v) !== 0 ? 'glow' : '') : bar.negative ? 'bg-destructive/35' : 'bg-muted'}"
+				style="height: {bar.percent}%; {last ? `background: ${bar.negative ? 'var(--destructive)' : barColor}` : ''}"
 				title="{monthLabel(months[i])}: Rp {formatIdr(v)}"
 			></span>
 		{/each}

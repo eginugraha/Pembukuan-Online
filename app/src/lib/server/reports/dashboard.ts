@@ -22,6 +22,8 @@ export interface DashboardView {
 	latestUpload: { id: string; accountNo: string; periodStart: string; periodEnd: string } | null;
 	monthly: Array<{ month: string; income: string; expense: string }>;
 	profitThisYear: string;
+	/** Awal tahun buku yang memuat hari ini (mengikuti pengaturan perusahaan). */
+	fiscalYearStart: string;
 	balanced: boolean;
 	recentTransactions: Array<{ id: string; txnDate: string; description: string; amount: string; accountName: string | null }>;
 	actions: DashboardAction[];
@@ -127,11 +129,17 @@ async function uploadActions(companyId: string, opening: boolean): Promise<Dashb
 	return actions;
 }
 
-export async function getDashboard(companyId: string, role: Role | null, today: string): Promise<DashboardView> {
-	const opening = await hasOpeningBalance(companyId);
+export async function getDashboard(
+	companyId: string,
+	role: Role | null,
+	today: string,
+	/** Statistik yang sudah dihitung layout pada permintaan yang sama; bila ada, tidak dihitung ulang. */
+	shared?: { pending: number; opening: boolean }
+): Promise<DashboardView> {
+	const opening = shared?.opening ?? (await hasOpeningBalance(companyId));
 	const [bank, pendingCount, latest, monthly, bs, tb, recent, actions] = await Promise.all([
 		bankBalance(companyId, today),
-		pendingTransactionCount(companyId),
+		shared ? Promise.resolve(shared.pending) : pendingTransactionCount(companyId),
 		db.query.statementUploads.findFirst({
 			columns: { id: true, accountNo: true, periodStart: true, periodEnd: true },
 			where: eq(statementUploads.companyId, companyId),
@@ -143,13 +151,13 @@ export async function getDashboard(companyId: string, role: Role | null, today: 
 		recentTransactions(companyId),
 		uploadActions(companyId, opening)
 	]);
-	const profit = bs.equity.lines.find((l) => l.accountId === null && l.name === 'Laba (Rugi) Tahun Berjalan');
 	return {
 		bank,
 		pendingCount,
 		latestUpload: latest ?? null,
 		monthly,
-		profitThisYear: profit?.amount ?? '0.00',
+		profitThisYear: bs.profit.thisYear,
+		fiscalYearStart: bs.fiscalYearStart,
 		balanced: tb.balanced,
 		recentTransactions: recent,
 		actions: actions.filter((a) => roleAtLeast(role, ACTION_MIN_ROLE[a.kind]))

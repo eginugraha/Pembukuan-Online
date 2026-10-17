@@ -5,5 +5,6 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
 	const ctx = requirePageRole(event, 'viewer');
-	return { dash: await getDashboard(ctx.companyId, ctx.role, todayIso()) };
+	const { shell } = await event.parent();
+	return { dash: await getDashboard(ctx.companyId, ctx.role, todayIso(), shell ?? undefined) };
 };

@@ -1,7 +1,8 @@
-export function todayIso(): string {
-	const d = new Date();
-	const pad = (n: number) => String(n).padStart(2, '0');
-	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const JAKARTA = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' });
+
+/** Tanggal hari ini (YYYY-MM-DD) di Asia/Jakarta, bukan zona waktu server atau browser, agar server dan klien sepakat. */
+export function todayIso(now: Date = new Date()): string {
+	return JAKARTA.format(now);
 }
 
 export function monthRange(date: string): { from: string; to: string } {

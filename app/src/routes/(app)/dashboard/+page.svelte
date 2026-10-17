@@ -5,6 +5,7 @@
 	import RecentTransactions from '$lib/components/dashboard/RecentTransactions.svelte';
 	import ReviewCard from '$lib/components/dashboard/ReviewCard.svelte';
 	import StatBars from '$lib/components/dashboard/StatBars.svelte';
+	import { formatDate } from '$lib/dates';
 	import { roleAtLeast } from '$lib/roles';
 
 	let { data } = $props();
@@ -13,7 +14,6 @@
 	const companyName = $derived(data.ctx.companies.find((c) => c.id === data.ctx.companyId)?.name ?? '');
 	const months = $derived(d.monthly.map((m) => m.month));
 	const current = $derived(d.monthly.at(-1)!);
-	const fyYear = $derived(current.month.slice(0, 4));
 </script>
 
 <svelte:head><title>Dashboard · Jurnalku</title></svelte:head>
@@ -52,7 +52,7 @@
 		label="Laba Tahun Berjalan"
 		value={d.profitThisYear}
 		valueClass={d.profitThisYear.startsWith('-') ? 'text-destructive' : 'text-green'}
-		caption="Tahun buku {fyYear}"
+		caption="Tahun buku mulai {formatDate(d.fiscalYearStart)}"
 		tag={d.balanced ? 'Balance ✓' : 'Tidak balance'}
 		tagClass={d.balanced ? 'bg-lime text-on-lime' : 'bg-destructive/10 text-destructive'}
 		values={d.monthly.map((m) => (Number(m.income) - Number(m.expense)).toFixed(2))}

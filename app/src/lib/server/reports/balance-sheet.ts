@@ -127,6 +127,8 @@ export async function getBalanceSheet(companyId: string, asOf: string) {
 		assets: { current: assetsCurrent, nonCurrent: assetsNonCurrent, total: toMoney(totalAssets) },
 		liabilities: { current: liabCurrent, nonCurrent: liabNonCurrent, total: toMoney(totalLiabilities) },
 		equity,
+		/** Laba rugi yang belum ditutup: tahun buku berjalan dan tahun-tahun sebelumnya (sudah termasuk di baris ekuitas). */
+		profit: { thisYear: toMoney(profitThisYear), priorYears: toMoney(profitTotal.minus(profitThisYear)) },
 		totalLiabilitiesAndEquity: toMoney(totalLiabEquity),
 		balanced: totalAssets.eq(totalLiabEquity)
 	};

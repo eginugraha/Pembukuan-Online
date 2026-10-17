@@ -6,6 +6,7 @@ import { getNextStep } from '../../src/lib/server/dashboard/next-step';
 import { generateJournal } from '../../src/lib/server/journal/generate';
 import { saveOpening } from '../../src/lib/server/journal/opening';
 import { getDashboard } from '../../src/lib/server/reports/dashboard';
+import { getBalanceSheet } from '../../src/lib/server/reports/balance-sheet';
 import { accountIdByCode, makeCompany, makeUpload, makeUser } from './factory';
 import { resetDb } from './db';
 
@@ -119,4 +120,35 @@ test('works when the current month has 30 days', async () => {
 	const { companyId } = await makeCompany();
 	const d = await getDashboard(companyId, 'admin', '2026-06-15');
 	expect(d.monthly.map((m) => m.month)).toEqual(['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06']);
+});
+
+test('pending count ignores transactions of uploads that are still processing', async () => {
+	const { companyId, u } = await (async () => {
+		const c = await makeCompany();
+		return { companyId: c.companyId, u: await makeUser() };
+	})();
+	await makeUpload(companyId, u.id, [{ description: 'SEDANG DIPROSES', debit: '1' }], { accountNo: 'P', status: 'processing' });
+	await makeUpload(companyId, u.id, [{ description: 'SIAP REVIEW', debit: '2' }], { accountNo: 'R', status: 'review' });
+	expect((await getDashboard(companyId, 'admin', '2026-08-20')).pendingCount).toBe(1);
+});
+
+test('dashboard exposes the profit and fiscal-year start straight from the balance sheet', async () => {
+	const { companyId } = await booksWithActivity();
+	const d = await getDashboard(companyId, 'admin', '2026-08-20');
+	expect(d.profitThisYear).toBe('2470000.00');
+	expect(d.fiscalYearStart).toBe('2026-01-01');
+	await db.update(companies).set({ fiscalYear: 'JULY' }).where(eq(companies.id, companyId));
+	expect((await getDashboard(companyId, 'admin', '2026-08-20')).fiscalYearStart).toBe('2026-07-01');
+	const bs = await getBalanceSheet(companyId, '2026-08-20');
+	expect(bs.profit).toEqual({ thisYear: '2470000.00', priorYears: '0.00' });
+});
+
+test('getDashboard reuses stats the layout already computed instead of querying again', async () => {
+	const { companyId } = await makeCompany();
+	const d = await getDashboard(companyId, 'admin', '2026-08-20', { pending: 7, opening: true });
+	expect(d.pendingCount).toBe(7);
+	expect(d.actions.map((a) => a.kind)).not.toContain('opening');
+	const step = await getNextStep(companyId, 'accountant', { pending: 3, opening: true });
+	expect(step?.href).toBe('/review');
+	expect(step?.label).toContain('3');
 });
