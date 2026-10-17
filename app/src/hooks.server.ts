@@ -44,7 +44,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 	return svelteKitHandler({ event, resolve, auth, building });
 };
 
-export const handleError: HandleServerError = ({ error }) => {
+export const handleError: HandleServerError = ({ error, status }) => {
+	// 404 rute tidak dikenal juga lewat sini: jangan dicatat sebagai error dan jangan diganti pesan 500.
+	if (status === 404) return { message: 'Halaman yang Anda cari tidak ada atau sudah dipindahkan.' };
 	console.error(error);
 	return { message: 'Terjadi kesalahan di server' };
 };
