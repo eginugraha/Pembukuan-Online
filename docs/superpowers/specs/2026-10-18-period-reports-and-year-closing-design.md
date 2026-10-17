@@ -149,6 +149,8 @@ PRD F-08 sudah meminta laporan ini, dan RUPST membutuhkannya.
 - (Saat menulis plan Fase 2) **Tanggal terkunci** = tanggal `≤` akhir tahun buku terakhir yang ditutup. Aturan ini juga mengunci upload yang melewati tahun tertutup: upload ditolak seluruhnya saat disimpan, bukan baru saat generate.
 - (Saat menulis plan Fase 2) Format jurnal penutup: refNo `TUTUP-2026`, label tahun buku non-Januari `2025/2026`.
 - (Saat menulis plan Fase 2) API ada di `/api/closings` (GET daftar, POST tutup, DELETE `/:periodStart` buka kembali).
+- Baris pendapatan/beban di Saldo Awal yang tanggalnya sebelum tahun buku tertutup pertama tidak ikut ditutup (tahun yang hanya berisi Saldo Awal tidak perlu ditutup); total laporan tetap benar.
+- Saldo normal akun tidak bisa diubah bila akun punya baris jurnal di periode terkunci.
 
 ## Ditinggalkan untuk builder
 - Bentuk persis query (satu query dengan `CASE` atau beberapa query) dan pembagian file service laporan.

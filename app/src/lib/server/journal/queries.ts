@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gte, lte } from 'drizzle-orm';
 import { sumMoney, toMoney } from '../../money';
+import { lockedThrough } from '../closing/years';
 import { db } from '../db';
 import { accounts, journalEntries, journalLines, transactions } from '../db/schema';
 
@@ -13,6 +14,7 @@ export interface JournalEntryView {
 }
 
 export async function listJournal(companyId: string, from: string, to: string) {
+	const locked = await lockedThrough(db, companyId);
 	const rows = await db
 		.select({
 			id: journalEntries.id,
@@ -45,7 +47,8 @@ export async function listJournal(companyId: string, from: string, to: string) {
 			entries.push(entry);
 		}
 		// Hanya akun kategori jurnal transaksi yang bisa diubah (baris bank dan saldo awal terkunci).
-		const editable = r.type === 'TRANSACTION' && r.transactionAccountId === r.accountId;
+		// Entri pada tahun buku yang sudah ditutup juga terkunci.
+		const editable = r.type === 'TRANSACTION' && r.transactionAccountId === r.accountId && !(locked && r.entryDate <= locked.periodEnd);
 		entry.lines.push({ lineId: r.lineId, accountId: r.accountId, accountCode: r.accountCode, accountName: r.accountName, debit: r.debit, credit: r.credit, editable });
 	}
 	return {

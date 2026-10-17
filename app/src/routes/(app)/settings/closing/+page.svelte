@@ -45,16 +45,18 @@
 		try {
 			const msg = await fn();
 			close();
-			await invalidateAll();
 			message = msg;
 		} catch (err) {
 			if (err instanceof ClientApiError) {
 				fieldError = err.fields.retainedEarningsAccountId ?? null;
 				error = fieldError ? null : err.message;
 			} else error = 'Terjadi kesalahan';
+			return;
 		} finally {
 			busy = false;
 		}
+		// Segarkan daftar di luar try: kegagalan muat ulang tidak boleh menyembunyikan pesan sukses.
+		await invalidateAll().catch(() => {});
 	}
 
 	const doClose = () =>
@@ -133,7 +135,7 @@
 		{#if error}<p role="alert" class="text-sm font-medium text-destructive">{error}</p>{/if}
 		<Dialog.Footer>
 			<Button type="button" variant="outline" onclick={() => (closeOpen = false)}>Batal</Button>
-			<Button type="button" disabled={busy} onclick={doClose}>Tutup Buku</Button>
+			<Button type="button" disabled={busy || !retainedId} onclick={doClose}>Tutup Buku</Button>
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

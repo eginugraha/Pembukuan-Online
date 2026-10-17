@@ -30,6 +30,7 @@
 	const initialDate = () => data.opening?.date ?? todayIso();
 	const dateForm = new FormState(z.object({ date: isoDate }), { date: initialDate() });
 	let values = $state(initial());
+	const locked = $derived(data.lockedLabel !== null);
 	let message = $state<string | null>(null);
 	let errorMessage = $state<string | null>(null);
 	let busy = $state(false);
@@ -80,15 +81,16 @@
 <PageHeader title="Saldo Awal" description="Saldo per akun pada tanggal mulai pembukuan di Jurnalku. Total debit harus sama dengan total kredit.">
 	{#snippet actions()}
 		<Badge variant={balanced ? 'default' : 'destructive'}>{balanced ? 'Balance' : 'Belum balance'}</Badge>
-		<Button onclick={save} disabled={!balanced || hasRowErrors || busy}>Simpan</Button>
+		<Button onclick={save} disabled={!balanced || hasRowErrors || busy || locked}>Simpan</Button>
 	{/snippet}
 </PageHeader>
 
+{#if data.lockedLabel}<Alert.Root class="mb-4"><Alert.Description>Saldo awal terkunci karena tahun buku {data.lockedLabel} sudah ditutup.</Alert.Description></Alert.Root>{/if}
 {#if message}<Alert.Root class="mb-4"><Alert.Description>{message}</Alert.Description></Alert.Root>{/if}
 {#if errorMessage}<Alert.Root variant="destructive" class="mb-4"><Alert.Description>{errorMessage}</Alert.Description></Alert.Root>{/if}
 
-<FormField id="ob-date" label="Tanggal mulai" error={dateForm.error('date')} class="mb-4 max-w-xs">
-	<DateField bind:value={dateForm.values.date} aria-label="Tanggal mulai" {...dateForm.attrs('date', 'ob-date')} />
+<FormField id="ob-date" label="Tanggal mulai" error={dateForm.error('date')} class="mb-4 max-w-xs {locked ? 'opacity-60' : ''}">
+	<div inert={locked}><DateField bind:value={dateForm.values.date} aria-label="Tanggal mulai" {...dateForm.attrs('date', 'ob-date')} /></div>
 </FormField>
 
 <div class="panel px-2 py-1">
@@ -112,6 +114,7 @@
 							inputmode="decimal"
 							placeholder="0"
 							bind:value={values[a.id][side]}
+							disabled={locked}
 							aria-label="{side === 'debit' ? 'Debit' : 'Kredit'} {a.code}"
 							aria-invalid={err ? 'true' : undefined}
 							aria-describedby={err ? `ob-${a.id}-${side}-error` : undefined}

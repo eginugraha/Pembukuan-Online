@@ -80,3 +80,16 @@ test('DELETE rejects a malformed periodStart with 400; accountant is 403', async
 	await addMember(acc.id, companyId, 'accountant');
 	expect((await call(DELETE, fakeEvent({ ctx: await contextFor(acc, companyId), method: 'DELETE', params: { periodStart: '2024-01-01' } }))).status).toBe(403);
 });
+
+test('POST: 401 without session, 403 for accountant, 422 field error for a non-equity account', async () => {
+	const { companyId, ctx } = await setup();
+	const body = { periodStart: '2023-01-01', retainedEarningsAccountId: await accountIdByCode(companyId, '1-1001') };
+	expect((await call(POST, fakeEvent({ ctx: null, method: 'POST', body }))).status).toBe(401);
+	const acc = await makeUser();
+	await addMember(acc.id, companyId, 'accountant');
+	expect((await call(POST, fakeEvent({ ctx: await contextFor(acc, companyId), method: 'POST', body }))).status).toBe(403);
+	const res = await call(POST, fakeEvent({ ctx, method: 'POST', body }));
+	expect(res.status).toBe(422);
+	expect(res.body.error.code).toBe('invalid_retained_earnings');
+	expect(res.body.error.fields.retainedEarningsAccountId).toBeString();
+});

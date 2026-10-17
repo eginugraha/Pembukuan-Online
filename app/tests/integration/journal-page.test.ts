@@ -1,8 +1,9 @@
 import { beforeEach, expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { db } from '../../src/lib/server/db';
-import { journalEntries, transactions } from '../../src/lib/server/db/schema';
+import { journalEntries, statementUploads, transactions } from '../../src/lib/server/db/schema';
 import { generateJournal } from '../../src/lib/server/journal/generate';
+import { closeFiscalYear } from '../../src/lib/server/closing/close';
 import { saveOpening } from '../../src/lib/server/journal/opening';
 import { load } from '../../src/routes/(app)/journal/+page.server';
 import { PATCH } from '../../src/routes/api/journal/[id]/account/+server';
@@ -62,4 +63,27 @@ test('errors that are not about the chosen account carry no field (shown as a ge
 	const bad = await call(PATCH, fakeEvent({ ctx, method: 'PATCH', params: { id: txnEntry.id }, body: { accountId: bankAccountId } }));
 	expect(bad.status).toBe(422);
 	expect(Object.keys(bad.body.error.fields)).toEqual(['accountId']);
+});
+
+test('journal lines dated in a closed fiscal year are not editable', async () => {
+	const { companyId, bankAccountId, u } = await setup();
+	await saveOpening(companyId, u.id, {
+		date: '2025-01-01',
+		lines: [
+			{ accountId: bankAccountId, debit: '100', credit: '0' },
+			{ accountId: await accountIdByCode(companyId, '3-1001'), debit: '0', credit: '100' }
+		]
+	});
+	await addMember(u.id, companyId, 'accountant');
+	const ctx = await contextFor(u, companyId);
+	const view = async () => {
+		const event = fakeEvent({ ctx, path: '/journal?from=2026-08-01&to=2026-08-31' });
+		const r = (await load(event as never)) as unknown as { entries: { lines: { editable: boolean }[] }[] };
+		return r.entries.flatMap((e) => e.lines.map((l) => l.editable));
+	};
+	expect(await view()).toContain(true);
+	await db.update(statementUploads).set({ status: 'done' });
+	await closeFiscalYear(companyId, u.id, { periodStart: '2026-01-01', retainedEarningsAccountId: await accountIdByCode(companyId, '3-1003') }, '2027-02-10');
+	const after = await view();
+	expect(after).not.toContain(true);
 });

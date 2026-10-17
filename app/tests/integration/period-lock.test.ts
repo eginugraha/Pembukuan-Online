@@ -3,6 +3,7 @@ import { count, eq } from 'drizzle-orm';
 import { db } from '../../src/lib/server/db';
 import { journalEntries, statementUploads, transactions } from '../../src/lib/server/db/schema';
 import { closeFiscalYear } from '../../src/lib/server/closing/close';
+import { updateAccount } from '../../src/lib/server/accounts/service';
 import { deleteAccount } from '../../src/lib/server/accounts/delete';
 import { updateJournalAccount } from '../../src/lib/server/journal/edit';
 import { generateJournal } from '../../src/lib/server/journal/generate';
@@ -153,4 +154,34 @@ test('createUpload rejects the whole upload when any transaction is in a closed 
 	expect((r as { message: string }).message).toContain(MSG);
 	expect((await db.select({ n: count() }).from(statementUploads))[0].n).toBe(u0.n);
 	expect((await db.select({ n: count() }).from(transactions))[0].n).toBe(t0.n);
+});
+
+test('updateAccount: normalBal change rejected when the account has lines in a closed year, allowed otherwise', async () => {
+	const { companyId } = await setup();
+	const used26 = await accountIdByCode(companyId, '5-2010');
+	const r = await outcome(updateAccount(companyId, used26, { normalBal: 'CREDIT' }));
+	expect(r).toMatchObject({ ok: false, code: 'period_closed' });
+	expect((r as { message: string }).message).toContain(MSG);
+	// Tanpa perubahan saldo normal, atau perubahan lain, tetap boleh.
+	expect(await outcome(updateAccount(companyId, used26, { normalBal: 'DEBIT', name: 'Beban Baru' }))).toEqual({ ok: true });
+	// Akun yang hanya dipakai di tahun terbuka boleh berubah.
+	expect(await outcome(updateAccount(companyId, await accountIdByCode(companyId, '5-2006'), { normalBal: 'CREDIT' }))).toEqual({ ok: true });
+});
+
+test('bulkConfirm is atomic: a batch mixing open and closed years is rejected as a whole', async () => {
+	const { companyId, userId } = await setup();
+	const p = await makeUpload(
+		companyId,
+		userId,
+		[
+			{ date: '2027-02-01', description: 'BARU', debit: '1000' },
+			{ date: '2026-07-01', description: 'LAMA', debit: '1000' }
+		],
+		{ status: 'review', accountNo: '888', periodStart: '2026-07-01', periodEnd: '2027-02-28' }
+	);
+	const accountId = await accountIdByCode(companyId, '5-2010');
+	await db.update(transactions).set({ aiSuggestedAccountId: accountId, aiConfidence: '0.950' }).where(eq(transactions.uploadId, p.uploadId));
+	expect(await outcome(bulkConfirm(companyId, userId, { uploadId: p.uploadId }))).toMatchObject({ ok: false, code: 'period_closed' });
+	const rows = await db.select().from(transactions).where(eq(transactions.uploadId, p.uploadId));
+	expect(rows.map((t) => t.isConfirmed)).toEqual([false, false]);
 });

@@ -1,9 +1,10 @@
 import { and, eq, sql } from 'drizzle-orm';
 import type { Role } from '../../roles';
 import { ApiError } from '../api';
+import { assertPeriodOpen } from '../closing/lock';
 import { db, type Executor } from '../db';
 import { isUniqueViolation } from '../db/errors';
-import { accounts, categoryRules, companies, journalLines, transactions } from '../db/schema';
+import { accounts, categoryRules, companies, journalEntries, journalLines, transactions } from '../db/schema';
 
 import { CreateAccountInput, UpdateAccountInput } from '../../schemas/account';
 
@@ -56,12 +57,27 @@ export async function createAccount(companyId: string, role: Role, input: Create
 
 export async function updateAccount(companyId: string, accountId: string, input: UpdateAccountInput): Promise<void> {
 	try {
-		const updated = await db
-			.update(accounts)
-			.set(input)
-			.where(and(eq(accounts.id, accountId), eq(accounts.companyId, companyId)))
-			.returning({ id: accounts.id });
-		if (updated.length === 0) throw new ApiError(404, 'not_found', 'Akun tidak ditemukan');
+		await db.transaction(async (tx) => {
+			if (input.normalBal !== undefined) {
+				await tx.execute(sql`select id from companies where id = ${companyId} for update`);
+				const current = await tx.query.accounts.findFirst({ where: and(eq(accounts.id, accountId), eq(accounts.companyId, companyId)) });
+				// Saldo normal menentukan tanda saldo di laporan; jangan diubah bila akun punya baris di periode terkunci.
+				if (current && current.normalBal !== input.normalBal) {
+					const dated = await tx
+						.selectDistinct({ d: journalEntries.entryDate })
+						.from(journalLines)
+						.innerJoin(journalEntries, eq(journalEntries.id, journalLines.journalId))
+						.where(eq(journalLines.accountId, accountId));
+					await assertPeriodOpen(tx, companyId, dated.map((r) => r.d));
+				}
+			}
+			const updated = await tx
+				.update(accounts)
+				.set(input)
+				.where(and(eq(accounts.id, accountId), eq(accounts.companyId, companyId)))
+				.returning({ id: accounts.id });
+			if (updated.length === 0) throw new ApiError(404, 'not_found', 'Akun tidak ditemukan');
+		});
 	} catch (e) {
 		if (isUniqueViolation(e)) throw new ApiError(409, 'duplicate_code', `Kode akun ${input.code} sudah dipakai`, undefined, { field: 'code' });
 		throw e;
