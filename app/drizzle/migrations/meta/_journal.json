@@ -15,6 +15,13 @@
       "when": 1792168526205,
       "tag": "0001_normalize_account_no",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792219805846,
+      "tag": "0002_user_avatars",
+      "breakpoints": true
     }
   ]
 }

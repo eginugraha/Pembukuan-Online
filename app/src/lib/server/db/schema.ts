@@ -3,6 +3,7 @@ import {
 	type AnyPgColumn,
 	boolean,
 	check,
+	customType,
 	date,
 	index,
 	integer,
@@ -20,6 +21,11 @@ const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull(
 const updatedAt = () => timestamp('updated_at', { withTimezone: true }).notNull().defaultNow();
 const money = (name: string) => numeric(name, { precision: 18, scale: 2 });
 const day = (name: string) => date(name, { mode: 'string' });
+const bytea = customType<{ data: Uint8Array; driverData: Buffer }>({
+	dataType: () => 'bytea',
+	toDriver: (v) => Buffer.from(v),
+	fromDriver: (v) => new Uint8Array(v)
+});
 
 export const userRole = pgEnum('user_role', ['admin', 'accountant', 'viewer']);
 export const accountType = pgEnum('account_type', ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE']);
@@ -42,6 +48,16 @@ export const user = pgTable('user', {
 	isActive: boolean('is_active').notNull().default(true),
 	createdAt: createdAt(),
 	updatedAt: updatedAt()
+});
+
+// Foto profil disimpan terpisah dari tabel user agar query user tetap ringan.
+export const userAvatars = pgTable('user_avatars', {
+	userId: uuid('user_id')
+		.primaryKey()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	content: bytea('content').notNull(),
+	mime: varchar('mime', { length: 20 }).notNull(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
 
 export const session = pgTable('session', {

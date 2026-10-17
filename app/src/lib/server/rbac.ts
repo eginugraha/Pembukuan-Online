@@ -14,6 +14,8 @@ export interface SessionUser {
 	email: string;
 	name: string;
 	isSuperAdmin: boolean;
+	/** URL foto profil (/api/users/:id/avatar?v=…) atau null. */
+	image?: string | null;
 }
 export interface CompanyMembership {
 	id: string;

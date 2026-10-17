@@ -28,7 +28,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 					id: session.user.id,
 					email: session.user.email,
 					name: session.user.name,
-					isSuperAdmin: session.user.isSuperAdmin
+					isSuperAdmin: session.user.isSuperAdmin,
+					image: session.user.image ?? null
 				},
 				event.cookies.get(COMPANY_COOKIE)
 			);

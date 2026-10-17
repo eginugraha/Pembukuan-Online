@@ -20,7 +20,7 @@ export const SuperAdminInput = z.object({ value: z.boolean() });
 
 export async function listMembers(companyId: string) {
 	return db
-		.select({ userId: user.id, email: user.email, name: user.name, isSuperAdmin: user.isSuperAdmin, role: userCompanies.role })
+		.select({ userId: user.id, email: user.email, name: user.name, image: user.image, isSuperAdmin: user.isSuperAdmin, role: userCompanies.role })
 		.from(userCompanies)
 		.innerJoin(user, eq(user.id, userCompanies.userId))
 		.where(eq(userCompanies.companyId, companyId))
