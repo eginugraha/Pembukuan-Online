@@ -1,12 +1,13 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 	import DateField from '$lib/components/DateField.svelte';
 	import FilterActions from '$lib/components/FilterActions.svelte';
 
 	let { from, to, defaults }: { from: string; to: string; defaults: { from: string; to: string } } = $props();
 
-	let fromValue = $state('');
-	let toValue = $state('');
+	let fromValue = $state(untrack(() => from));
+	let toValue = $state(untrack(() => to));
 	let error = $state('');
 	$effect(() => {
 		fromValue = from;

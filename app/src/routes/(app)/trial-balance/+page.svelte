@@ -30,10 +30,12 @@
 					<Table.Head colspan={2} class="text-center">Saldo Akhir</Table.Head>
 				</Table.Row>
 				<Table.Row>
-					{#each [0, 1, 2] as i (i)}
-						<Table.Head class="text-right">Debit</Table.Head>
-						<Table.Head class="text-right">Kredit</Table.Head>
-					{/each}
+					<Table.Head class="text-right">Debit</Table.Head>
+					<Table.Head class="text-right">Kredit</Table.Head>
+					<Table.Head class="text-right">Debit</Table.Head>
+					<Table.Head class="text-right">Kredit</Table.Head>
+					<Table.Head class="text-right">Debit</Table.Head>
+					<Table.Head class="text-right">Kredit</Table.Head>
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
@@ -55,15 +57,15 @@
 					</Table.Row>
 				{/each}
 				{#if tb.rows.length > 0}
-				<Table.Row class="total-row">
-					<Table.Cell colspan={2}>Total</Table.Cell>
-					<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.openingDebit)}</Table.Cell>
-					<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.openingCredit)}</Table.Cell>
-					<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.debit)}</Table.Cell>
-					<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.credit)}</Table.Cell>
-					<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.closingDebit)}</Table.Cell>
-					<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.closingCredit)}</Table.Cell>
-				</Table.Row>
+					<Table.Row class="total-row">
+						<Table.Cell colspan={2}>Total</Table.Cell>
+						<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.openingDebit)}</Table.Cell>
+						<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.openingCredit)}</Table.Cell>
+						<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.debit)}</Table.Cell>
+						<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.credit)}</Table.Cell>
+						<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.closingDebit)}</Table.Cell>
+						<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.closingCredit)}</Table.Cell>
+					</Table.Row>
 				{/if}
 			</Table.Body>
 		</Table.Root>
