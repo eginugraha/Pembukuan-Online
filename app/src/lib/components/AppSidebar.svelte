@@ -14,7 +14,7 @@
 	import Users from '@lucide/svelte/icons/users';
 	import Wallet from '@lucide/svelte/icons/wallet';
 	import WandSparkles from '@lucide/svelte/icons/wand-sparkles';
-	import type { Component } from 'svelte';
+	import { untrack, type Component } from 'svelte';
 	import NextStepCard from '$lib/components/NextStepCard.svelte';
 	import UserAvatar from '$lib/components/UserAvatar.svelte';
 	import type { NavGroup } from '$lib/nav';
@@ -46,9 +46,11 @@
 	$effect(() => {
 		void activeHref;
 		const el = navEl?.querySelector<HTMLElement>('[aria-current="page"]');
-		indicator = el ? { top: el.offsetTop, height: el.offsetHeight } : null;
+		// Hanya menulis state di sini (tidak membacanya) agar effect tidak memicu dirinya sendiri.
+		const next = el ? { top: el.offsetTop, height: el.offsetHeight } : null;
+		indicator = next;
 		// Posisi pertama dipasang tanpa animasi agar tidak meluncur dari atas saat halaman dibuka.
-		if (indicator && !animate) requestAnimationFrame(() => (animate = true));
+		if (next && !untrack(() => animate)) requestAnimationFrame(() => (animate = true));
 	});
 
 	const ICONS: Record<string, Component<{ class?: string }>> = {
