@@ -53,7 +53,7 @@
 					<Table.Row class={i === 0 ? 'border-t-2' : ''}>
 						<Table.Cell class="whitespace-nowrap">{i === 0 ? formatDate(e.entryDate) : ''}</Table.Cell>
 						<Table.Cell class="whitespace-nowrap">
-							{#if i === 0}{e.refNo}{#if e.type === 'OPENING'} <Badge variant="secondary">Saldo awal</Badge>{/if}{/if}
+							{#if i === 0}{e.refNo}{#if e.type === 'OPENING'} <Badge variant="secondary">Saldo awal</Badge>{:else if e.type === 'CLOSING'} <Badge variant="secondary">Penutup</Badge>{/if}{/if}
 						</Table.Cell>
 						<Table.Cell class="max-w-sm min-w-48 whitespace-normal">{i === 0 ? e.description : ''}</Table.Cell>
 						<Table.Cell class={l.credit !== '0.00' ? 'pl-8' : ''}>

@@ -35,7 +35,7 @@ export const ruleSource = pgEnum('rule_source', ['SYSTEM', 'USER']);
 export const txDirection = pgEnum('tx_direction', ['DB', 'CR']);
 export const uploadStatus = pgEnum('upload_status', ['processing', 'review', 'done', 'error']);
 export const txSource = pgEnum('tx_source', ['RULE', 'AI', 'USER']);
-export const journalType = pgEnum('journal_type', ['OPENING', 'TRANSACTION']);
+export const journalType = pgEnum('journal_type', ['OPENING', 'TRANSACTION', 'CLOSING']);
 
 // ── Better Auth ───────────────────────────────────────────────
 export const user = pgTable('user', {
@@ -250,6 +250,25 @@ export const journalEntries = pgTable(
 		createdAt: createdAt()
 	},
 	(t) => [index('journal_entries_company_date_idx').on(t.companyId, t.entryDate)]
+);
+
+export const fiscalClosings = pgTable(
+	'fiscal_closings',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		companyId: uuid('company_id')
+			.notNull()
+			.references(() => companies.id, { onDelete: 'cascade' }),
+		periodStart: day('period_start').notNull(),
+		periodEnd: day('period_end').notNull(),
+		journalId: uuid('journal_id').references(() => journalEntries.id, { onDelete: 'set null' }),
+		retainedEarningsAccountId: uuid('retained_earnings_account_id')
+			.notNull()
+			.references(() => accounts.id),
+		closedBy: uuid('closed_by').references(() => user.id, { onDelete: 'set null' }),
+		closedAt: timestamp('closed_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(t) => [unique('fiscal_closings_company_start_uq').on(t.companyId, t.periodStart)]
 );
 
 export const journalLines = pgTable(

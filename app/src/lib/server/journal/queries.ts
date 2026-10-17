@@ -8,7 +8,7 @@ export interface JournalEntryView {
 	entryDate: string;
 	refNo: string | null;
 	description: string | null;
-	type: 'OPENING' | 'TRANSACTION';
+	type: 'OPENING' | 'TRANSACTION' | 'CLOSING';
 	lines: { lineId: string; accountId: string; accountCode: string; accountName: string; debit: string; credit: string; editable: boolean }[];
 }
 
