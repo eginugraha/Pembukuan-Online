@@ -18,3 +18,12 @@ test('period helpers', () => {
 	expect(formatDateLong('2026-01-01')).toBe('1 Januari 2026');
 	expect(formatPeriod('2026-01-01', '2026-12-31')).toBe('1 Januari 2026 – 31 Desember 2026');
 });
+
+test('fiscal year end and label', async () => {
+	const { fiscalYearEnd, fiscalYearLabel, dayAfter } = await import('../../src/lib/periods');
+	expect(fiscalYearEnd('2026-01-01')).toBe('2026-12-31');
+	expect(fiscalYearEnd('2025-07-01')).toBe('2026-06-30');
+	expect(fiscalYearLabel('2026-01-01', '2026-12-31')).toBe('2026');
+	expect(fiscalYearLabel('2025-07-01', '2026-06-30')).toBe('2025/2026');
+	expect(dayAfter('2026-12-31')).toBe('2027-01-01');
+});

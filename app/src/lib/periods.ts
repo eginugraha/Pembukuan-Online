@@ -48,3 +48,19 @@ export function formatDateLong(date: string): string {
 export function formatPeriod(from: string, to: string): string {
 	return `${formatDateLong(from)} – ${formatDateLong(to)}`;
 }
+
+export function dayAfter(date: string): string {
+	const [y, m, d] = date.split('-').map(Number);
+	return iso(Date.UTC(y, m - 1, d + 1));
+}
+
+/** Hari terakhir tahun buku yang dimulai pada `start`. */
+export function fiscalYearEnd(start: string): string {
+	return dayBefore(shiftYears(start, 1));
+}
+
+export function fiscalYearLabel(start: string, end: string): string {
+	const a = start.slice(0, 4);
+	const b = end.slice(0, 4);
+	return a === b ? a : `${a}/${b}`;
+}
