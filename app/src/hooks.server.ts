@@ -1,5 +1,5 @@
 import { building } from '$app/environment';
-import { redirect, type Handle, type ServerInit } from '@sveltejs/kit';
+import { redirect, type Handle, type HandleServerError, type ServerInit } from '@sveltejs/kit';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { getAuth } from '$lib/server/auth';
 import { COMPANY_COOKIE, resolveContext } from '$lib/server/rbac';
@@ -38,7 +38,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	const isPublic = PUBLIC_PATHS.includes(path) || path.startsWith('/api/');
-	if (!event.locals.ctx && !isPublic) redirect(303, '/login');
+	// URL yang tidak cocok dengan rute mana pun (route.id null) jatuh ke halaman 404, bukan redirect ke login.
+	if (!event.locals.ctx && !isPublic && event.route.id !== null) redirect(303, '/login');
 
 	return svelteKitHandler({ event, resolve, auth, building });
+};
+
+export const handleError: HandleServerError = ({ error }) => {
+	console.error(error);
+	return { message: 'Terjadi kesalahan di server' };
 };
