@@ -20,7 +20,8 @@ test('sidebar has no profile block and collapses to an icon rail that is remembe
 	// Tombol ciutkan ada di top bar (bukan di sidebar), di sebelah kiri pemilih perusahaan, berupa ikon saja.
 	await expect(aside.getByRole('button', { name: /sidebar/ })).toHaveCount(0);
 	const toggle = page.getByRole('banner').getByRole('button', { name: 'Ciutkan sidebar' });
-	expect((await toggle.innerText()).trim()).toBe('');
+	await expect(toggle.locator('svg:visible')).toHaveCount(1);
+	expect(Math.round((await toggle.boundingBox())!.width)).toBe(40);
 	expect((await toggle.boundingBox())!.x).toBeLessThan((await page.getByRole('combobox', { name: 'Pilih perusahaan' }).boundingBox())!.x);
 	await toggle.click();
 	await expect.poll(async () => Math.round((await aside.boundingBox())!.width)).toBe(64);
@@ -75,4 +76,14 @@ test('the profile button has comfortable left padding', async ({ page }) => {
 	const btn = (await page.getByRole('button', { name: 'Menu profil' }).boundingBox())!;
 	const hello = (await page.getByText(/^Halo, /).boundingBox())!;
 	expect(hello.x - btn.x).toBeGreaterThanOrEqual(12);
+});
+
+test('the collapse toggle has the right accessible name from the first paint when the rail is collapsed', async ({ page }) => {
+	await login(page);
+	await page.evaluate(() => localStorage.setItem('jk-sidebar', 'collapsed'));
+	await page.route('**/_app/**/*.js', (route) => route.abort());
+	await page.goto('/dashboard');
+	// Tanpa JavaScript: namanya sudah "Lebarkan sidebar" (dipilih CSS), bukan "Ciutkan sidebar".
+	await expect(page.getByRole('banner').getByRole('button', { name: 'Lebarkan sidebar' })).toBeVisible();
+	await expect(page.getByRole('banner').getByRole('button', { name: 'Ciutkan sidebar' })).toHaveCount(0);
 });

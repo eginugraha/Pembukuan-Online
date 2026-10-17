@@ -1,13 +1,23 @@
 <script lang="ts">
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
-	import { accountOptions } from '$lib/account-options';
+	import { accountOptions, classificationChange } from '$lib/account-options';
 	import { apiFetch, ClientApiError } from '$lib/api-client';
 	import FormField from '$lib/components/FormField.svelte';
 	import SearchSelect from '$lib/components/SearchSelect.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 
-	type Acc = { id: string; code: string; name: string; type: string; normalBal: string; isActive: boolean; isLeaf: boolean };
+	type Acc = {
+		id: string;
+		code: string;
+		name: string;
+		type: string;
+		normalBal: string;
+		isActive: boolean;
+		isLeaf: boolean;
+		parentId: string | null;
+		cashFlowCat: 'OPERATING' | 'INVESTING' | 'FINANCING' | null;
+	};
 	type Usage = { journalLines: number; transactions: number; rules: number; children: number; isBankAccount: boolean };
 
 	let {
@@ -30,18 +40,22 @@
 	let error = $state<string | null>(null);
 	let busy = $state(false);
 
-	$effect(() => {
-		if (!open || !account) return;
-		const id = account.id;
+	function loadUsage(id: string) {
 		usage = null;
-		moveToId = '';
 		error = null;
 		loading = true;
 		apiFetch<Usage>(`/api/accounts/${id}/usage`)
 			.then((u) => (usage = u))
 			.catch((e) => (error = e instanceof Error ? e.message : 'Gagal memuat data akun'))
 			.finally(() => (loading = false));
+	}
+	$effect(() => {
+		if (!open || !account) return;
+		moveToId = '';
+		loadUsage(account.id);
 	});
+	// Pemindahan bisa mengubah klasifikasi laporan; tampilkan sebagai peringatan (tidak memblokir).
+	const changes = $derived(account && moveToId ? classificationChange(accounts, account.id, moveToId) : []);
 
 	const used = $derived(!!usage && usage.journalLines + usage.transactions + usage.rules > 0);
 	const blocked = $derived(usage?.isBankAccount ? 'Akun ini dipakai sebagai akun bank perusahaan. Ganti dulu di Pengaturan → Perusahaan.' : usage && usage.children > 0 ? 'Akun ini punya akun anak. Hapus atau pindahkan akun anaknya terlebih dahulu.' : null);
@@ -107,11 +121,19 @@
 						aria-describedby={error ? 'da-target-error' : undefined}
 					/>
 				</FormField>
+				{#if changes.length}
+					<p role="status" class="flex gap-2 rounded-xl bg-amber-500/10 p-3 text-sm"><TriangleAlert class="mt-0.5 size-4 shrink-0 text-amber" />Perhatian: pemindahan ini mengubah klasifikasi di laporan ({changes.join('; ')}).</p>
+				{/if}
 			{:else}
 				<p class="text-sm">Akun ini belum dipakai. Hapus permanen? Tindakan ini tidak bisa dibatalkan.</p>
 			{/if}
 		{/if}
-		{#if error && !(usage && used)}<p role="alert" class="text-sm font-medium text-destructive">{error}</p>{/if}
+		{#if error && !(usage && used)}
+			<p role="alert" class="text-sm font-medium text-destructive">{error}</p>
+			{#if !usage && !loading && account}
+				<Button type="button" variant="outline" size="sm" onclick={() => loadUsage(account!.id)}>Coba lagi</Button>
+			{/if}
+		{/if}
 
 		<Dialog.Footer>
 			<Button type="button" variant="outline" onclick={() => (open = false)}>Batal</Button>

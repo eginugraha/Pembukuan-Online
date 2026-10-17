@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { z } from 'zod';
 import { issuesToFields } from '../forms/validation';
+import { isForeignKeyViolation } from './db/errors';
 
 export class ApiError extends Error {
 	/** Field form yang bermasalah; dikirim ke klien sebagai `error.fields`. */
@@ -36,6 +37,13 @@ export async function apiHandler(fn: () => Promise<Response>): Promise<Response>
 			return json(
 				{ error: { code: 'validation_error', message: 'Input tidak valid', details: e.issues, fields: issuesToFields(e.issues) } },
 				{ status: 400 }
+			);
+		}
+		if (isForeignKeyViolation(e)) {
+			// Dua orang mengubah data yang saling terkait bersamaan; yang kalah diminta memuat ulang, bukan error 500.
+			return json(
+				{ error: { code: 'conflict', message: 'Data baru saja berubah oleh proses lain atau masih dipakai data lain. Muat ulang halaman, lalu coba lagi.' } },
+				{ status: 409 }
 			);
 		}
 		console.error(e);

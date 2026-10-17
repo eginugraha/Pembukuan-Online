@@ -18,20 +18,22 @@
 	} = $props();
 
 	let accountId = $state('');
-	let error = $state<string | null>(null);
+	let error = $state<string | null>(null); // error milik field akun yang dipilih
+	let generalError = $state<string | null>(null); // error lain (mis. jurnal tidak bisa diubah)
 	let busy = $state(false);
 
 	$effect(() => {
 		if (open) {
 			accountId = entry?.accountId ?? '';
 			error = null;
+			generalError = null;
 		}
 	});
 
 	async function save(e: SubmitEvent) {
 		e.preventDefault();
 		if (!entry) return;
-		error = null;
+		error = generalError = null;
 		if (!accountId) {
 			error = 'Akun wajib dipilih';
 			return;
@@ -42,7 +44,8 @@
 			open = false;
 			onsaved();
 		} catch (err) {
-			error = err instanceof ClientApiError ? (err.fields.accountId ?? err.message) : 'Gagal menyimpan';
+			if (err instanceof ClientApiError && err.fields.accountId) error = err.fields.accountId;
+			else generalError = err instanceof Error ? err.message : 'Gagal menyimpan';
 		} finally {
 			busy = false;
 		}
@@ -71,6 +74,7 @@
 					aria-describedby={error ? 'je-account-error' : undefined}
 				/>
 			</FormField>
+			{#if generalError}<p role="alert" class="rounded-xl bg-destructive/10 p-3 text-sm font-medium text-destructive">{generalError}</p>{/if}
 			<Dialog.Footer>
 				<Button type="button" variant="outline" onclick={() => (open = false)}>Batal</Button>
 				<Button type="submit" disabled={busy}>Simpan</Button>

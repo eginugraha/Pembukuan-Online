@@ -32,3 +32,26 @@ test('parseJson rejects non-JSON body', async () => {
 	const req = new Request('http://x', { method: 'POST', body: 'not json' });
 	await expect(parseJson(req, z.object({}))).rejects.toMatchObject({ status: 400, code: 'invalid_json' });
 });
+
+test('a Postgres foreign-key violation (even wrapped as a cause) becomes a friendly 409, not a 500', async () => {
+	const { apiHandler } = await import('$lib/server/api');
+	const fk = Object.assign(new Error('violates foreign key'), { code: '23503' });
+	const res = await apiHandler(async () => {
+		throw new Error('Failed query', { cause: fk });
+	});
+	expect(res.status).toBe(409);
+	const body = await res.json();
+	expect(body.error.code).toBe('conflict');
+	expect(body.error.message).toContain('Muat ulang');
+});
+
+test('other unexpected errors are still a 500', async () => {
+	const { apiHandler } = await import('$lib/server/api');
+	const quiet = console.error;
+	console.error = () => {};
+	try {
+		expect((await apiHandler(async () => { throw new Error('boom'); })).status).toBe(500);
+	} finally {
+		console.error = quiet;
+	}
+});

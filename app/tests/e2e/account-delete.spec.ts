@@ -63,9 +63,15 @@ test('deleting a used account requires a target and moves its rules there', asyn
 	await dialog.getByRole('button', { name: 'Hapus akun' }).click();
 	await expect(dialog.getByRole('alert')).toContainText('Pilih akun tujuan');
 
+	// Pindah ke kelompok laporan lain (HPP) → peringatan klasifikasi; ke kelompok yang sama → tidak ada.
+	await dialog.getByLabel('Pindahkan data ke').click();
+	await page.getByPlaceholder('Cari kode atau nama akun…').fill('5-1001');
+	await page.keyboard.press('Enter');
+	await expect(dialog.getByRole('status')).toContainText('kelompok laporan');
 	await dialog.getByLabel('Pindahkan data ke').click();
 	await page.getByPlaceholder('Cari kode atau nama akun…').fill('5-2008');
 	await page.keyboard.press('Enter');
+	await expect(dialog.getByRole('status')).toHaveCount(0);
 	await dialog.getByRole('button', { name: 'Hapus akun' }).click();
 	await expect(page.getByText('Akun dihapus.')).toBeVisible();
 
@@ -75,4 +81,21 @@ test('deleting a used account requires a target and moves its rules there', asyn
 	await expect(row).toContainText('5-2008');
 	await row.getByRole('button', { name: 'Hapus' }).click();
 	await expect(page.getByText('Rule dihapus.')).toBeVisible();
+});
+
+test('a failed usage lookup in the delete dialog offers a retry instead of a dead end', async ({ page }) => {
+	await login(page);
+	await page.goto('/settings/accounts');
+	await page.getByPlaceholder('Cari di tabel akun…').fill('5-2001');
+	let fail = true;
+	await page.route('**/api/accounts/*/usage', (route) => (fail ? route.abort() : route.continue()));
+	await rowOf(page, '5-2001').getByRole('button', { name: 'Hapus' }).click();
+	const dialog = page.getByRole('dialog', { name: 'Hapus akun' });
+	await expect(dialog.getByRole('alert')).toBeVisible();
+	await expect(dialog.getByRole('button', { name: 'Hapus akun' })).toBeDisabled();
+	fail = false;
+	await dialog.getByRole('button', { name: 'Coba lagi' }).click();
+	await expect(dialog).toContainText('belum dipakai');
+	await expect(dialog.getByRole('button', { name: 'Hapus akun' })).toBeEnabled();
+	await dialog.getByRole('button', { name: 'Batal' }).click();
 });

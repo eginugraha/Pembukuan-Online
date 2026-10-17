@@ -2,7 +2,8 @@
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import { getLocalTimeZone, parseDate, today, type DateValue } from '@internationalized/date';
+	import { parseDate, type DateValue } from '@internationalized/date';
+	import { todayIso } from '$lib/dates';
 	import { DatePicker } from 'bits-ui';
 	import { cn } from '$lib/utils';
 
@@ -50,13 +51,15 @@
 		if (!form) return;
 		const onsubmit = (e: SubmitEvent) => {
 			if (!value && filledSegments() > 0) {
+				// Fase capture + stopImmediatePropagation: handler onsubmit milik form tidak ikut berjalan.
 				e.preventDefault();
+				e.stopImmediatePropagation();
 				partial = true;
 				groupEl?.querySelector<HTMLElement>('[role="spinbutton"]')?.focus();
 			}
 		};
-		form.addEventListener('submit', onsubmit);
-		return () => form.removeEventListener('submit', onsubmit);
+		form.addEventListener('submit', onsubmit, true);
+		return () => form.removeEventListener('submit', onsubmit, true);
 	});
 	// "onblur" untuk validasi: fokus benar-benar meninggalkan field (bukan sedang memilih di kalender).
 	function onfocusout() {
@@ -173,7 +176,7 @@
 				{/snippet}
 			</DatePicker.Calendar>
 			<div class="mt-2 flex justify-between border-t border-border pt-2 text-xs font-medium">
-				<button type="button" class="rounded-md px-2 py-1 text-deep hover:bg-pale" onclick={() => { set(today(getLocalTimeZone())); open = false; }}>Hari ini</button>
+				<button type="button" class="rounded-md px-2 py-1 text-deep hover:bg-pale" onclick={() => { set(parseDate(todayIso())); open = false; }}>Hari ini</button>
 				<button type="button" class="rounded-md px-2 py-1 text-muted-foreground hover:bg-muted" onclick={() => { set(undefined); open = false; }}>Hapus</button>
 			</div>
 		</DatePicker.Content>

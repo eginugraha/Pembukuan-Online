@@ -107,3 +107,19 @@ test('Reset stays disabled while the filter equals its defaults, even with a que
 	await page.goto('/journal?from=2026-08-01&to=2026-08-31');
 	await expect(page.getByRole('link', { name: 'Reset' })).toBeVisible();
 });
+
+test.describe('"Hari ini" follows Jakarta, not the visitor timezone', () => {
+	// 20:00 UTC tgl 31 Agu = 10:00 tgl 31 Agu di Honolulu, tetapi 03:00 tgl 1 Sep di Jakarta.
+	test.use({ timezoneId: 'Pacific/Honolulu' });
+	test('the calendar shortcut fills the Jakarta date', async ({ page }) => {
+		await login(page);
+		await page.clock.setFixedTime(new Date('2026-08-31T20:00:00Z'));
+		await page.goto('/settings/opening-balance');
+		const field = page.getByRole('group', { name: 'Tanggal mulai' });
+		await field.getByRole('button', { name: 'Buka kalender' }).click();
+		await page.getByRole('button', { name: 'Hari ini' }).click();
+		await expect(field.getByRole('spinbutton').nth(0)).toHaveAttribute('aria-valuetext', '1');
+		await expect(field.getByRole('spinbutton').nth(1)).toHaveAttribute('aria-valuetext', '9');
+		await expect(field.getByRole('spinbutton').nth(2)).toHaveAttribute('aria-valuetext', '2026');
+	});
+});

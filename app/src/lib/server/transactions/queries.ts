@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, ne } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { db } from '../db';
 import { accounts, journalEntries, statementUploads, transactions } from '../db/schema';
@@ -9,7 +9,8 @@ const sug = alias(accounts, 'sug');
 export async function listTransactions(companyId: string, filter: { uploadId?: string; pendingOnly?: boolean } = {}) {
 	const conditions = [eq(transactions.companyId, companyId)];
 	if (filter.uploadId) conditions.push(eq(transactions.uploadId, filter.uploadId));
-	if (filter.pendingOnly) conditions.push(eq(transactions.isConfirmed, false));
+	// Sama dengan hitungan di dashboard/sidebar: upload yang masih diproses belum siap direview.
+	if (filter.pendingOnly) conditions.push(eq(transactions.isConfirmed, false), ne(statementUploads.status, 'processing'));
 	return db
 		.select({
 			id: transactions.id,

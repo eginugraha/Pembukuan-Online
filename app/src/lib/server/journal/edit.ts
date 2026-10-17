@@ -17,10 +17,10 @@ export async function updateJournalAccount(companyId: string, userId: string, en
 		});
 		if (!entry) throw notFound('Jurnal');
 		if (entry.type !== 'TRANSACTION' || !entry.transactionId) {
-			throw new ApiError(409, 'journal_not_editable', 'Jurnal saldo awal diubah lewat halaman Saldo Awal', undefined, { field: 'accountId' });
+			throw new ApiError(409, 'journal_not_editable', 'Jurnal saldo awal diubah lewat halaman Saldo Awal');
 		}
 		const txn = await tx.query.transactions.findFirst({ where: eq(transactions.id, entry.transactionId) });
-		if (!txn?.accountId) throw new ApiError(409, 'journal_not_editable', 'Jurnal ini tidak punya akun kategori', undefined, { field: 'accountId' });
+		if (!txn?.accountId) throw new ApiError(409, 'journal_not_editable', 'Jurnal ini tidak punya akun kategori');
 
 		try {
 			await assertCategoryAccount(tx, companyId, accountId);
@@ -37,7 +37,7 @@ export async function updateJournalAccount(companyId: string, userId: string, en
 			.set({ accountId })
 			.where(and(eq(journalLines.journalId, entry.id), eq(journalLines.accountId, txn.accountId)))
 			.returning({ id: journalLines.id });
-		if (moved.length !== 1) throw new ApiError(409, 'journal_not_editable', 'Struktur jurnal tidak dikenali', undefined, { field: 'accountId' });
+		if (moved.length !== 1) throw new ApiError(409, 'journal_not_editable', 'Struktur jurnal tidak dikenali');
 		await tx
 			.update(transactions)
 			.set({ accountId, source: 'USER', confirmedBy: userId, confirmedAt: new Date() })
