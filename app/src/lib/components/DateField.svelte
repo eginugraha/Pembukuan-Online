@@ -54,6 +54,7 @@
 	onOpenChange={(o) => !o && onblur?.(new FocusEvent('blur'))}
 	locale="id-ID"
 	weekStartsOn={1}
+	weekdayFormat="short"
 	fixedWeeks
 	closeOnDateSelect
 >
@@ -113,7 +114,7 @@
 							<DatePicker.GridHead>
 								<DatePicker.GridRow class="flex">
 									{#each weekdays as day, di (di)}
-										<DatePicker.HeadCell class="w-9 pb-1 text-center text-[10px] font-medium text-muted-foreground">{day.slice(0, 2)}</DatePicker.HeadCell>
+										<DatePicker.HeadCell class="w-9 pb-1 text-center text-[10px] font-medium text-muted-foreground">{day.slice(0, 3)}</DatePicker.HeadCell>
 									{/each}
 								</DatePicker.GridRow>
 							</DatePicker.GridHead>
