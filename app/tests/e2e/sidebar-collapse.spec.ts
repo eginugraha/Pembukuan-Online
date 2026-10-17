@@ -17,20 +17,28 @@ test('sidebar has no profile block and collapses to an icon rail that is remembe
 	await expect(aside.getByRole('button', { name: 'Keluar' })).toHaveCount(0);
 	await expect(aside.getByRole('link', { name: /Profil Saya/ })).toHaveCount(0);
 
-	await aside.getByRole('button', { name: 'Ciutkan sidebar' }).click();
+	// Tombol ciutkan ada di top bar (bukan di sidebar), di sebelah kiri pemilih perusahaan, berupa ikon saja.
+	await expect(aside.getByRole('button', { name: /sidebar/ })).toHaveCount(0);
+	const toggle = page.getByRole('banner').getByRole('button', { name: 'Ciutkan sidebar' });
+	expect((await toggle.innerText()).trim()).toBe('');
+	expect((await toggle.boundingBox())!.x).toBeLessThan((await page.getByRole('combobox', { name: 'Pilih perusahaan' }).boundingBox())!.x);
+	await toggle.click();
 	await expect.poll(async () => Math.round((await aside.boundingBox())!.width)).toBe(64);
 	await expect(aside.getByText('Riwayat Upload', { exact: true })).toBeHidden();
 	await expect.poll(async () => (await page.getByRole('banner').boundingBox())!.x).toBeLessThan(100);
 
-	// Tooltip muncul saat item difokus dengan keyboard.
-	await aside.getByRole('link', { name: 'Dashboard' }).focus();
+	// Tooltip muncul saat item difokus dengan keyboard, dan nama item tidak dibaca dua kali.
+	const dash = aside.getByRole('link', { name: 'Dashboard' });
+	await dash.focus();
 	await expect(page.getByRole('tooltip', { name: 'Dashboard' })).toBeVisible();
+	await expect(dash).not.toHaveAttribute('aria-describedby', /.+/);
 
 	await page.reload();
 	await expect.poll(async () => Math.round((await aside.boundingBox())!.width)).toBe(64);
-	await expect(aside.getByRole('button', { name: 'Lebarkan sidebar' })).toHaveAttribute('aria-expanded', 'false');
+	await expect(page.getByRole('button', { name: 'Lebarkan sidebar' })).toHaveAttribute('aria-expanded', 'false');
+	await expect(page.getByRole('button', { name: 'Lebarkan sidebar' })).toHaveAttribute('aria-controls', 'app-sidebar');
 
-	await aside.getByRole('button', { name: 'Lebarkan sidebar' }).click();
+	await page.getByRole('button', { name: 'Lebarkan sidebar' }).click();
 	await expect.poll(async () => Math.round((await aside.boundingBox())!.width)).toBe(256);
 });
 
@@ -49,4 +57,22 @@ test('"Perusahaan baru" is a tidy outline button the same height as the company 
 	const box = (await btn.boundingBox())!;
 	expect(Math.round(box.height)).toBe(40);
 	expect(await btn.evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe('1px');
+});
+
+test('the collapse toggle shows the right arrow from the first paint when the rail is collapsed', async ({ page }) => {
+	await login(page);
+	await page.evaluate(() => localStorage.setItem('jk-sidebar', 'collapsed'));
+	await page.route('**/_app/**/*.js', (route) => route.abort());
+	await page.goto('/dashboard');
+	const toggle = page.getByRole('banner').locator('button[aria-controls="app-sidebar"]');
+	// Tanpa JS: hanya ikon "lebarkan" (panah kanan) yang terlihat.
+	await expect(toggle.locator('svg:visible')).toHaveCount(1);
+	await expect(toggle.locator('svg.lucide-chevrons-right')).toBeVisible();
+});
+
+test('the profile button has comfortable left padding', async ({ page }) => {
+	await login(page);
+	const btn = (await page.getByRole('button', { name: 'Menu profil' }).boundingBox())!;
+	const hello = (await page.getByText(/^Halo, /).boundingBox())!;
+	expect(hello.x - btn.x).toBeGreaterThanOrEqual(12);
 });

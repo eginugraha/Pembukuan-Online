@@ -21,6 +21,7 @@ function paint(mode: ThemeMode) {
 	const root = document.documentElement;
 	root.classList.toggle('dark', dark);
 	root.style.colorScheme = dark ? 'dark' : 'light';
+	root.dataset.theme = mode;
 }
 
 /**

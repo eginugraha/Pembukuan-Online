@@ -8,11 +8,15 @@
 		<script>
 			(function () {
 				var m = 'dark';
-				try { m = localStorage.getItem('jk-theme') || 'dark'; } catch (e) {}
+				try {
+					var v = localStorage.getItem('jk-theme');
+					if (v === 'dark' || v === 'light' || v === 'system') m = v;
+				} catch (e) {}
 				var d = m === 'dark' || (m === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 				var r = document.documentElement;
 				if (d) r.classList.add('dark'); else r.classList.remove('dark');
 				r.style.colorScheme = d ? 'dark' : 'light';
+				r.dataset.theme = m;
 				try { if (localStorage.getItem('jk-sidebar') === 'collapsed') r.dataset.sidebar = 'collapsed'; } catch (e) {}
 			})();
 		</script>

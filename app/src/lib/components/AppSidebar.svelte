@@ -2,8 +2,6 @@
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import Building2 from '@lucide/svelte/icons/building-2';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import ChevronsLeft from '@lucide/svelte/icons/chevrons-left';
-	import ChevronsRight from '@lucide/svelte/icons/chevrons-right';
 	import History from '@lucide/svelte/icons/history';
 	import Landmark from '@lucide/svelte/icons/landmark';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
@@ -26,8 +24,7 @@
 		isActive,
 		nextStep,
 		onnavigate,
-		collapsed = false,
-		ontoggle
+		collapsed = false
 	}: {
 		nav: NavGroup[];
 		isActive: (href: string) => boolean;
@@ -35,8 +32,6 @@
 		onnavigate?: () => void;
 		/** Mode ikon saja (sidebar desktop). Tampilan pra-hydrate diatur CSS varian `rail-collapsed`. */
 		collapsed?: boolean;
-		/** Bila diisi, tombol ciut/lebar ditampilkan (hanya untuk sidebar desktop). */
-		ontoggle?: () => void;
 	} = $props();
 
 	// Satu indikator aktif di bawah teks menu, digeser dengan transisi CSS ke menu yang aktif.
@@ -109,6 +104,7 @@
 								href={item.href}
 								onclick={onnavigate}
 								aria-label={item.label}
+								aria-describedby={undefined}
 								aria-current={active ? 'page' : undefined}
 								class="group relative flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm transition-colors duration-200 rail-collapsed:justify-center rail-collapsed:px-0 {active
 									? 'font-semibold text-deep'
@@ -137,18 +133,6 @@
 	<div class="shrink-0">
 		{#if nextStep}
 			<div class="rail-collapsed:hidden"><NextStepCard step={nextStep} {onnavigate} /></div>
-		{/if}
-		{#if ontoggle}
-			<button
-				type="button"
-				onclick={ontoggle}
-				aria-label={collapsed ? 'Lebarkan sidebar' : 'Ciutkan sidebar'}
-				aria-expanded={!collapsed}
-				title={collapsed ? 'Lebarkan sidebar' : 'Ciutkan sidebar'}
-				class="mt-4 flex h-10 w-full items-center gap-2 rounded-xl border border-border px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-pale/50 hover:text-deep rail-collapsed:justify-center rail-collapsed:px-0"
-			>
-				{#if collapsed}<ChevronsRight class="size-4" />{:else}<ChevronsLeft class="size-4" /><span class="rail-collapsed:hidden">Ciutkan</span>{/if}
-			</button>
 		{/if}
 	</div>
 </div>

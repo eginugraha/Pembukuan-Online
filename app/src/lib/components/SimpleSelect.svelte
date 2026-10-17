@@ -4,6 +4,7 @@
 	import Check from '@lucide/svelte/icons/check';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import { Select } from 'bits-ui';
+	import type { Component, Snippet } from 'svelte';
 	import type { HTMLButtonAttributes } from 'svelte/elements';
 	import { cn } from '$lib/utils';
 
@@ -15,14 +16,17 @@
 		class: className,
 		onchange,
 		onblur,
+		display,
 		...rest
 	}: {
 		value?: string;
-		options: { value: string; label: string }[];
+		options: { value: string; label: string; icon?: Component<{ class?: string }> }[];
 		placeholder?: string;
 		name?: string;
 		class?: string;
 		onchange?: (value: string) => void;
+		/** Isi trigger kustom (menggantikan label terpilih), mis. agar tampilan awal ditentukan CSS. */
+		display?: Snippet;
 	} & Omit<HTMLButtonAttributes, 'value' | 'onchange' | 'class'> = $props();
 
 	let open = $state(false);
@@ -36,13 +40,20 @@
 				{...props}
 				{...rest}
 				type="button"
+				role="combobox"
 				onblur={(e) => !open && onblur?.(e as never)}
 				class={cn(
 					'dropdown-trigger group flex h-10 w-full min-w-0 items-center gap-2 rounded-xl border border-input bg-field pr-3 pl-3 text-left text-sm shadow-[0_2px_8px_-6px_rgb(20_33_15/0.25)] transition-[border-color,box-shadow] outline-none focus-visible:border-green focus-visible:ring-3 focus-visible:ring-green/25 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[state=open]:border-green data-[state=open]:ring-3 data-[state=open]:ring-green/25',
 					className
 				)}
 			>
-				<span class="min-w-0 flex-1 truncate {selected ? '' : 'text-muted-foreground'}">{selected?.label ?? placeholder}</span>
+				{#if display}
+					{@render display()}
+				{:else}
+					<span class="flex min-w-0 flex-1 items-center gap-2 truncate {selected ? '' : 'text-muted-foreground'}">
+						{#if selected?.icon}<selected.icon class="size-4 shrink-0" />{/if}{selected?.label ?? placeholder}
+					</span>
+				{/if}
 				<ChevronDown class="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
 			</button>
 		{/snippet}
@@ -56,6 +67,7 @@
 				{#each options as o (o.value)}
 					<Select.Item value={o.value} label={o.label} class="flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-sm outline-none data-highlighted:bg-pale">
 						{#snippet children({ selected: isSel })}
+							{#if o.icon}<o.icon class="size-4 shrink-0 text-muted-foreground" />{/if}
 							<span class="min-w-0 flex-1 truncate">{o.label}</span>
 							{#if isSel}<Check class="size-4 shrink-0 text-deep" aria-hidden="true" />{/if}
 						{/snippet}

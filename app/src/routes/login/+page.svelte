@@ -4,7 +4,7 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import FormField from '$lib/components/FormField.svelte';
-	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+	import ThemeSelect from '$lib/components/ThemeSelect.svelte';
 	import { FormState } from '$lib/forms/form-state.svelte';
 	import { LoginInput } from '$lib/schemas/login';
 
@@ -21,7 +21,7 @@
 	<div class="pointer-events-none absolute -top-24 -right-24 size-72 rounded-full bg-[image:var(--login-blob-1)] opacity-90 blur-[2px]"></div>
 	<div class="pointer-events-none absolute -bottom-28 -left-20 size-64 rounded-full bg-[image:var(--login-blob-2)] opacity-30"></div>
 
-	<div class="absolute top-4 right-4 z-10"><ThemeToggle compact /></div>
+	<div class="absolute top-4 right-4 z-10"><ThemeSelect compact /></div>
 	<Card.Root class="relative w-full max-w-sm rounded-[28px] px-2 py-8 shadow-[0_30px_60px_-30px_rgb(30_50_30/0.45)]">
 		<Card.Header class="items-center text-center">
 			<span class="icon-tile icon-tile-deep mx-auto mb-3 size-14 rounded-2xl text-2xl font-black">J</span>

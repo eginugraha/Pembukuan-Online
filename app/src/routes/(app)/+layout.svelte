@@ -8,7 +8,8 @@
 	import AppFooter from '$lib/components/AppFooter.svelte';
 	import AppSidebar from '$lib/components/AppSidebar.svelte';
 	import ProfileMenu from '$lib/components/ProfileMenu.svelte';
-	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+	import SidebarToggle from '$lib/components/SidebarToggle.svelte';
+	import ThemeSelect from '$lib/components/ThemeSelect.svelte';
 	import SimpleSelect from '$lib/components/SimpleSelect.svelte';
 	import { ROLE_LABELS } from '$lib/roles';
 	import { Button } from '$lib/components/ui/button/index.js';
@@ -87,9 +88,9 @@
 	<div class="flex min-h-[calc(100vh-2.5rem)]">
 		<!-- Sidebar desktop: terkunci ke viewport di atas footer (fixed, bukan sticky, agar tidak bergeser
 		     di ujung scroll); logo & bagian bawah tetap, hanya menu yang scroll. -->
-		<aside data-rail class="fixed top-0 bottom-10 left-0 z-20 hidden w-64 border-r border-border bg-background transition-[width] duration-200 motion-reduce:transition-none lg:block rail-collapsed:w-16">
+		<aside id="app-sidebar" data-rail class="fixed top-0 bottom-10 left-0 z-20 hidden w-64 border-r border-border bg-background transition-[width] duration-200 motion-reduce:transition-none lg:block rail-collapsed:w-16">
 			<div class="h-full">
-				<AppSidebar nav={data.nav} {isActive} nextStep={data.nextStep} {collapsed} ontoggle={toggleSidebar} />
+				<AppSidebar nav={data.nav} {isActive} nextStep={data.nextStep} {collapsed} />
 			</div>
 		</aside>
 
@@ -118,6 +119,7 @@
 				>
 					<Menu class="size-5" />
 				</button>
+				<SidebarToggle {collapsed} ontoggle={toggleSidebar} />
 				{#if ctx.companies.length > 0}
 					<SimpleSelect
 						class="max-w-[45vw] border-border bg-card font-semibold sm:max-w-xs"
@@ -139,7 +141,7 @@
 					</Button>
 				{/if}
 				<div class="ml-auto flex items-center gap-2">
-					<ThemeToggle />
+					<ThemeSelect />
 					<ProfileMenu name={ctx.user.name} image={ctx.user.image} {roleLabel} />
 				</div>
 			</header>

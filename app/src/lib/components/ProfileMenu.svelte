@@ -2,11 +2,13 @@
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import UserRound from '@lucide/svelte/icons/user-round';
+	import ConfirmLogoutDialog from '$lib/components/ConfirmLogoutDialog.svelte';
 	import UserAvatar from '$lib/components/UserAvatar.svelte';
 
 	let { name, image, roleLabel }: { name: string; image?: string | null; roleLabel: string } = $props();
 
 	let open = $state(false);
+	let logoutOpen = $state(false);
 	let root = $state<HTMLDivElement | null>(null);
 	let button = $state<HTMLButtonElement | null>(null);
 
@@ -24,7 +26,7 @@
 <div class="relative" bind:this={root}>
 	<button
 		bind:this={button}
-		class="flex items-center gap-2.5 rounded-xl p-1 pr-2 transition-colors hover:bg-pale"
+		class="flex items-center gap-2.5 rounded-xl py-1 pr-2 pl-1 transition-colors hover:bg-pale sm:pl-3"
 		aria-haspopup="menu"
 		aria-expanded={open}
 		aria-label="Menu profil"
@@ -48,11 +50,19 @@
 			<a href="/profile" role="menuitem" onclick={() => close()} class="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm hover:bg-pale hover:text-deep">
 				<UserRound class="size-4" /> Profil Saya
 			</a>
-			<form method="POST" action="/logout">
-				<button role="menuitem" class="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm text-destructive hover:bg-destructive/5">
-					<LogOut class="size-4" /> Keluar
-				</button>
-			</form>
+			<button
+				type="button"
+				role="menuitem"
+				onclick={() => {
+					close();
+					logoutOpen = true;
+				}}
+				class="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm text-destructive hover:bg-destructive/5"
+			>
+				<LogOut class="size-4" /> Keluar
+			</button>
 		</div>
 	{/if}
 </div>
+
+<ConfirmLogoutDialog bind:open={logoutOpen} />
