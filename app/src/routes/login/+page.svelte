@@ -33,7 +33,11 @@
 				method="POST"
 				class="space-y-4"
 				novalidate
-				use:enhance={({ cancel }) => {
+				use:enhance={({ formData, cancel }) => {
+					// Validasi isi yang benar-benar dikirim: autofill browser/password manager bisa mengisi
+					// field tanpa memicu event input, sehingga state reaktif masih kosong.
+					fs.values.email = String(formData.get('email') ?? '');
+					fs.values.password = String(formData.get('password') ?? '');
 					if (!fs.validateAll()) return cancel();
 					submitting = true;
 					return async ({ update }) => {

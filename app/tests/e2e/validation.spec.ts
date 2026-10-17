@@ -64,3 +64,13 @@ test('rule and profile forms show field errors', async ({ page }) => {
 	await page.getByRole('button', { name: 'Simpan' }).click();
 	await expect(page.getByText('Nama wajib diisi')).toBeVisible();
 });
+
+test('login works when fields are filled without input events (browser/password-manager autofill)', async ({ page }) => {
+	await page.goto('/login');
+	await page.evaluate((pw) => {
+		(document.getElementById('email') as HTMLInputElement).value = 'admin@jurnalku.local';
+		(document.getElementById('password') as HTMLInputElement).value = pw;
+	}, E2E_PASSWORD);
+	await page.getByRole('button', { name: 'Masuk' }).click();
+	await expect(page).toHaveURL(/\/dashboard$/);
+});
