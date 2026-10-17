@@ -1,15 +1,17 @@
 import { json } from '@sveltejs/kit';
-import { monthRange, todayIso } from '$lib/dates';
+import { todayIso } from '$lib/dates';
+import { defaultReportRange } from '$lib/periods';
 import { apiHandler } from '$lib/server/api';
 import { requireRole } from '$lib/server/rbac';
+import { getCompanyReportInfo } from '$lib/server/reports/company';
 import { getTrialBalance } from '$lib/server/reports/trial-balance';
-import { dateParam } from '$lib/server/validation';
+import { rangeParams } from '$lib/server/validation';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = (event) =>
 	apiHandler(async () => {
 		const ctx = requireRole(event, 'viewer');
-		const asOf = dateParam(event.url, 'as_of') ?? monthRange(todayIso()).to;
-		// Task 3: replaced by a real period range
-		return json(await getTrialBalance(ctx.companyId, { from: '1900-01-01', to: asOf }));
+		const company = await getCompanyReportInfo(ctx.companyId);
+		const range = rangeParams(event.url, defaultReportRange(todayIso(), company.fiscalYear), company.fiscalYear);
+		return json(await getTrialBalance(ctx.companyId, range));
 	});

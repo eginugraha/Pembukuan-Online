@@ -1,57 +1,70 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import PeriodFilter from '$lib/components/PeriodFilter.svelte';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { formatIdr } from '$lib/money';
-	import { monthRange, todayIso } from '$lib/dates';
-	import DateField from '$lib/components/DateField.svelte';
-	import FilterActions from '$lib/components/FilterActions.svelte';
+	import { formatPeriod } from '$lib/periods';
 
 	let { data } = $props();
-	const month = monthRange(todayIso());
 	const tb = $derived(data.tb);
-	const active = $derived(tb.to !== month.to);
+	const cell = (v: string) => (v !== '0.00' ? formatIdr(v) : '');
 </script>
 
-<PageHeader title="Neraca Saldo">
+<PageHeader title="Neraca Saldo" description="{data.companyName} · {formatPeriod(tb.from, tb.to)}">
 	{#snippet actions()}
 		<Badge variant={tb.balanced ? 'success' : 'destructive'}>{tb.balanced ? 'Balance' : 'Tidak balance'}</Badge>
 	{/snippet}
 </PageHeader>
 
-<form method="GET" class="panel mb-5 flex flex-wrap items-end gap-3 p-4">
-	<div><span class="text-xs font-semibold text-ink/70">Per tanggal</span><DateField name="as_of" value={tb.to} aria-label="Per tanggal" class="mt-1" /></div>
-	<FilterActions active={active} />
-</form>
+<PeriodFilter from={tb.from} to={tb.to} defaults={data.defaults} />
 
-{#if tb.rows.length === 0}
-	<p class="panel p-8 text-center text-muted-foreground">Belum ada saldo pada tanggal ini.</p>
-{:else}
-	<div class="panel px-2 py-1">
-	<Table.Root>
-		<Table.Header>
-			<Table.Row>
-				<Table.Head>Kode</Table.Head>
-				<Table.Head>Akun</Table.Head>
-				<Table.Head class="text-right">Debit</Table.Head>
-				<Table.Head class="text-right">Kredit</Table.Head>
-			</Table.Row>
-		</Table.Header>
-		<Table.Body>
-			{#each tb.rows as r (r.accountId)}
+	<div class="panel overflow-x-auto px-2 py-1">
+		<Table.Root>
+			<Table.Header>
 				<Table.Row>
-					<Table.Cell>{r.code}</Table.Cell>
-					<Table.Cell>{r.name}</Table.Cell>
-					<Table.Cell class="text-right tabular-nums">{r.closingDebit !== '0.00' ? formatIdr(r.closingDebit) : ''}</Table.Cell>
-					<Table.Cell class="text-right tabular-nums">{r.closingCredit !== '0.00' ? formatIdr(r.closingCredit) : ''}</Table.Cell>
+					<Table.Head rowspan={2}>Kode</Table.Head>
+					<Table.Head rowspan={2}>Akun</Table.Head>
+					<Table.Head colspan={2} class="text-center">Saldo Awal</Table.Head>
+					<Table.Head colspan={2} class="text-center">Mutasi</Table.Head>
+					<Table.Head colspan={2} class="text-center">Saldo Akhir</Table.Head>
 				</Table.Row>
-			{/each}
-			<Table.Row class="total-row">
-				<Table.Cell colspan={2}>Total</Table.Cell>
-				<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.closingDebit)}</Table.Cell>
-				<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.closingCredit)}</Table.Cell>
-			</Table.Row>
-		</Table.Body>
-	</Table.Root>
+				<Table.Row>
+					{#each [0, 1, 2] as i (i)}
+						<Table.Head class="text-right">Debit</Table.Head>
+						<Table.Head class="text-right">Kredit</Table.Head>
+					{/each}
+				</Table.Row>
+			</Table.Header>
+			<Table.Body>
+				{#if tb.rows.length === 0}
+					<Table.Row>
+						<Table.Cell colspan={8} class="p-8 text-center text-muted-foreground">Belum ada saldo pada periode ini.</Table.Cell>
+					</Table.Row>
+				{/if}
+				{#each tb.rows as r (r.accountId)}
+					<Table.Row>
+						<Table.Cell>{r.code}</Table.Cell>
+						<Table.Cell>{r.name}</Table.Cell>
+						<Table.Cell class="text-right tabular-nums">{cell(r.openingDebit)}</Table.Cell>
+						<Table.Cell class="text-right tabular-nums">{cell(r.openingCredit)}</Table.Cell>
+						<Table.Cell class="text-right tabular-nums">{cell(r.debit)}</Table.Cell>
+						<Table.Cell class="text-right tabular-nums">{cell(r.credit)}</Table.Cell>
+						<Table.Cell class="text-right tabular-nums">{cell(r.closingDebit)}</Table.Cell>
+						<Table.Cell class="text-right tabular-nums">{cell(r.closingCredit)}</Table.Cell>
+					</Table.Row>
+				{/each}
+				{#if tb.rows.length > 0}
+				<Table.Row class="total-row">
+					<Table.Cell colspan={2}>Total</Table.Cell>
+					<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.openingDebit)}</Table.Cell>
+					<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.openingCredit)}</Table.Cell>
+					<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.debit)}</Table.Cell>
+					<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.credit)}</Table.Cell>
+					<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.closingDebit)}</Table.Cell>
+					<Table.Cell class="text-right tabular-nums">{formatIdr(tb.totals.closingCredit)}</Table.Cell>
+				</Table.Row>
+				{/if}
+			</Table.Body>
+		</Table.Root>
 	</div>
-{/if}

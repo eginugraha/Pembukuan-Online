@@ -5,7 +5,9 @@ import { transactions } from '../../src/lib/server/db/schema';
 import { generateJournal } from '../../src/lib/server/journal/generate';
 import { saveOpening } from '../../src/lib/server/journal/opening';
 import { getTrialBalance } from '../../src/lib/server/reports/trial-balance';
-import { accountIdByCode, makeCompany, makeUpload, makeUser } from './factory';
+import { GET } from '../../src/routes/api/reports/trial-balance/+server';
+import { accountIdByCode, addMember, contextFor, makeCompany, makeUpload, makeUser } from './factory';
+import { call, fakeEvent } from './event';
 import { resetDb } from './db';
 
 beforeEach(resetDb);
@@ -64,4 +66,34 @@ test('accounts with nothing in any column are hidden', async () => {
 	expect(tb.rows.map((r) => r.code)).toEqual(['1-1002', '3-1001']);
 	const none = await getTrialBalance(companyId, { from: '2026-07-01', to: '2026-07-31' });
 	expect(none.rows).toHaveLength(0);
+});
+
+async function viewerCtx(companyId: string) {
+	const v = await makeUser();
+	await addMember(v.id, companyId, 'viewer');
+	return contextFor(v, companyId);
+}
+
+test('API returns the range result', async () => {
+	const { companyId } = await booksWithActivity();
+	const ctx = await viewerCtx(companyId);
+	const res = await call(GET, fakeEvent({ ctx, path: '/api/reports/trial-balance?from=2026-08-01&to=2026-08-31' }));
+	expect(res.status).toBe(200);
+	expect(res.body.totals.debit).toBe('2530000.00');
+});
+
+test('API rejects from after to', async () => {
+	const { companyId } = await booksWithActivity();
+	const ctx = await viewerCtx(companyId);
+	const res = await call(GET, fakeEvent({ ctx, path: '/api/reports/trial-balance?from=2026-09-01&to=2026-08-01' }));
+	expect(res.status).toBe(400);
+	expect(res.body.error.code).toBe('invalid_range');
+});
+
+test('API keeps as_of compatibility', async () => {
+	const { companyId } = await booksWithActivity();
+	const ctx = await viewerCtx(companyId);
+	const res = await call(GET, fakeEvent({ ctx, path: '/api/reports/trial-balance?as_of=2026-08-31' }));
+	expect(res.status).toBe(200);
+	expect(res.body.from).toBe('2026-01-01');
 });

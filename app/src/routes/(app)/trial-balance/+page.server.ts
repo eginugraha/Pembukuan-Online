@@ -1,15 +1,18 @@
-import { monthRange, todayIso } from '$lib/dates';
+import { todayIso } from '$lib/dates';
+import { defaultReportRange } from '$lib/periods';
 import { withPageErrors } from '$lib/server/page';
 import { requirePageRole } from '$lib/server/rbac';
+import { getCompanyReportInfo } from '$lib/server/reports/company';
 import { getTrialBalance } from '$lib/server/reports/trial-balance';
-import { dateParam } from '$lib/server/validation';
+import { rangeParams } from '$lib/server/validation';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
 	const ctx = requirePageRole(event, 'viewer');
 	return withPageErrors(async () => {
-		const asOf = dateParam(event.url, 'as_of') ?? monthRange(todayIso()).to;
-		// Task 3: replaced by a real period range
-		return { tb: await getTrialBalance(ctx.companyId, { from: '1900-01-01', to: asOf }) };
+		const company = await getCompanyReportInfo(ctx.companyId);
+		const defaults = defaultReportRange(todayIso(), company.fiscalYear);
+		const range = rangeParams(event.url, defaults, company.fiscalYear);
+		return { tb: await getTrialBalance(ctx.companyId, range), defaults, companyName: company.name };
 	});
 };

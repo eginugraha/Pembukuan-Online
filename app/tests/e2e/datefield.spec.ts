@@ -11,7 +11,7 @@ async function login(page: Page) {
 
 test('pick a date from the calendar and apply the filter', async ({ page }) => {
 	await login(page);
-	await page.goto('/trial-balance?as_of=2026-08-15');
+	await page.goto('/balance-sheet?as_of=2026-08-15');
 	const field = page.getByRole('group', { name: 'Per tanggal' });
 	await field.getByRole('button', { name: 'Buka kalender' }).click();
 	await expect(page.getByText(/Agustus 2026/i).first()).toBeVisible();
