@@ -1,11 +1,11 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { formatDate } from '$lib/dates';
 	import { formatIdr } from '$lib/money';
-	import { inputClass } from '$lib/ui';
+	import DateField from '$lib/components/DateField.svelte';
+	import FilterActions from '$lib/components/FilterActions.svelte';
 
 	let { data } = $props();
 </script>
@@ -13,9 +13,9 @@
 <PageHeader title="Jurnal Umum" />
 
 <form method="GET" class="panel mb-5 flex flex-wrap items-end gap-3 p-4">
-	<label class="text-xs font-semibold text-ink/70">Dari<input type="date" name="from" value={data.from} class="{inputClass} mt-1" /></label>
-	<label class="text-xs font-semibold text-ink/70">Sampai<input type="date" name="to" value={data.to} class="{inputClass} mt-1" /></label>
-	<Button type="submit" variant="outline">Tampilkan</Button>
+	<div><span class="text-xs font-semibold text-ink/70">Dari</span><DateField name="from" value={data.from} aria-label="Dari" class="mt-1" /></div>
+	<div><span class="text-xs font-semibold text-ink/70">Sampai</span><DateField name="to" value={data.to} aria-label="Sampai" class="mt-1" /></div>
+	<FilterActions />
 </form>
 
 {#if data.entries.length === 0}

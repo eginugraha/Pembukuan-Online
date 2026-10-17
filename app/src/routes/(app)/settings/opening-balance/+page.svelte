@@ -11,6 +11,7 @@
 	import { inputClass } from '$lib/ui';
 	import { z } from 'zod';
 	import FormField from '$lib/components/FormField.svelte';
+	import DateField from '$lib/components/DateField.svelte';
 	import { FormState } from '$lib/forms/form-state.svelte';
 	import { isoDate } from '$lib/schemas/common';
 
@@ -87,7 +88,7 @@
 {#if errorMessage}<Alert.Root variant="destructive" class="mb-4"><Alert.Description>{errorMessage}</Alert.Description></Alert.Root>{/if}
 
 <FormField id="ob-date" label="Tanggal mulai" error={dateForm.error('date')} class="mb-4 max-w-xs">
-	<input type="date" bind:value={dateForm.values.date} class={inputClass} {...dateForm.attrs('date', 'ob-date')} />
+	<DateField bind:value={dateForm.values.date} aria-label="Tanggal mulai" {...dateForm.attrs('date', 'ob-date')} />
 </FormField>
 
 <div class="panel px-2 py-1">

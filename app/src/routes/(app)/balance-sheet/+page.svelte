@@ -1,12 +1,12 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { formatDate } from '$lib/dates';
 	import { formatIdr } from '$lib/money';
 	import type { BalanceSheetLine, BalanceSheetSection } from '$lib/server/reports/balance-sheet';
-	import { inputClass } from '$lib/ui';
+	import DateField from '$lib/components/DateField.svelte';
+	import FilterActions from '$lib/components/FilterActions.svelte';
 
 	let { data } = $props();
 	const bs = $derived(data.bs);
@@ -62,8 +62,8 @@
 </PageHeader>
 
 <form method="GET" class="panel mb-5 flex flex-wrap items-end gap-3 p-4">
-	<label class="text-xs font-semibold text-ink/70">Per tanggal<input type="date" name="as_of" value={bs.asOf} class="{inputClass} mt-1" /></label>
-	<Button type="submit" variant="outline">Tampilkan</Button>
+	<div><span class="text-xs font-semibold text-ink/70">Per tanggal</span><DateField name="as_of" value={bs.asOf} aria-label="Per tanggal" class="mt-1" /></div>
+	<FilterActions />
 </form>
 
 <div class="max-w-3xl">

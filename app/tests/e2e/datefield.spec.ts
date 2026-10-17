@@ -1,0 +1,50 @@
+import { expect, test, type Page } from '@playwright/test';
+import { E2E_PASSWORD } from '../../playwright.config';
+
+async function login(page: Page) {
+	await page.goto('/login');
+	await page.getByLabel('Email').fill('admin@jurnalku.local');
+	await page.getByLabel('Password').fill(E2E_PASSWORD);
+	await page.getByRole('button', { name: 'Masuk' }).click();
+	await expect(page).toHaveURL(/\/dashboard$/);
+}
+
+test('pick a date from the calendar and apply the filter', async ({ page }) => {
+	await login(page);
+	await page.goto('/trial-balance?as_of=2026-08-15');
+	const field = page.getByRole('group', { name: 'Per tanggal' });
+	await field.getByRole('button', { name: 'Buka kalender' }).click();
+	await expect(page.getByText(/Agustus 2026/i).first()).toBeVisible();
+	await page.locator('[data-bits-day]:not([data-outside-month])', { hasText: /^31$/ }).click();
+	await expect(field).toContainText('31');
+	await page.getByRole('button', { name: 'Tampilkan' }).click();
+	await expect(page).toHaveURL(/as_of=2026-08-31/);
+});
+
+test('Reset returns the filter page to its defaults (no query)', async ({ page }) => {
+	await login(page);
+	await page.goto('/journal');
+	await expect(page.getByRole('button', { name: 'Reset' })).toBeDisabled();
+	await page.goto('/journal?from=2026-08-01&to=2026-08-31');
+	await expect(page.getByRole('group', { name: 'Dari' })).toContainText('01');
+	await page.getByRole('link', { name: 'Reset' }).click();
+	await expect(page).toHaveURL(/\/journal$/);
+});
+
+test('opening balance date can be typed, and "Hapus" clears it and triggers validation', async ({ page }) => {
+	await login(page);
+	await page.goto('/settings/opening-balance');
+	const field = page.getByRole('group', { name: 'Tanggal mulai' });
+	await field.getByRole('spinbutton').first().click();
+	await page.keyboard.type('15082026');
+	await expect(field).toContainText('15');
+	await field.getByRole('button', { name: 'Buka kalender' }).click();
+	await page.getByRole('button', { name: 'Hapus' }).click();
+	// Isi satu baris agar tombol Simpan aktif, lalu simpan tanpa tanggal.
+	const firstDebit = page.getByLabel(/^Debit /).first();
+	const firstCredit = page.getByLabel(/^Kredit /).nth(1);
+	await firstDebit.fill('1000');
+	await firstCredit.fill('1000');
+	await page.getByRole('button', { name: 'Simpan' }).click();
+	await expect(page.getByText('Tanggal wajib diisi')).toBeVisible();
+});
