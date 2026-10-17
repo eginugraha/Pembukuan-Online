@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { E2E_PASSWORD } from '../../playwright.config';
+import { E2E_CHARTS_EMAIL, E2E_PASSWORD } from '../../playwright.config';
 
 test.beforeEach(async ({ page }) => {
 	await page.goto('/login');
-	await page.getByLabel('Email').fill('admin@jurnalku.local');
+	await page.getByLabel('Email').fill(E2E_CHARTS_EMAIL);
 	await page.getByLabel('Password').fill(E2E_PASSWORD);
 	await page.getByRole('button', { name: 'Masuk' }).click();
 	await expect(page).toHaveURL(/\/dashboard$/);
@@ -11,9 +11,7 @@ test.beforeEach(async ({ page }) => {
 
 test('profit & loss chart or empty state is shown, tab title is branded', async ({ page }) => {
 	await expect(page).toHaveTitle('Dashboard · pena');
-	const chart = page.getByRole('group', { name: /Laba Rugi/ });
-	const empty = page.getByText('Belum ada jurnal di tahun buku ini');
-	await expect(chart.or(empty).first()).toBeVisible();
+	await expect(page.getByRole('group', { name: /Laba Rugi/ })).toBeVisible();
 });
 
 test('composition toggle switches to revenue', async ({ page }) => {
@@ -32,7 +30,7 @@ test('no horizontal scroll at 390px', async ({ page }) => {
 
 test('month link opens the income statement', async ({ page }) => {
 	const link = page.locator('a[href^="/income-statement?from="]').first();
-	if ((await link.count()) === 0) test.skip(true, 'no chart month links without journals');
+	await expect(link).toBeVisible();
 	await link.click();
 	await expect(page).toHaveURL(/\/income-statement\?from=/);
 });
@@ -41,7 +39,7 @@ test('chart text stays readable at 390px', async ({ page }) => {
 	await page.setViewportSize({ width: 390, height: 800 });
 	await page.reload();
 	const label = page.locator('svg[role="group"] text', { hasText: /^Jan|Feb|Mar|Apr|Mei|Jun|Jul|Agu|Sep|Okt|Nov|Des/ }).first();
-	if ((await label.count()) === 0) test.skip(true, 'empty state without journals');
+	await expect(label).toBeVisible();
 	const size = await label.evaluate((el) => {
 		const svg = (el as unknown as SVGTextElement).ownerSVGElement!;
 		const scale = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;

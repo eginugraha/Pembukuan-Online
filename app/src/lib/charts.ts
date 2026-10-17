@@ -13,6 +13,11 @@ export function niceMax(values: number[]): number {
 	return Math.max(1, step * base);
 }
 
+/** Magnitudo negatif terbesar di semua seri (0 bila tak ada nilai negatif). */
+export function negExtent(...series: number[][]): number {
+	return Math.max(0, ...series.flat().map((v) => (v < 0 ? -v : 0)));
+}
+
 /**
  * Batang per nilai dalam area setinggi `height`. `max` batas atas positif; ruang ke bawah
  * disediakan sebesar nilai negatif terbesar (atau `negMax` bila diberikan agar beberapa seri sejajar).

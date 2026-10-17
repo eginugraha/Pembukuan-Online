@@ -1,11 +1,15 @@
 import { describe, expect, test } from 'bun:test';
-import { barGeometry, donutArcs, linePath, monthHref, monthLabel, niceMax } from '$lib/charts';
+import { barGeometry, donutArcs, linePath, monthHref, monthLabel, negExtent, niceMax } from '$lib/charts';
 
 describe('charts', () => {
 	test('niceMax', () => {
 		expect(niceMax([0, 0])).toBe(1);
 		expect(niceMax([1234567])).toBeGreaterThanOrEqual(1234567);
 		expect(niceMax([-3000, 10])).toBeGreaterThanOrEqual(3000);
+	});
+	test('negExtent is the largest negative magnitude across all series', () => {
+		expect(negExtent([1, 2], [3])).toBe(0);
+		expect(negExtent([100, -50], [-300, 5], [-20])).toBe(300);
 	});
 	test('barGeometry draws negatives down from the zero line', () => {
 		const [pos, neg] = barGeometry([100, -50], 100, 100);

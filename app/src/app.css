@@ -60,8 +60,8 @@
 	--chart-1: var(--green);
 	--chart-2: var(--deep);
 	--chart-3: var(--lime-2);
-	--chart-4: var(--amber);
-	--chart-5: #94a3a0;
+	--chart-4: #2f9e8f;
+	--chart-5: #8fd0c4;
 	--radius: 0.875rem;
 	--sidebar: #ffffff;
 	--sidebar-foreground: var(--ink);
@@ -124,8 +124,8 @@
 	--chart-1: var(--green);
 	--chart-2: var(--lime);
 	--chart-3: var(--lime-2);
-	--chart-4: var(--amber);
-	--chart-5: #6b7a6e;
+	--chart-4: #3bb3a2;
+	--chart-5: #9fdcd0;
 	--sidebar: #0e130f;
 	--sidebar-foreground: var(--ink);
 	--sidebar-primary: var(--lime);

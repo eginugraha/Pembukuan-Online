@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { barGeometry, monthFull as full, monthHref as href, monthLabel, niceMax } from '$lib/charts';
+	import { barGeometry, monthFull as full, monthHref as href, monthLabel, negExtent, niceMax } from '$lib/charts';
 	import { formatIdr, formatIdrShort } from '$lib/money';
 
 	type Row = { month: string; revenue: string; expense: string; netProfit: string; future: boolean };
 	let { rows }: { rows: Row[] } = $props();
 
-	let width = $state(720);
+	let width = $state(360);
 	const W = $derived(Math.max(width, 300));
 	const H = 260;
 	const left = 52;
@@ -19,7 +19,7 @@
 	);
 	const empty = $derived(nums.every((n) => n.rev === 0 && n.exp === 0 && n.net === 0));
 	const max = $derived(niceMax(nums.flatMap((n) => [n.rev, n.exp, n.net]).filter((v) => v > 0)));
-	const negMax = $derived(Math.max(0, ...nums.map((n) => (n.net < 0 ? -n.net : 0))));
+	const negMax = $derived(negExtent(nums.map((n) => n.rev), nums.map((n) => n.exp), nums.map((n) => n.net)));
 	const revG = $derived(barGeometry(nums.map((n) => n.rev), plotH, max, negMax));
 	const expG = $derived(barGeometry(nums.map((n) => n.exp), plotH, max, negMax));
 	const scale = $derived(plotH / (max + negMax));
@@ -113,12 +113,13 @@
 					<text x="8" y="16" font-size="11" font-weight="600" fill="var(--ink)">{full(r.month)}</text>
 					<text x="8" y="31" font-size="11" fill="var(--green)">Pendapatan {formatIdrShort(r.revenue)}</text>
 					<text x="8" y="44" font-size="11" fill="var(--destructive)">Beban {formatIdrShort(r.expense)}</text>
-					<text x="8" y="60" font-size="11" fill="var(--ink)">Laba {formatIdrShort(r.netProfit)}</text>
+					<text x="8" y="60" font-size="11" fill={Number(r.netProfit) < 0 ? 'var(--destructive)' : 'var(--ink)'}>Laba {Number(r.netProfit) < 0 ? `(${formatIdrShort(r.netProfit.replace('-', ''))})` : formatIdrShort(r.netProfit)}</text>
 				</g>
 			{/if}
 		</svg>
 
-		<table class="sr-only">
+		<div class="sr-only">
+			<table>
 			<caption>Laba Rugi per bulan</caption>
 			<thead><tr><th>Bulan</th><th>Pendapatan</th><th>Beban</th><th>Laba bersih</th></tr></thead>
 			<tbody>
@@ -127,6 +128,7 @@
 				{/each}
 			</tbody>
 		</table>
+		</div>
 	</div>
 
 	<ul class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">

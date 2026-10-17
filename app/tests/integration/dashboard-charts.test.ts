@@ -177,3 +177,21 @@ test('empty company dashboard does not fail', async () => {
 	expect(d.composition.revenue.slices).toEqual([]);
 	expect(d.composition.expense.total).toBe('0.00');
 });
+
+test('an OPENING journal with revenue/expense lines in the fiscal year counts in its month and matches the income statement', async () => {
+	const { companyId, bankAccountId } = await makeCompany();
+	const u = await makeUser();
+	await saveOpening(companyId, u.id, {
+		date: '2026-02-10',
+		lines: [
+			{ accountId: bankAccountId, debit: '3000000', credit: '0' },
+			{ accountId: await accountIdByCode(companyId, '5-2010'), debit: '500000', credit: '0' },
+			{ accountId: await accountIdByCode(companyId, '4-1001'), debit: '0', credit: '3500000' }
+		]
+	});
+	const d = await getDashboard(companyId, 'admin', TODAY);
+	const feb = d.profitLoss.find((m) => m.month === '2026-02')!;
+	expect(feb).toMatchObject({ revenue: '3500000.00', expense: '500000.00', netProfit: '3000000.00' });
+	const is = await getIncomeStatement(companyId, { from: '2026-02-01', to: '2026-02-28' });
+	expect(feb.netProfit).toBe(is.netProfit);
+});
