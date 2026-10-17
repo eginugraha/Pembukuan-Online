@@ -7,6 +7,7 @@
 	import X from '@lucide/svelte/icons/x';
 	import AppSidebar from '$lib/components/AppSidebar.svelte';
 	import ProfileMenu from '$lib/components/ProfileMenu.svelte';
+	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import { ROLE_LABELS } from '$lib/roles';
 
 	let { data, children } = $props();
@@ -139,7 +140,8 @@
 						<Plus class="size-4" /><span class="hidden sm:inline">Perusahaan baru</span>
 					</a>
 				{/if}
-				<div class="ml-auto">
+				<div class="ml-auto flex items-center gap-2">
+					<ThemeToggle />
 					<ProfileMenu name={ctx.user.name} image={ctx.user.image} {roleLabel} />
 				</div>
 			</header>

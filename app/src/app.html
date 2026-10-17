@@ -4,6 +4,17 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>Jurnalku</title>
+		<!-- Pasang tema sebelum halaman digambar (default gelap) agar tidak berkedip. Logika sama dengan src/lib/theme.ts. -->
+		<script>
+			(function () {
+				var m = 'dark';
+				try { m = localStorage.getItem('jk-theme') || 'dark'; } catch (e) {}
+				var d = m === 'dark' || (m === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+				var r = document.documentElement;
+				if (d) r.classList.add('dark'); else r.classList.remove('dark');
+				r.style.colorScheme = d ? 'dark' : 'light';
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
