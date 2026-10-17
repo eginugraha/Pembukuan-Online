@@ -147,6 +147,7 @@ export async function getDashboard(
 		}),
 		monthlyFlows(companyId, today),
 		getBalanceSheet(companyId, today),
+		// `balanced` tidak bergantung pada `from`, jadi awal bulan hanyalah rentang sembarang.
 		getTrialBalance(companyId, { from: monthRange(today).from, to: today }),
 		recentTransactions(companyId),
 		uploadActions(companyId, opening)

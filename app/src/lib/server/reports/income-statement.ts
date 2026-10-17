@@ -38,19 +38,18 @@ const SECTIONS: Array<{ key: IncomeSectionKey; title: string }> = [
 	{ key: 'tax', title: 'Beban Pajak Penghasilan' }
 ];
 
-/** Laporan Laba Rugi (format vertikal PSAK) untuk rentang tanggal; semua tipe jurnal ikut dihitung. */
-export async function getIncomeStatement(
-	companyId: string,
-	range: { from: string; to: string },
-	opts: { keep?: Set<string> } = {}
-): Promise<IncomeStatementView> {
-	const keep = opts.keep;
-	const accs: Acc[] = await db
+type Sums = Map<string, { debit: string; credit: string }>;
+
+async function loadAccounts(companyId: string): Promise<Acc[]> {
+	return db
 		.select({ id: accounts.id, code: accounts.code, name: accounts.name, type: accounts.type, parentId: accounts.parentId })
 		.from(accounts)
 		.where(eq(accounts.companyId, companyId))
 		.orderBy(accounts.code);
+}
 
+/** Jumlah debit/kredit per akun pada rentang; jurnal penutup tidak ikut dihitung. */
+async function loadSums(companyId: string, range: { from: string; to: string }): Promise<Sums> {
 	const rows = await db
 		.select({
 			accountId: journalLines.accountId,
@@ -68,8 +67,20 @@ export async function getIncomeStatement(
 			)
 		)
 		.groupBy(journalLines.accountId);
-	const sums = new Map(rows.map((r) => [r.accountId, r]));
+	return new Map(rows.map((r) => [r.accountId, r]));
+}
 
+/** Laporan Laba Rugi (format vertikal PSAK) untuk rentang tanggal; semua tipe jurnal ikut dihitung. */
+export async function getIncomeStatement(
+	companyId: string,
+	range: { from: string; to: string },
+	opts: { keep?: Set<string> } = {}
+): Promise<IncomeStatementView> {
+	const [accs, sums] = await Promise.all([loadAccounts(companyId), loadSums(companyId, range)]);
+	return buildView(accs, sums, range, opts.keep);
+}
+
+function buildView(accs: Acc[], sums: Sums, range: { from: string; to: string }, keep?: Set<string>): IncomeStatementView {
 	const byId = new Map(accs.map((a) => [a.id, a]));
 	const hasChildren = new Set(accs.map((a) => a.parentId).filter((p): p is string => p !== null));
 	// Grup level-1: leluhur yang induknya root; akun root atau anak root menjadi grupnya sendiri.
@@ -128,12 +139,9 @@ export async function getIncomeStatementComparative(
 	range: { from: string; to: string }
 ): Promise<{ current: IncomeStatementView; comparative: IncomeStatementView }> {
 	const compRange = { from: shiftYears(range.from, -1), to: shiftYears(range.to, -1) };
-	const [c1, p1] = await Promise.all([getIncomeStatement(companyId, range), getIncomeStatement(companyId, compRange)]);
+	const [accs, curSums, cmpSums] = await Promise.all([loadAccounts(companyId), loadSums(companyId, range), loadSums(companyId, compRange)]);
 	const keep = new Set<string>();
-	for (const v of [c1, p1]) for (const s of v.sections) for (const l of s.lines) keep.add(l.accountId);
-	const [current, comparative] = await Promise.all([
-		getIncomeStatement(companyId, range, { keep }),
-		getIncomeStatement(companyId, compRange, { keep })
-	]);
-	return { current, comparative };
+	for (const [sums, r] of [[curSums, range], [cmpSums, compRange]] as const)
+		for (const s of buildView(accs, sums, r).sections) for (const l of s.lines) keep.add(l.accountId);
+	return { current: buildView(accs, curSums, range, keep), comparative: buildView(accs, cmpSums, compRange, keep) };
 }

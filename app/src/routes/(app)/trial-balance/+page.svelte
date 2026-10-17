@@ -27,7 +27,7 @@
 	{/snippet}
 </PageHeader>
 
-<PeriodFilter from={tb.from} to={tb.to} defaults={data.defaults} extraActive={data.closing}>
+<PeriodFilter from={tb.from} to={tb.to} defaults={data.defaults} rangeError={data.rangeError} extraActive={data.closing}>
 	{#snippet extra()}
 		<div class="w-56">
 			<span class="text-xs font-semibold text-ink/70">Jurnal penutup</span>

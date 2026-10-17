@@ -88,6 +88,11 @@ test('comparative is the same period one year earlier with identical rows', asyn
 		expect(comparative.sections[i].lines.map((l) => l.accountId)).toEqual(sec.lines.map((l) => l.accountId))
 	);
 	expect(comparative.netProfit).toBe('0.00');
+	// Tahun pembanding kosong, tetapi baris yang ada di tahun berjalan tetap tampil dengan nilai 0.
+	const comparativeLines = comparative.sections.flatMap((sec) => sec.lines);
+	expect(comparativeLines.length).toBeGreaterThan(0);
+	expect(comparativeLines.every((l) => l.amount === '0.00')).toBe(true);
+	expect(comparative.sections.find((sec) => sec.key === 'revenue')!.lines.some((l) => l.amount === '0.00')).toBe(true);
 });
 
 test('non-January fiscal year: period is whatever range is passed', async () => {

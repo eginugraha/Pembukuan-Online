@@ -11,15 +11,15 @@
 	const cmp = $derived(data.comparative);
 </script>
 
-{#snippet section(s: IncomeSection, p: IncomeSection)}
+{#snippet section(s: IncomeSection, p: IncomeSection | undefined)}
 	<Table.Row class="bg-pale/60">
 		<Table.Cell colspan={3} class="font-semibold text-deep">{s.title}</Table.Cell>
 	</Table.Row>
-	{#each s.lines as l, i (l.accountId)}
+	{#each s.lines as l (l.accountId)}
 		<Table.Row>
 			<Table.Cell class="whitespace-normal pl-8">{l.code} {l.name}</Table.Cell>
 			<Table.Cell class="text-right tabular-nums">{formatAccounting(l.amount)}</Table.Cell>
-			<Table.Cell class="text-right tabular-nums">{formatAccounting(p.lines[i].amount)}</Table.Cell>
+			<Table.Cell class="text-right tabular-nums">{formatAccounting(p?.lines.find((x) => x.accountId === l.accountId)?.amount ?? '0.00')}</Table.Cell>
 		</Table.Row>
 	{/each}
 	{#if s.lines.length === 0}
@@ -28,7 +28,7 @@
 	<Table.Row class="font-medium">
 		<Table.Cell class="whitespace-normal">Jumlah {s.title}</Table.Cell>
 		<Table.Cell class="border-t text-right tabular-nums">{formatAccounting(s.total)}</Table.Cell>
-		<Table.Cell class="border-t text-right tabular-nums">{formatAccounting(p.total)}</Table.Cell>
+		<Table.Cell class="border-t text-right tabular-nums">{formatAccounting(p?.total ?? '0.00')}</Table.Cell>
 	</Table.Row>
 {/snippet}
 
@@ -42,7 +42,7 @@
 
 <PageHeader title="Laba Rugi" description="{data.companyName} · {formatPeriod(cur.from, cur.to)}" />
 
-<PeriodFilter from={cur.from} to={cur.to} defaults={data.defaults} />
+<PeriodFilter from={cur.from} to={cur.to} defaults={data.defaults} rangeError={data.rangeError} />
 
 <div class="max-w-4xl">
 	<div class="panel overflow-x-auto px-2 py-1">
@@ -55,8 +55,8 @@
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
-				{#each cur.sections as s, i (s.key)}
-					{@render section(s, cmp.sections[i])}
+				{#each cur.sections as s (s.key)}
+					{@render section(s, cmp.sections.find((x) => x.key === s.key))}
 					{#if s.key === 'cogs'}
 						{@render subtotal('Laba Kotor', cur.grossProfit, cmp.grossProfit)}
 					{:else if s.key === 'opex'}

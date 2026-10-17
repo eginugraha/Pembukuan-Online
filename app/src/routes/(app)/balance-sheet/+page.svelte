@@ -15,41 +15,42 @@
 	const balanced = $derived(cur.balanced && cmp.balanced);
 	const badDates = $derived([...(cur.balanced ? [] : [cur.asOf]), ...(cmp.balanced ? [] : [cmp.asOf])].map(formatDateLong).join(' dan '));
 
+	const keyOf = (l: BalanceSheetLine) => l.accountId ?? l.name;
 	const indent = (depth: number) => `padding-left: ${1 + depth * 1.25}rem`;
 </script>
 
-{#snippet line(l: BalanceSheetLine, p: BalanceSheetLine, depth: number)}
+{#snippet line(l: BalanceSheetLine, p: BalanceSheetLine | undefined, depth: number)}
 	{#if l.children.length === 0}
 		<Table.Row>
 			<Table.Cell class="whitespace-normal" style={indent(depth)}>{l.name}</Table.Cell>
 			<Table.Cell class="text-right tabular-nums">{amount(l.amount)}</Table.Cell>
-			<Table.Cell class="text-right tabular-nums">{amount(p.amount)}</Table.Cell>
+			<Table.Cell class="text-right tabular-nums">{amount(p?.amount ?? '0.00')}</Table.Cell>
 		</Table.Row>
 	{:else}
 		<Table.Row>
 			<Table.Cell class="whitespace-normal" style={indent(depth)} colspan={3}>{l.name}</Table.Cell>
 		</Table.Row>
-		{#each l.children as c, i (c.accountId ?? c.name)}{@render line(c, p.children[i], depth + 1)}{/each}
+		{#each l.children as c (keyOf(c))}{@render line(c, p?.children.find((x) => keyOf(x) === keyOf(c)), depth + 1)}{/each}
 		<Table.Row class="text-ink/70">
 			<Table.Cell class="whitespace-normal" style={indent(depth)}>Jumlah {l.name}</Table.Cell>
 			<Table.Cell class="border-t text-right tabular-nums">{amount(l.amount)}</Table.Cell>
-			<Table.Cell class="border-t text-right tabular-nums">{amount(p.amount)}</Table.Cell>
+			<Table.Cell class="border-t text-right tabular-nums">{amount(p?.amount ?? '0.00')}</Table.Cell>
 		</Table.Row>
 	{/if}
 {/snippet}
 
-{#snippet section(s: BalanceSheetSection, p: BalanceSheetSection)}
+{#snippet section(s: BalanceSheetSection, p: BalanceSheetSection | undefined)}
 	<Table.Row class="bg-pale/60">
 		<Table.Cell colspan={3} class="font-semibold text-deep">{s.title}</Table.Cell>
 	</Table.Row>
-	{#each s.lines as l, i (l.accountId ?? l.name)}{@render line(l, p.lines[i], 1)}{/each}
+	{#each s.lines as l (keyOf(l))}{@render line(l, p?.lines.find((x) => keyOf(x) === keyOf(l)), 1)}{/each}
 	{#if s.lines.length === 0}
 		<Table.Row><Table.Cell colspan={3} class="pl-8 text-muted-foreground/70">—</Table.Cell></Table.Row>
 	{/if}
 	<Table.Row class="font-medium">
 		<Table.Cell class="whitespace-normal">Jumlah {s.title}</Table.Cell>
 		<Table.Cell class="border-t text-right tabular-nums">{amount(s.total)}</Table.Cell>
-		<Table.Cell class="border-t text-right tabular-nums">{amount(p.total)}</Table.Cell>
+		<Table.Cell class="border-t text-right tabular-nums">{amount(p?.total ?? '0.00')}</Table.Cell>
 	</Table.Row>
 {/snippet}
 

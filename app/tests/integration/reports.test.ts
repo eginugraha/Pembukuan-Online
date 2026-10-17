@@ -77,3 +77,21 @@ test('ledger for foreign account is 404', async () => {
 	const other = await makeCompany('PT Lain');
 	await expect(getLedger(companyId, other.bankAccountId, '2026-08-01', '2026-08-31')).rejects.toMatchObject({ code: 'not_found' });
 });
+
+test('trial balance still shows an account whose opening and movement net to a zero closing', async () => {
+	const { companyId, bankAccountId } = await makeCompany();
+	const u = await makeUser();
+	await saveOpening(companyId, u.id, {
+		date: '2026-08-01',
+		lines: [
+			{ accountId: bankAccountId, debit: '1000000', credit: '0' },
+			{ accountId: await accountIdByCode(companyId, '3-1001'), debit: '0', credit: '1000000' }
+		]
+	});
+	const { uploadId } = await makeUpload(companyId, u.id, [{ date: '2026-08-02', description: 'BAYAR PENUH', debit: '1000000' }]);
+	await db.update(transactions).set({ isConfirmed: true, accountId: await accountIdByCode(companyId, '5-2010') }).where(eq(transactions.description, 'BAYAR PENUH'));
+	await generateJournal(companyId, uploadId, u.id);
+	const tb = await getTrialBalance(companyId, { from: '2026-08-02', to: '2026-08-31' });
+	const bank = tb.rows.find((r) => r.accountId === bankAccountId);
+	expect(bank).toMatchObject({ openingDebit: '1000000.00', credit: '1000000.00', closingDebit: '0.00', closingCredit: '0.00' });
+});

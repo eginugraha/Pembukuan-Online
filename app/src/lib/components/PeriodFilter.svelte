@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { untrack, type Snippet } from 'svelte';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
+	import { Label } from '$lib/components/ui/label/index.js';
 	import DateField from '$lib/components/DateField.svelte';
 	import FilterActions from '$lib/components/FilterActions.svelte';
 
@@ -9,18 +10,32 @@
 		to,
 		defaults,
 		extra,
-		extraActive = false
-	}: { from: string; to: string; defaults: { from: string; to: string }; extra?: Snippet; extraActive?: boolean } = $props();
+		extraActive = false,
+		rangeError = null
+	}: {
+		from: string;
+		to: string;
+		defaults: { from: string; to: string };
+		extra?: Snippet;
+		extraActive?: boolean;
+		/** Pesan dari server bila rentang di URL tidak valid (form tetap tampil dengan rentang bawaan). */
+		rangeError?: string | null;
+	} = $props();
 
 	let fromValue = $state(untrack(() => from));
 	let toValue = $state(untrack(() => to));
-	let error = $state('');
+	let error = $state(untrack(() => rangeError ?? ''));
 	$effect(() => {
 		fromValue = from;
 		toValue = to;
-		error = '';
+		error = rangeError ?? '';
 	});
 	const active = $derived(from !== defaults.from || to !== defaults.to || extraActive);
+
+	// <label for> tidak memfokuskan kelompok segmen tanggal (bukan kontrol native); arahkan ke segmen pertama.
+	function focusFirstSegment(id: string) {
+		document.getElementById(id)?.querySelector<HTMLElement>('[role="spinbutton"]')?.focus();
+	}
 
 	function onsubmit(e: SubmitEvent) {
 		if (fromValue && toValue && fromValue > toValue) {
@@ -32,7 +47,7 @@
 
 <form method="GET" class="panel mb-5 flex flex-wrap items-end gap-3 p-4" {onsubmit}>
 	<div>
-		<span class="text-xs font-semibold text-ink/70">Dari</span>
+		<Label for="period-from" class="block text-xs leading-normal font-semibold text-ink/70" onclick={() => focusFirstSegment('period-from')}>Dari</Label>
 		<DateField
 			name="from"
 			bind:value={fromValue}
@@ -48,7 +63,10 @@
 			</p>
 		{/if}
 	</div>
-	<div><span class="text-xs font-semibold text-ink/70">Sampai</span><DateField name="to" bind:value={toValue} aria-label="Sampai" class="mt-1" /></div>
+	<div>
+		<Label for="period-to" class="block text-xs leading-normal font-semibold text-ink/70" onclick={() => focusFirstSegment('period-to')}>Sampai</Label>
+		<DateField name="to" bind:value={toValue} id="period-to" aria-label="Sampai" class="mt-1" />
+	</div>
 	{@render extra?.()}
 	<FilterActions {active} />
 </form>

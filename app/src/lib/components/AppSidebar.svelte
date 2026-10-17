@@ -4,13 +4,13 @@
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import History from '@lucide/svelte/icons/history';
 	import Landmark from '@lucide/svelte/icons/landmark';
-	import TrendingUp from '@lucide/svelte/icons/trending-up';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
-	import Lock from '@lucide/svelte/icons/lock';
 	import Library from '@lucide/svelte/icons/library';
 	import ListChecks from '@lucide/svelte/icons/list-checks';
 	import ListTree from '@lucide/svelte/icons/list-tree';
+	import Lock from '@lucide/svelte/icons/lock';
 	import Scale from '@lucide/svelte/icons/scale';
+	import TrendingUp from '@lucide/svelte/icons/trending-up';
 	import Upload from '@lucide/svelte/icons/upload';
 	import Users from '@lucide/svelte/icons/users';
 	import Wallet from '@lucide/svelte/icons/wallet';

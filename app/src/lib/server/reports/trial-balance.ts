@@ -47,7 +47,7 @@ export async function getTrialBalance(
 		const debit = D(s.debit);
 		const credit = D(s.credit);
 		const closing = opening.plus(debit).minus(credit);
-		if (opening.isZero() && debit.isZero() && credit.isZero() && closing.isZero()) continue;
+		if (opening.isZero() && debit.isZero() && credit.isZero()) continue;
 		rows.push({
 			accountId: s.accountId,
 			code: s.code,

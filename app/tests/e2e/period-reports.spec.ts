@@ -57,8 +57,9 @@ test('income statement shows PSAK sections with a comparative period', async ({ 
 	await login(page);
 	await page.goto('/income-statement?from=2026-01-01&to=2026-12-31');
 	await expect(page.getByRole('link', { name: 'Laba Rugi' })).toBeVisible();
+	const table = page.getByRole('table');
 	for (const t of ['Pendapatan Usaha', 'Laba Kotor', 'Laba Usaha', 'Laba Sebelum Pajak', 'Laba Bersih'])
-		await expect(page.getByText(t, { exact: true }).first()).toBeVisible();
+		await expect(table.getByRole('cell', { name: t, exact: true })).toBeVisible();
 	await expect(page.getByRole('columnheader', { name: /2026/ })).toBeVisible();
 	await expect(page.getByRole('columnheader', { name: /2025/ })).toBeVisible();
 	await page.getByRole('link', { name: 'Reset' }).click();
@@ -72,4 +73,34 @@ test('trial balance can show the state after closing journals', async ({ page })
 	const reset = page.getByRole('link', { name: 'Reset' });
 	await expect(reset).toBeVisible();
 	await expect(reset).toHaveAttribute('href', '/trial-balance');
+});
+
+test('an inverted range in the URL shows the form with a message instead of an error page', async ({ page }) => {
+	await login(page);
+	await page.goto('/trial-balance?from=2026-02-01&to=2026-01-01');
+	await expect(page.getByText('Tanggal awal harus sebelum tanggal akhir')).toBeVisible();
+	await expect(page.getByRole('group', { name: 'Dari' })).toBeVisible();
+	await expect(page.getByRole('group', { name: 'Sampai' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Tampilkan' })).toBeVisible();
+	await expect(page.getByRole('columnheader', { name: 'Saldo Awal' })).toBeVisible();
+});
+
+test('clicking a period caption focuses the first segment of its date field', async ({ page }) => {
+	await login(page);
+	await page.goto('/trial-balance');
+	await page.getByText('Sampai', { exact: true }).click();
+	await expect(page.getByRole('group', { name: 'Sampai' }).getByRole('spinbutton').first()).toBeFocused();
+});
+
+test.describe('390px layout has no page-level horizontal scroll', () => {
+	test.use({ viewport: { width: 390, height: 844 } });
+	for (const path of ['/trial-balance', '/balance-sheet', '/income-statement', '/settings/closing']) {
+		test(path, async ({ page }) => {
+			await login(page);
+			await page.goto(path);
+			await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+			const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+			expect(overflow).toBeLessThanOrEqual(0);
+		});
+	}
 });

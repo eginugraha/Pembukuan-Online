@@ -9,9 +9,10 @@ beforeEach(resetDb);
 const d = { from: '2026-01-01', to: '2026-10-31' };
 
 test('rangeParams menolak from > to', () => {
+	const run = () => rangeParams(new URL('http://x/?from=2026-02-01&to=2026-01-01'), d, 'JANUARY');
+	expect(run).toThrow();
 	try {
-		rangeParams(new URL('http://x/?from=2026-02-01&to=2026-01-01'), d, 'JANUARY');
-		throw new Error('tidak melempar');
+		run();
 	} catch (e) {
 		expect(e).toMatchObject({ code: 'invalid_range', status: 400 });
 	}
