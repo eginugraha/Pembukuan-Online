@@ -34,3 +34,11 @@ test('a start date after the end date is blocked with a message', async ({ page 
 	await expect(dari).toHaveAttribute('aria-invalid', 'true');
 	await expect(page).toHaveURL(/from=2026-01-01&to=2026-01-31$/);
 });
+
+test('balance sheet shows a comparative column', async ({ page }) => {
+	await login(page);
+	await page.goto('/balance-sheet?as_of=2026-12-31');
+	await expect(page.getByRole('columnheader', { name: '31 Desember 2026' })).toBeVisible();
+	await expect(page.getByRole('columnheader', { name: '31 Desember 2025' })).toBeVisible();
+	await expect(page.getByText('JUMLAH ASET', { exact: true })).toBeVisible();
+});

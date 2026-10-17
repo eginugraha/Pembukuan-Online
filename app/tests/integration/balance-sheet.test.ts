@@ -4,7 +4,7 @@ import { db } from '../../src/lib/server/db';
 import { companies, transactions } from '../../src/lib/server/db/schema';
 import { generateJournal } from '../../src/lib/server/journal/generate';
 import { saveOpening } from '../../src/lib/server/journal/opening';
-import { getBalanceSheet, type BalanceSheetLine } from '../../src/lib/server/reports/balance-sheet';
+import { getBalanceSheet, getBalanceSheetComparative, type BalanceSheetLine } from '../../src/lib/server/reports/balance-sheet';
 import { GET } from '../../src/routes/api/reports/balance-sheet/+server';
 import { accountIdByCode, addMember, contextFor, makeCompany, makeUpload, makeUser } from './factory';
 import { call, fakeEvent } from './event';
@@ -115,7 +115,37 @@ test('API: viewer can read, anonymous is 401', async () => {
 	await addMember(v.id, companyId, 'viewer');
 	const res = await call(GET, fakeEvent({ ctx: await contextFor(v), path: '/api/reports/balance-sheet?as_of=2026-08-31' }));
 	expect(res.status).toBe(200);
-	expect(res.body.balanced).toBe(true);
-	expect(res.body.asOf).toBe('2026-08-31');
+	expect(res.body.current.balanced).toBe(true);
+	expect(res.body.current.asOf).toBe('2026-08-31');
 	expect((await call(GET, fakeEvent({ ctx: null }))).status).toBe(401);
+});
+
+test('comparative column is the previous fiscal year end with identical row shape', async () => {
+	const { companyId } = await booksWithActivity();
+	const { current, comparative } = await getBalanceSheetComparative(companyId, '2026-12-31');
+	expect(comparative.asOf).toBe('2025-12-31');
+	expect(Object.keys(flat(comparative.equity.lines))).toEqual(Object.keys(flat(current.equity.lines)));
+	expect(Object.keys(flat(comparative.assets.current.lines))).toEqual(Object.keys(flat(current.assets.current.lines)));
+	expect(Object.values(flat(comparative.equity.lines)).every((v) => v === '0.00')).toBe(true);
+	expect(Object.values(flat(comparative.assets.current.lines)).every((v) => v === '0.00')).toBe(true);
+	expect(comparative.assets.total).toBe('0.00');
+	expect(current.balanced).toBe(true);
+	expect(comparative.balanced).toBe(true);
+});
+
+test('comparative follows a non-January fiscal year', async () => {
+	const { companyId } = await booksWithActivity();
+	await db.update(companies).set({ fiscalYear: 'JULY' }).where(eq(companies.id, companyId));
+	const { comparative } = await getBalanceSheetComparative(companyId, '2026-08-31');
+	expect(comparative.asOf).toBe('2026-06-30');
+});
+
+test('API returns current and comparative', async () => {
+	const { companyId } = await booksWithActivity();
+	const v = await makeUser();
+	await addMember(v.id, companyId, 'viewer');
+	const res = await call(GET, fakeEvent({ ctx: await contextFor(v), path: '/api/reports/balance-sheet?as_of=2026-12-31' }));
+	expect(res.status).toBe(200);
+	expect(res.body.current.asOf).toBe('2026-12-31');
+	expect(res.body.comparative.asOf).toBe('2025-12-31');
 });

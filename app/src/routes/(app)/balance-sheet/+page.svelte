@@ -1,101 +1,112 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
-	import { formatDate, monthRange, todayIso } from '$lib/dates';
+	import { formatDateLong } from '$lib/periods';
 	import { formatIdr } from '$lib/money';
 	import type { BalanceSheetLine, BalanceSheetSection } from '$lib/server/reports/balance-sheet';
 	import DateField from '$lib/components/DateField.svelte';
 	import FilterActions from '$lib/components/FilterActions.svelte';
 
 	let { data } = $props();
-	const month = monthRange(todayIso());
-	const bs = $derived(data.bs);
-	const active = $derived(bs.asOf !== month.to);
+	const cur = $derived(data.current);
+	const cmp = $derived(data.comparative);
+	const active = $derived(cur.asOf !== data.defaultAsOf);
+	const balanced = $derived(cur.balanced && cmp.balanced);
+	const badDates = $derived([...(cur.balanced ? [] : [cur.asOf]), ...(cmp.balanced ? [] : [cmp.asOf])].map(formatDateLong).join(' dan '));
+	// Nilai awal field tanggal; DateField dikendalikan lewat URL (form GET).
+	const asOfValue = untrack(() => data.current.asOf);
 
 	// Format laporan keuangan: angka negatif (mis. akumulasi penyusutan) dalam kurung.
 	const amount = (v: string) => (v.startsWith('-') ? `(${formatIdr(v.slice(1))})` : formatIdr(v));
 	const indent = (depth: number) => `padding-left: ${1 + depth * 1.25}rem`;
 </script>
 
-{#snippet line(l: BalanceSheetLine, depth: number)}
+{#snippet line(l: BalanceSheetLine, p: BalanceSheetLine, depth: number)}
 	{#if l.children.length === 0}
 		<Table.Row>
 			<Table.Cell class="whitespace-normal" style={indent(depth)}>{l.name}</Table.Cell>
 			<Table.Cell class="text-right tabular-nums">{amount(l.amount)}</Table.Cell>
+			<Table.Cell class="text-right tabular-nums">{amount(p.amount)}</Table.Cell>
 		</Table.Row>
 	{:else}
 		<Table.Row>
-			<Table.Cell class="whitespace-normal" style={indent(depth)} colspan={2}>{l.name}</Table.Cell>
+			<Table.Cell class="whitespace-normal" style={indent(depth)} colspan={3}>{l.name}</Table.Cell>
 		</Table.Row>
-		{#each l.children as c (c.accountId)}{@render line(c, depth + 1)}{/each}
+		{#each l.children as c, i (c.accountId ?? c.name)}{@render line(c, p.children[i], depth + 1)}{/each}
 		<Table.Row class="text-ink/70">
 			<Table.Cell class="whitespace-normal" style={indent(depth)}>Jumlah {l.name}</Table.Cell>
 			<Table.Cell class="border-t text-right tabular-nums">{amount(l.amount)}</Table.Cell>
+			<Table.Cell class="border-t text-right tabular-nums">{amount(p.amount)}</Table.Cell>
 		</Table.Row>
 	{/if}
 {/snippet}
 
-{#snippet section(s: BalanceSheetSection)}
+{#snippet section(s: BalanceSheetSection, p: BalanceSheetSection)}
 	<Table.Row class="bg-pale/60">
-		<Table.Cell colspan={2} class="font-semibold text-deep">{s.title}</Table.Cell>
+		<Table.Cell colspan={3} class="font-semibold text-deep">{s.title}</Table.Cell>
 	</Table.Row>
-	{#each s.lines as l (l.accountId ?? l.name)}{@render line(l, 1)}{/each}
+	{#each s.lines as l, i (l.accountId ?? l.name)}{@render line(l, p.lines[i], 1)}{/each}
 	{#if s.lines.length === 0}
-		<Table.Row><Table.Cell colspan={2} class="pl-8 text-muted-foreground/70">—</Table.Cell></Table.Row>
+		<Table.Row><Table.Cell colspan={3} class="pl-8 text-muted-foreground/70">—</Table.Cell></Table.Row>
 	{/if}
 	<Table.Row class="font-medium">
 		<Table.Cell class="whitespace-normal">Jumlah {s.title}</Table.Cell>
 		<Table.Cell class="border-t text-right tabular-nums">{amount(s.total)}</Table.Cell>
+		<Table.Cell class="border-t text-right tabular-nums">{amount(p.total)}</Table.Cell>
 	</Table.Row>
 {/snippet}
 
-{#snippet grandTotal(label: string, value: string)}
+{#snippet grandTotal(label: string, value: string, prev: string)}
 	<Table.Row class="total-row">
 		<Table.Cell class="whitespace-normal">{label}</Table.Cell>
 		<Table.Cell class="text-right tabular-nums">{amount(value)}</Table.Cell>
+		<Table.Cell class="text-right tabular-nums">{amount(prev)}</Table.Cell>
 	</Table.Row>
 {/snippet}
 
-<PageHeader title="Laporan Posisi Keuangan" description="Per {formatDate(bs.asOf)} · tahun buku mulai {formatDate(bs.fiscalYearStart)}">
+<PageHeader title="Laporan Posisi Keuangan" description="{data.companyName} · Per {formatDateLong(cur.asOf)} dan {formatDateLong(cmp.asOf)}">
 	{#snippet actions()}
-		<Badge variant={bs.balanced ? 'success' : 'destructive'}>{bs.balanced ? 'Balance' : 'Tidak balance'}</Badge>
+		<Badge variant={balanced ? 'success' : 'destructive'}>{balanced ? 'Balance' : 'Tidak balance'}</Badge>
 	{/snippet}
 </PageHeader>
 
 <form method="GET" class="panel mb-5 flex flex-wrap items-end gap-3 p-4">
-	<div><span class="text-xs font-semibold text-ink/70">Per tanggal</span><DateField name="as_of" value={bs.asOf} aria-label="Per tanggal" class="mt-1" /></div>
+	<div><span class="text-xs font-semibold text-ink/70">Per tanggal</span><DateField name="as_of" value={asOfValue} aria-label="Per tanggal" class="mt-1" /></div>
 	<FilterActions active={active} />
 </form>
 
-<div class="max-w-3xl">
-	<div class="panel px-2 py-1">
+<div class="max-w-4xl">
+	<div class="panel overflow-x-auto px-2 py-1">
 	<Table.Root>
 		<Table.Header>
 			<Table.Row>
 				<Table.Head>Keterangan</Table.Head>
-				<Table.Head class="text-right">Rp</Table.Head>
+				<Table.Head class="text-right">{formatDateLong(cur.asOf)}</Table.Head>
+				<Table.Head class="text-right">{formatDateLong(cmp.asOf)}</Table.Head>
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
-			<Table.Row><Table.Cell colspan={2} class="pt-4 text-base font-bold tracking-wide text-ink">ASET</Table.Cell></Table.Row>
-			{@render section(bs.assets.current)}
-			{@render section(bs.assets.nonCurrent)}
-			{@render grandTotal('JUMLAH ASET', bs.assets.total)}
+			<Table.Row><Table.Cell colspan={3} class="pt-4 text-base font-bold tracking-wide text-ink">ASET</Table.Cell></Table.Row>
+			{@render section(cur.assets.current, cmp.assets.current)}
+			{@render section(cur.assets.nonCurrent, cmp.assets.nonCurrent)}
+			{@render grandTotal('JUMLAH ASET', cur.assets.total, cmp.assets.total)}
 
-			<Table.Row><Table.Cell colspan={2} class="pt-6 text-base font-bold tracking-wide text-ink">LIABILITAS DAN EKUITAS</Table.Cell></Table.Row>
-			{@render section(bs.liabilities.current)}
-			{@render section(bs.liabilities.nonCurrent)}
+			<Table.Row><Table.Cell colspan={3} class="pt-6 text-base font-bold tracking-wide text-ink">LIABILITAS DAN EKUITAS</Table.Cell></Table.Row>
+			{@render section(cur.liabilities.current, cmp.liabilities.current)}
+			{@render section(cur.liabilities.nonCurrent, cmp.liabilities.nonCurrent)}
 			<Table.Row class="font-medium">
 				<Table.Cell>Jumlah Liabilitas</Table.Cell>
-				<Table.Cell class="text-right tabular-nums">{amount(bs.liabilities.total)}</Table.Cell>
+				<Table.Cell class="text-right tabular-nums">{amount(cur.liabilities.total)}</Table.Cell>
+				<Table.Cell class="text-right tabular-nums">{amount(cmp.liabilities.total)}</Table.Cell>
 			</Table.Row>
-			{@render section(bs.equity)}
-			{@render grandTotal('JUMLAH LIABILITAS DAN EKUITAS', bs.totalLiabilitiesAndEquity)}
+			{@render section(cur.equity, cmp.equity)}
+			{@render grandTotal('JUMLAH LIABILITAS DAN EKUITAS', cur.totalLiabilitiesAndEquity, cmp.totalLiabilitiesAndEquity)}
 		</Table.Body>
 	</Table.Root>
 	</div>
-	{#if !bs.balanced}
-		<p class="mt-3 px-3 pb-3 text-sm text-destructive">Jumlah aset tidak sama dengan jumlah liabilitas dan ekuitas. Periksa saldo awal dan jurnal.</p>
+	{#if !balanced}
+		<p class="mt-3 px-3 pb-3 text-sm text-destructive">Jumlah aset tidak sama dengan jumlah liabilitas dan ekuitas per {badDates}. Periksa saldo awal dan jurnal.</p>
 	{/if}
 </div>

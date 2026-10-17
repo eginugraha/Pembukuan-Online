@@ -1,6 +1,6 @@
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { D, sumMoney, toMoney } from '../../money';
-import { fiscalYearStart } from '../../periods';
+import { fiscalYearStart, previousFiscalYearEnd } from '../../periods';
 import { db } from '../db';
 import { accounts, companies, journalEntries, journalLines } from '../db/schema';
 
@@ -28,7 +28,8 @@ const isCurrentGroup = (code: string) => /^\d+-1/.test(code);
  * Laporan Posisi Keuangan per `asOf` (format vertikal PSAK). Belum ada jurnal penutup, jadi
  * laba rugi dihitung dari akun pendapatan/beban: tahun buku berjalan dan tahun-tahun sebelumnya.
  */
-export async function getBalanceSheet(companyId: string, asOf: string) {
+export async function getBalanceSheet(companyId: string, asOf: string, opts: { keep?: Set<string> } = {}) {
+	const keep = opts.keep;
 	const company = await db.query.companies.findFirst({ where: eq(companies.id, companyId) });
 	const fyStart = fiscalYearStart(asOf, company?.fiscalYear ?? 'JANUARY');
 
@@ -64,7 +65,7 @@ export async function getBalanceSheet(companyId: string, asOf: string) {
 		const kids = (children.get(a.id) ?? []).map((c) => toLine(c, sign)).filter((l): l is BalanceSheetLine => l !== null);
 		const own = D(natural.get(a.id) ?? 0).times(sign);
 		const amount = sumMoney([own, ...kids.map((k) => k.amount)]);
-		if (amount.isZero() && kids.length === 0) return null;
+		if (amount.isZero() && kids.length === 0 && !keep?.has(a.id)) return null;
 		return { accountId: a.id, code: a.code, name: a.name, amount: toMoney(amount), children: kids };
 	};
 
@@ -104,7 +105,7 @@ export async function getBalanceSheet(companyId: string, asOf: string) {
 	const profitTotal = profitOf(natural);
 	const profitThisYear = profitOf(naturalThisYear);
 	const synthetic = (name: string, amount: ReturnType<typeof D>): BalanceSheetLine[] =>
-		amount.isZero() ? [] : [{ accountId: null, code: null, name, amount: toMoney(amount), children: [] }];
+		amount.isZero() && !keep?.has(name) ? [] : [{ accountId: null, code: null, name, amount: toMoney(amount), children: [] }];
 	const equity = section('Ekuitas', [
 		...level1('EQUITY').map((g) => toLine(g, -1)).filter((x): x is BalanceSheetLine => x !== null),
 		...synthetic('Laba (Rugi) Tahun-tahun Lalu', profitTotal.minus(profitThisYear)),
@@ -128,3 +129,35 @@ export async function getBalanceSheet(companyId: string, asOf: string) {
 }
 
 export type BalanceSheetView = Awaited<ReturnType<typeof getBalanceSheet>>;
+
+const lineKey = (l: BalanceSheetLine) => l.accountId ?? l.name;
+const collectKeys = (lines: BalanceSheetLine[], into: Set<string>) => {
+	for (const l of lines) {
+		into.add(lineKey(l));
+		collectKeys(l.children, into);
+	}
+};
+const allLines = (bs: BalanceSheetView) => [
+	bs.assets.current.lines,
+	bs.assets.nonCurrent.lines,
+	bs.liabilities.current.lines,
+	bs.liabilities.nonCurrent.lines,
+	bs.equity.lines
+];
+
+/** Posisi keuangan per `asOf` beserta pembanding akhir tahun buku sebelumnya, dengan bentuk baris identik. */
+export async function getBalanceSheetComparative(
+	companyId: string,
+	asOf: string
+): Promise<{ current: BalanceSheetView; comparative: BalanceSheetView }> {
+	const company = await db.query.companies.findFirst({ where: eq(companies.id, companyId) });
+	const compAsOf = previousFiscalYearEnd(asOf, company?.fiscalYear ?? 'JANUARY');
+	const [c1, p1] = await Promise.all([getBalanceSheet(companyId, asOf), getBalanceSheet(companyId, compAsOf)]);
+	const keep = new Set<string>();
+	for (const bs of [c1, p1]) for (const lines of allLines(bs)) collectKeys(lines, keep);
+	const [current, comparative] = await Promise.all([
+		getBalanceSheet(companyId, asOf, { keep }),
+		getBalanceSheet(companyId, compAsOf, { keep })
+	]);
+	return { current, comparative };
+}
