@@ -17,8 +17,8 @@
 
 <div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas p-4">
 	<!-- Aksen dekoratif lime di sudut, seperti referensi -->
-	<div class="pointer-events-none absolute -top-24 -right-24 size-72 rounded-full bg-[radial-gradient(circle_at_35%_35%,#e3fccd,var(--lime)_55%,var(--lime-2))] opacity-90 blur-[2px]"></div>
-	<div class="pointer-events-none absolute -bottom-28 -left-20 size-64 rounded-full bg-[radial-gradient(circle_at_60%_40%,#b6e08f,var(--green))] opacity-30"></div>
+	<div class="pointer-events-none absolute -top-24 -right-24 size-72 rounded-full bg-[image:var(--login-blob-1)] opacity-90 blur-[2px]"></div>
+	<div class="pointer-events-none absolute -bottom-28 -left-20 size-64 rounded-full bg-[image:var(--login-blob-2)] opacity-30"></div>
 
 	<Card.Root class="relative w-full max-w-sm rounded-[28px] px-2 py-8 shadow-[0_30px_60px_-30px_rgb(30_50_30/0.45)]">
 		<Card.Header class="items-center text-center">

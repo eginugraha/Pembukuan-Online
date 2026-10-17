@@ -36,7 +36,7 @@
 	</button>
 
 	{#if open}
-		<div class="profile-menu absolute top-full right-0 z-30 mt-2 w-60 rounded-2xl border border-border bg-white p-2 shadow-[0_20px_40px_-20px_rgb(20_40_15/0.35)]" role="menu">
+		<div class="profile-menu absolute top-full right-0 z-30 mt-2 w-60 rounded-2xl border border-border bg-popover p-2 shadow-[0_20px_40px_-20px_rgb(20_40_15/0.35)]" role="menu">
 			<div class="flex items-center gap-3 px-2 py-2">
 				<UserAvatar {name} {image} class="size-10 text-sm" />
 				<div class="min-w-0">

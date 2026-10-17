@@ -18,3 +18,10 @@ test('icon tiles are flat: no 3D gradient tiles remain', async () => {
 	}
 	expect(hits).toEqual([]);
 });
+
+test('dark theme tokens follow the approved palette', () => {
+	const dark = css.slice(css.indexOf('.dark {'), css.indexOf('}', css.indexOf('.dark {')));
+	for (const s of ['#0e130f', '#151c16', '#1b241c', '#263127', '#e7efe4', '#8d9a8f', '#8fd463', '#ff8a6b', 'color-scheme: dark']) {
+		expect(dark).toContain(s);
+	}
+});

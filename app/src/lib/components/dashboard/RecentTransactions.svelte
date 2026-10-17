@@ -22,7 +22,7 @@
 	);
 </script>
 
-<section class="rounded-[20px] bg-[#fbfcfb] p-5">
+<section class="rounded-[20px] bg-surface-soft p-5">
 	<div class="mb-2 flex items-center justify-between">
 		<h2 class="text-base font-bold">Transaksi Terbaru</h2>
 		<a href="/uploads" class="text-xs font-medium text-muted-foreground hover:text-deep">Riwayat upload →</a>

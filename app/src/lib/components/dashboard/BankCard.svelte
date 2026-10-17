@@ -5,7 +5,7 @@
 	let { bank, canSetBank }: { bank: DashboardView['bank']; canSetBank: boolean } = $props();
 </script>
 
-<div class="relative flex min-h-40 flex-col justify-between overflow-hidden rounded-[22px] bg-[linear-gradient(135deg,#f3ffe9_0%,#dff8c8_55%,#c9efb0_100%)] p-5 shadow-[0_22px_34px_-22px_var(--green)]">
+<div class="relative flex min-h-40 flex-col justify-between overflow-hidden rounded-[22px] border border-[var(--hero-bank-border)] bg-[image:var(--hero-bank)] p-5 shadow-[0_22px_34px_-22px_var(--green)]">
 	<div class="flex items-start justify-between gap-3">
 		<p class="text-xs font-semibold text-ink/80">Saldo {bank?.name ?? 'Bank'}</p>
 		{#if bank}

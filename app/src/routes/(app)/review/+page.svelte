@@ -100,7 +100,7 @@
 			{#each g.items as t (t.id)}
 				{@const c = choice(t)}
 				{@const isDebit = t.debit !== '0.00'}
-				<div class="grid gap-4 rounded-2xl border border-border bg-[#fbfcfb] p-4 transition-shadow hover:shadow-[0_12px_24px_-18px_rgb(30_60_25/0.4)] md:grid-cols-[minmax(0,1fr)_18rem]">
+				<div class="grid gap-4 rounded-2xl border border-border bg-surface-soft p-4 transition-shadow hover:shadow-[0_12px_24px_-18px_rgb(30_60_25/0.4)] md:grid-cols-[minmax(0,1fr)_18rem]">
 					<div>
 						<div class="flex flex-wrap items-center gap-2 text-sm">
 							<span class="text-muted-foreground">{formatDate(t.txnDate)}</span>

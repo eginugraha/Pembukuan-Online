@@ -83,10 +83,10 @@
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && closeDrawer()} />
 
-<div class="min-h-screen bg-white">
+<div class="min-h-screen bg-background">
 	<div class="flex min-h-screen">
 		<!-- Sidebar desktop: menempel setinggi layar; hanya konten yang ikut scroll. -->
-		<aside class="hidden w-64 shrink-0 border-r border-border bg-white lg:block">
+		<aside class="hidden w-64 shrink-0 border-r border-border bg-background lg:block">
 			<div class="sticky top-0 h-screen overflow-y-auto overscroll-contain">
 				<AppSidebar nav={data.nav} {isActive} nextStep={data.nextStep} userName={ctx.user.name} userImage={ctx.user.image} {roleLabel} />
 			</div>
@@ -96,7 +96,7 @@
 		{#if drawerOpen}
 			<div id="mobile-drawer" bind:this={drawerEl} class="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu" tabindex="-1" onkeydown={trapTab}>
 				<button class="drawer-backdrop absolute inset-0 bg-ink/40 backdrop-blur-[2px]" tabindex="-1" aria-hidden="true" onclick={closeDrawer}></button>
-				<aside class="drawer-panel absolute inset-y-0 left-0 w-72 max-w-[85vw] overflow-y-auto bg-white shadow-2xl">
+				<aside class="drawer-panel absolute inset-y-0 left-0 w-72 max-w-[85vw] overflow-y-auto bg-background shadow-2xl">
 					<button bind:this={closeBtn} class="absolute top-5 right-4 rounded-lg p-1.5 text-ink/60 hover:bg-muted" aria-label="Tutup menu" onclick={closeDrawer}>
 						<X class="size-5" />
 					</button>
@@ -105,7 +105,7 @@
 			</div>
 		{/if}
 
-		<div class="flex min-w-0 flex-1 flex-col bg-[linear-gradient(#f7f9f7_0,#f7f9f7_260px,#fff_260px)]">
+		<div class="flex min-w-0 flex-1 flex-col bg-[linear-gradient(var(--header-tint)_0,var(--header-tint)_260px,var(--background)_260px)]">
 			<header class="flex items-center gap-3 px-4 pt-4 pb-2 sm:px-6 lg:px-8 lg:pt-6">
 				<button
 					bind:this={trigger}
@@ -119,7 +119,7 @@
 				</button>
 				{#if ctx.companies.length > 0}
 					<select
-						class="h-10 max-w-[45vw] min-w-0 truncate rounded-xl border-0 bg-white px-3 text-sm font-semibold shadow-[0_4px_14px_-8px_rgb(0_0_0/0.25)] focus-visible:ring-3 focus-visible:ring-green/25 focus-visible:outline-none sm:max-w-xs"
+						class="h-10 max-w-[45vw] min-w-0 truncate rounded-xl border border-border bg-card px-3 text-sm font-semibold shadow-[0_4px_14px_-8px_rgb(0_0_0/0.25)] focus-visible:ring-3 focus-visible:ring-green/25 focus-visible:outline-none sm:max-w-xs"
 						value={ctx.companyId}
 						onchange={switchCompany}
 						aria-label="Pilih perusahaan"

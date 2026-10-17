@@ -54,7 +54,7 @@
 		valueClass={d.profitThisYear.startsWith('-') ? 'text-destructive' : 'text-green'}
 		caption="Tahun buku {fyYear}"
 		tag={d.balanced ? 'Balance ✓' : 'Tidak balance'}
-		tagClass={d.balanced ? 'bg-lime text-deep' : 'bg-destructive/10 text-destructive'}
+		tagClass={d.balanced ? 'bg-lime text-on-lime' : 'bg-destructive/10 text-destructive'}
 		values={d.monthly.map((m) => (Number(m.income) - Number(m.expense)).toFixed(2))}
 		{months}
 		barColor="var(--lime-2)"

@@ -16,6 +16,24 @@
 	--pale: #f2ffef;
 	--ink: #14210f;
 	--amber: #d4a017;
+	--on-lime: #14210f;
+	--on-green: #ffffff;
+	--on-deep: #ffffff;
+	--field: #ffffff;
+	--surface-soft: #fbfcfb;
+	--header-tint: #f7f9f7;
+	--hero-bank: linear-gradient(135deg, #f3ffe9 0%, #dff8c8 55%, #c9efb0 100%);
+	--hero-bank-border: transparent;
+	--hero-review: linear-gradient(135deg, #ffffff, #f1fbe9);
+	--hero-next: linear-gradient(160deg, #dcfac4, var(--lime));
+	--next-ring: #dcfac4;
+	--login-blob-1: radial-gradient(circle at 35% 35%, #e3fccd, var(--lime) 55%, var(--lime-2));
+	--login-blob-2: radial-gradient(circle at 60% 40%, #b6e08f, var(--green));
+	--btn-primary-bg: linear-gradient(135deg, var(--green), var(--deep));
+	--btn-primary-fg: #ffffff;
+	--btn-primary-shadow: 0 10px 20px -10px var(--deep);
+	--panel-shadow: 0 1px 2px rgb(20 33 15 / 0.04), 0 18px 40px -28px rgb(30 60 25 / 0.35);
+	--panel-border: transparent;
 
 	--background: #ffffff;
 	--foreground: var(--ink);
@@ -51,38 +69,67 @@
 	--sidebar-ring: var(--green);
 }
 
+/* Tema gelap (default) — palet disetujui pemilik, lihat docs/superpowers/specs/2026-10-17-dark-theme-and-field-validation-design.md */
 .dark {
-	--background: oklch(0.145 0 0);
-	--foreground: oklch(0.985 0 0);
-	--card: oklch(0.205 0 0);
-	--card-foreground: oklch(0.985 0 0);
-	--popover: oklch(0.205 0 0);
-	--popover-foreground: oklch(0.985 0 0);
-	--primary: oklch(0.922 0 0);
-	--primary-foreground: oklch(0.205 0 0);
-	--secondary: oklch(0.269 0 0);
-	--secondary-foreground: oklch(0.985 0 0);
-	--muted: oklch(0.269 0 0);
-	--muted-foreground: oklch(0.708 0 0);
-	--accent: oklch(0.269 0 0);
-	--accent-foreground: oklch(0.985 0 0);
-	--destructive: oklch(0.704 0.191 22.216);
-	--border: oklch(1 0 0 / 10%);
-	--input: oklch(1 0 0 / 15%);
-	--ring: oklch(0.556 0 0);
-	--chart-1: oklch(0.87 0 0);
-	--chart-2: oklch(0.556 0 0);
-	--chart-3: oklch(0.439 0 0);
-	--chart-4: oklch(0.371 0 0);
-	--chart-5: oklch(0.269 0 0);
-	--sidebar: oklch(0.205 0 0);
-	--sidebar-foreground: oklch(0.985 0 0);
-	--sidebar-primary: oklch(0.488 0.243 264.376);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.269 0 0);
-	--sidebar-accent-foreground: oklch(0.985 0 0);
-	--sidebar-border: oklch(1 0 0 / 10%);
-	--sidebar-ring: oklch(0.556 0 0);
+	color-scheme: dark;
+	--canvas: #0b0f0c;
+	--lime: #c0f497;
+	--lime-2: #a8e57c;
+	--green: #8fd463;
+	--deep: #c0f497;
+	--pale: rgba(192, 244, 151, 0.1);
+	--ink: #e7efe4;
+	--amber: #e8b931;
+	--on-lime: #14210f;
+	--on-green: #0e130f;
+	--on-deep: #14210f;
+	--field: #1b241c;
+	--surface-soft: #131a14;
+	--header-tint: #111712;
+	--hero-bank: linear-gradient(135deg, #1c2a1a, #243a1f);
+	--hero-bank-border: #2f4a28;
+	--hero-review: linear-gradient(135deg, #151c16, #18241a);
+	--hero-next: linear-gradient(160deg, #1d2c1a, #253b1f);
+	--next-ring: #253b1f;
+	--login-blob-1: radial-gradient(circle at 35% 35%, #2f4a28, #1d2c1a 60%, transparent);
+	--login-blob-2: radial-gradient(circle at 60% 40%, #2a3f24, transparent 70%);
+	--btn-primary-bg: var(--lime);
+	--btn-primary-fg: #14210f;
+	--btn-primary-shadow: 0 10px 22px -14px rgb(192 244 151 / 0.55);
+	--panel-shadow: 0 18px 40px -28px rgb(0 0 0 / 0.6);
+	--panel-border: #263127;
+
+	--background: #0e130f;
+	--foreground: var(--ink);
+	--card: #151c16;
+	--card-foreground: var(--ink);
+	--popover: #151c16;
+	--popover-foreground: var(--ink);
+	--primary: var(--lime);
+	--primary-foreground: #14210f;
+	--secondary: var(--pale);
+	--secondary-foreground: var(--lime);
+	--muted: #1b241c;
+	--muted-foreground: #8d9a8f;
+	--accent: var(--pale);
+	--accent-foreground: var(--lime);
+	--destructive: #ff8a6b;
+	--border: #263127;
+	--input: #263127;
+	--ring: var(--green);
+	--chart-1: var(--green);
+	--chart-2: var(--lime);
+	--chart-3: var(--lime-2);
+	--chart-4: var(--amber);
+	--chart-5: #6b7a6e;
+	--sidebar: #0e130f;
+	--sidebar-foreground: var(--ink);
+	--sidebar-primary: var(--lime);
+	--sidebar-primary-foreground: #14210f;
+	--sidebar-accent: var(--pale);
+	--sidebar-accent-foreground: var(--lime);
+	--sidebar-border: #263127;
+	--sidebar-ring: var(--green);
 }
 
 @theme inline {
@@ -95,6 +142,9 @@
 	--color-pale: var(--pale);
 	--color-ink: var(--ink);
 	--color-amber: var(--amber);
+	--color-on-lime: var(--on-lime);
+	--color-field: var(--field);
+	--color-surface-soft: var(--surface-soft);
 	--color-sidebar-ring: var(--sidebar-ring);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -145,6 +195,11 @@
 	html {
 		@apply font-sans;
 	}
+	/* Daftar opsi <select> bawaan browser ikut warna tema. */
+	option {
+		background: var(--popover);
+		color: var(--popover-foreground);
+	}
 	/* Tailwind v4 tidak lagi memberi cursor pointer pada button; kembalikan untuk semua elemen yang bisa diklik. */
 	button:not(:disabled),
 	[role='button']:not([aria-disabled='true']),
@@ -167,10 +222,9 @@
 	/* Permukaan konten utama. */
 	.panel {
 		border-radius: 20px;
-		background: #fff;
-		box-shadow:
-			0 1px 2px rgb(20 33 15 / 0.04),
-			0 18px 40px -28px rgb(30 60 25 / 0.35);
+		background: var(--card);
+		border: 1px solid var(--panel-border);
+		box-shadow: var(--panel-shadow);
 	}
 	/* Tile ikon flat: warna polos tanpa gradien/bayangan; ikon garis lucide di dalamnya. */
 	.icon-tile {
@@ -181,12 +235,12 @@
 		background: var(--pale);
 		color: var(--deep);
 	}
-	.icon-tile-solid { background: var(--green); color: #fff; }
-	.icon-tile-deep { background: var(--deep); color: #fff; }
-	.icon-tile-lime { background: var(--lime); color: var(--deep); }
-	.icon-tile-amber { background: #fef3c7; color: #a16207; }
-	.icon-tile-red { background: color-mix(in oklab, var(--destructive) 12%, white); color: var(--destructive); }
-	.icon-tile-muted { background: var(--muted); color: #4b5a4d; }
+	.icon-tile-solid { background: var(--green); color: var(--on-green); }
+	.icon-tile-deep { background: var(--deep); color: var(--on-deep); }
+	.icon-tile-lime { background: var(--lime); color: var(--on-lime); }
+	.icon-tile-amber { background: color-mix(in oklab, var(--amber) 18%, var(--card)); color: color-mix(in oklab, var(--amber) 70%, var(--foreground)); }
+	.icon-tile-red { background: color-mix(in oklab, var(--destructive) 14%, var(--card)); color: var(--destructive); }
+	.icon-tile-muted { background: var(--muted); color: var(--muted-foreground); }
 	/* Cahaya lembut di bawah elemen; warnanya mengikuti background elemen. */
 	.glow {
 		position: relative;

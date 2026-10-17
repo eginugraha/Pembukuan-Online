@@ -53,7 +53,7 @@
 	<Card.Content class="pt-6">
 		<form class="space-y-4" onsubmit={submit}>
 			<label
-				class="flex cursor-pointer flex-col items-center justify-center rounded-[20px] border-2 border-dashed p-10 text-center transition-colors {fileError ? 'border-destructive/60' : dragging ? 'border-green bg-pale' : 'border-green/35 bg-[#fbfcfb] hover:border-green/60 hover:bg-pale/50'}"
+				class="flex cursor-pointer flex-col items-center justify-center rounded-[20px] border-2 border-dashed p-10 text-center transition-colors {fileError ? 'border-destructive/60' : dragging ? 'border-green bg-pale' : 'border-green/35 bg-surface-soft hover:border-green/60 hover:bg-pale/50'}"
 				ondragover={(e) => {
 					e.preventDefault();
 					dragging = true;
