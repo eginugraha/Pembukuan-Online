@@ -149,3 +149,31 @@ test('API returns current and comparative', async () => {
 	expect(res.body.current.asOf).toBe('2026-12-31');
 	expect(res.body.comparative.asOf).toBe('2025-12-31');
 });
+
+test('comparative keeps identical keys and order when an account is only used in the comparative year', async () => {
+	const { companyId, bankAccountId } = await makeCompany();
+	const u = await makeUser();
+	await saveOpening(companyId, u.id, {
+		date: '2025-01-01',
+		lines: [
+			{ accountId: bankAccountId, debit: '1000000', credit: '0' },
+			{ accountId: await accountIdByCode(companyId, '3-1001'), debit: '0', credit: '1000000' }
+		]
+	});
+	// Aset non-lancar dan liabilitas hanya bersaldo di 2025, lalu dilunasi/dilepas di 2026.
+	const { uploadId } = await makeUpload(companyId, u.id, [
+		{ date: '2025-06-01', description: 'BELI ASET', debit: '200000' },
+		{ date: '2026-03-01', description: 'JUAL ASET', credit: '200000' }
+	]);
+	await db.update(transactions).set({ isConfirmed: true, accountId: await accountIdByCode(companyId, '1-2103') }).where(eq(transactions.description, 'BELI ASET'));
+	await db.update(transactions).set({ isConfirmed: true, accountId: await accountIdByCode(companyId, '1-2103') }).where(eq(transactions.description, 'JUAL ASET'));
+	await generateJournal(companyId, uploadId, u.id);
+	const { current, comparative } = await getBalanceSheetComparative(companyId, '2026-12-31');
+	const walk = (lines: BalanceSheetLine[]): string[] => lines.flatMap((l) => [l.name, ...walk(l.children)]);
+	const groups = (bs: typeof current) => [bs.assets.current, bs.assets.nonCurrent, bs.liabilities.current, bs.liabilities.nonCurrent, bs.equity].map((s) => walk(s.lines));
+	expect(groups(comparative)).toEqual(groups(current));
+	const asset = (bs: typeof current) => flat(bs.assets.nonCurrent.lines);
+	expect(asset(current)['Aset Tetap']).toBe('0.00');
+	expect(asset(comparative)['Aset Tetap']).toBe('200000.00');
+	expect(Object.keys(asset(current))).toEqual(Object.keys(asset(comparative)));
+});

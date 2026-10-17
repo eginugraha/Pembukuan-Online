@@ -43,6 +43,16 @@ test('balance sheet shows a comparative column', async ({ page }) => {
 	await expect(page.getByText('JUMLAH ASET', { exact: true })).toBeVisible();
 });
 
+test('balance sheet date field follows the URL after client-side Reset', async ({ page }) => {
+	await login(page);
+	await page.goto('/balance-sheet?as_of=2026-08-31');
+	const asOf = page.locator('input[name="as_of"]');
+	await expect(asOf).toHaveValue('2026-08-31');
+	await page.getByRole('link', { name: 'Reset' }).click();
+	await expect(page).toHaveURL(/\/balance-sheet$/);
+	await expect(asOf).not.toHaveValue('2026-08-31');
+});
+
 test('income statement shows PSAK sections with a comparative period', async ({ page }) => {
 	await login(page);
 	await page.goto('/income-statement?from=2026-01-01&to=2026-12-31');

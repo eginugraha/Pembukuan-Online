@@ -8,6 +8,8 @@ test('period helpers', () => {
 	expect(previousFiscalYearEnd('2026-06-30', 'JULY')).toBe('2025-06-30');
 	expect(shiftYears('2024-02-29', -1)).toBe('2023-02-28');
 	expect(shiftYears('2026-12-31', -1)).toBe('2025-12-31');
+	expect(shiftYears('2029-02-28', -1)).toBe('2028-02-29');
+	expect(shiftYears('2026-02-15', -1)).toBe('2025-02-15');
 	expect(defaultReportRange('2026-10-18', 'JANUARY')).toEqual({ from: '2026-01-01', to: '2026-10-31' });
 	expect(defaultReportRange('2026-03-05', 'JULY')).toEqual({ from: '2025-07-01', to: '2026-03-31' });
 	expect(defaultBalanceSheetAsOf('2026-10-18', 'JANUARY')).toBe('2026-10-31');

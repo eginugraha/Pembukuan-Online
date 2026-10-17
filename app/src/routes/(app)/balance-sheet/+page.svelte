@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
@@ -15,8 +14,6 @@
 	const active = $derived(cur.asOf !== data.defaultAsOf);
 	const balanced = $derived(cur.balanced && cmp.balanced);
 	const badDates = $derived([...(cur.balanced ? [] : [cur.asOf]), ...(cmp.balanced ? [] : [cmp.asOf])].map(formatDateLong).join(' dan '));
-	// Nilai awal field tanggal; DateField dikendalikan lewat URL (form GET).
-	const asOfValue = untrack(() => data.current.asOf);
 
 	const indent = (depth: number) => `padding-left: ${1 + depth * 1.25}rem`;
 </script>
@@ -71,7 +68,7 @@
 </PageHeader>
 
 <form method="GET" class="panel mb-5 flex flex-wrap items-end gap-3 p-4">
-	<div><span class="text-xs font-semibold text-ink/70">Per tanggal</span><DateField name="as_of" value={asOfValue} aria-label="Per tanggal" class="mt-1" /></div>
+	<div><span class="text-xs font-semibold text-ink/70">Per tanggal</span><DateField name="as_of" value={cur.asOf} aria-label="Per tanggal" class="mt-1" /></div>
 	<FilterActions active={active} />
 </form>
 

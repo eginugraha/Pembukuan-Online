@@ -26,6 +26,8 @@ export function previousFiscalYearEnd(date: string, startMonth: string): string 
 export function shiftYears(date: string, years: number): string {
 	const [y, m, d] = date.split('-').map(Number);
 	const last = new Date(Date.UTC(y + years, m, 0)).getUTCDate();
+	// Akhir bulan tetap akhir bulan (28 Feb 2029 -> 29 Feb 2028).
+	if (d === new Date(Date.UTC(y, m, 0)).getUTCDate()) return iso(Date.UTC(y + years, m - 1, last));
 	return iso(Date.UTC(y + years, m - 1, Math.min(d, last)));
 }
 
