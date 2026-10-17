@@ -8,6 +8,9 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { apiFetch } from '$lib/api-client';
+	import FormField from '$lib/components/FormField.svelte';
+	import { FormState } from '$lib/forms/form-state.svelte';
+	import { CreateAccountInput } from '$lib/schemas/account';
 	import { selectClass } from '$lib/ui';
 
 	let { data } = $props();
@@ -28,7 +31,9 @@
 		return d;
 	});
 
-	let form = $state({ code: '', name: '', parentId: '', normalBal: '' });
+	const EMPTY = { code: '', name: '', parentId: '', normalBal: '' };
+	const toInput = (v: typeof EMPTY) => ({ code: v.code, name: v.name, parentId: v.parentId, normalBal: v.normalBal || undefined });
+	const form = new FormState(CreateAccountInput, { ...EMPTY }, toInput);
 	let message = $state<string | null>(null);
 	let errorMessage = $state<string | null>(null);
 
@@ -42,17 +47,19 @@
 		}
 	}
 
-	const create = (e: SubmitEvent) => {
+	async function create(e: SubmitEvent) {
 		e.preventDefault();
-		return run(async () => {
-			await apiFetch('/api/accounts', {
-				method: 'POST',
-				json: { code: form.code, name: form.name, parentId: form.parentId, normalBal: form.normalBal || undefined }
-			});
-			form = { code: '', name: '', parentId: '', normalBal: '' };
-			return 'Akun dibuat.';
-		});
-	};
+		message = errorMessage = null;
+		if (!form.validateAll()) return;
+		try {
+			await apiFetch('/api/accounts', { method: 'POST', json: toInput(form.values) });
+			form.reset({ ...EMPTY });
+			message = 'Akun dibuat.';
+			await invalidateAll();
+		} catch (err) {
+			errorMessage = form.handleServerError(err);
+		}
+	}
 	const patch = (id: string, body: Record<string, unknown>, msg: string) =>
 		run(async () => {
 			await apiFetch(`/api/accounts/${id}`, { method: 'PATCH', json: body });
@@ -72,19 +79,27 @@
 <Card.Root class="mb-6">
 	<Card.Header><Card.Title>Tambah akun</Card.Title></Card.Header>
 	<Card.Content>
-		<form class="grid gap-2 md:grid-cols-5" onsubmit={create}>
-			<select class={selectClass} bind:value={form.parentId} required aria-label="Akun induk">
-				<option value="" disabled>Akun induk…</option>
-				{#each data.accounts.filter((a) => a.isActive) as a (a.id)}<option value={a.id}>{a.code} {a.name}</option>{/each}
-			</select>
-			<Input placeholder="Kode" bind:value={form.code} required />
-			<Input placeholder="Nama" bind:value={form.name} required />
-			<select class={selectClass} bind:value={form.normalBal} aria-label="Saldo normal">
-				<option value="">Saldo normal ikut induk</option>
-				<option value="DEBIT">Debit</option>
-				<option value="CREDIT">Kredit</option>
-			</select>
-			<Button type="submit">Tambah</Button>
+		<form class="grid items-start gap-3 md:grid-cols-[1.4fr_1fr_1.4fr_1.2fr_auto]" onsubmit={create} novalidate>
+			<FormField id="acc-parent" label="Akun induk" error={form.error('parentId')}>
+				<select class={selectClass} bind:value={form.values.parentId} {...form.attrs('parentId', 'acc-parent')}>
+					<option value="" disabled>Pilih akun induk…</option>
+					{#each data.accounts.filter((a) => a.isActive) as a (a.id)}<option value={a.id}>{a.code} {a.name}</option>{/each}
+				</select>
+			</FormField>
+			<FormField id="acc-code" label="Kode" error={form.error('code')}>
+				<Input placeholder="mis. 1-1008" bind:value={form.values.code} {...form.attrs('code', 'acc-code')} />
+			</FormField>
+			<FormField id="acc-name" label="Nama" error={form.error('name')}>
+				<Input placeholder="mis. Kas Kecil" bind:value={form.values.name} {...form.attrs('name', 'acc-name')} />
+			</FormField>
+			<FormField id="acc-normal" label="Saldo normal">
+				<select id="acc-normal" class={selectClass} bind:value={form.values.normalBal}>
+					<option value="">Ikut akun induk</option>
+					<option value="DEBIT">Debit</option>
+					<option value="CREDIT">Kredit</option>
+				</select>
+			</FormField>
+			<Button type="submit" class="md:mt-[22px]">Tambah</Button>
 		</form>
 	</Card.Content>
 </Card.Root>

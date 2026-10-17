@@ -1,0 +1,40 @@
+import { expect, test, type Page } from '@playwright/test';
+import { E2E_PASSWORD } from '../../playwright.config';
+
+async function login(page: Page) {
+	await page.goto('/login');
+	await page.getByLabel('Email').fill('admin@jurnalku.local');
+	await page.getByLabel('Password').fill(E2E_PASSWORD);
+	await page.getByRole('button', { name: 'Masuk' }).click();
+	await expect(page).toHaveURL(/\/dashboard$/);
+}
+
+test('add-account form shows client and server errors under each field', async ({ page }) => {
+	await login(page);
+	await page.goto('/settings/accounts');
+	const form = page.locator('form', { has: page.getByRole('button', { name: 'Tambah' }) });
+
+	// Kirim kosong: semua field divalidasi walau belum disentuh.
+	await form.getByRole('button', { name: 'Tambah' }).click();
+	const code = form.getByLabel('Kode');
+	await expect(form.getByText('Kode wajib diisi')).toBeVisible();
+	await expect(form.getByText('Nama wajib diisi')).toBeVisible();
+	await expect(form.getByText('Akun induk wajib dipilih')).toBeVisible();
+	await expect(code).toHaveAttribute('aria-invalid', 'true');
+	const describedBy = await code.getAttribute('aria-describedby');
+	await expect(page.locator(`#${describedBy}`)).toHaveText('Kode wajib diisi');
+
+	// Error hilang saat diperbaiki (validasi ulang saat mengetik).
+	await code.fill('1-1001');
+	await expect(form.getByText('Kode wajib diisi')).toHaveCount(0);
+
+	// Error dari server muncul di bawah field Kode.
+	await form.getByLabel('Akun induk').selectOption({ label: '1-1000 Aset Lancar' });
+	await form.getByLabel('Nama').fill('Kas Duplikat');
+	await form.getByRole('button', { name: 'Tambah' }).click();
+	await expect(page.locator(`#${describedBy}`)).toHaveText('Kode akun 1-1001 sudah dipakai');
+
+	// Error server hilang saat nilai field diubah.
+	await code.fill('1-1099');
+	await expect(page.getByText('Kode akun 1-1001 sudah dipakai')).toHaveCount(0);
+});
