@@ -61,15 +61,14 @@ export async function closeFiscalYear(
 			if (n > 0) throw previousOpen;
 		}
 
-		const inPeriod = and(
+		const upToEnd = and(
 			eq(transactions.companyId, companyId),
-			gte(transactions.txnDate, periodStart),
 			lte(transactions.txnDate, periodEnd)
 		);
 		const [{ unconfirmed }] = await tx
 			.select({ unconfirmed: count() })
 			.from(transactions)
-			.where(and(inPeriod, eq(transactions.isConfirmed, false)));
+			.where(and(upToEnd, eq(transactions.isConfirmed, false)));
 		const [{ processing }] = await tx
 			.select({ processing: count() })
 			.from(statementUploads)
@@ -81,24 +80,24 @@ export async function closeFiscalYear(
 						tx
 							.select({ one: sql`1` })
 							.from(transactions)
-							.where(and(eq(transactions.uploadId, statementUploads.id), inPeriod))
+							.where(and(eq(transactions.uploadId, statementUploads.id), upToEnd))
 					)
 				)
 			);
 		if (unconfirmed > 0) {
-			throw new ApiError(409, 'pending_transactions', `Masih ada ${unconfirmed} transaksi yang belum dikonfirmasi di tahun buku ${label}`);
+			throw new ApiError(409, 'pending_transactions', `Masih ada ${unconfirmed} transaksi yang belum dikonfirmasi sampai akhir tahun buku ${label}`);
 		}
 		if (processing > 0) {
-			throw new ApiError(409, 'pending_transactions', `Masih ada upload yang sedang diproses di tahun buku ${label}`);
+			throw new ApiError(409, 'pending_transactions', `Masih ada upload yang sedang diproses sampai akhir tahun buku ${label}`);
 		}
 
 		const [{ ungenerated }] = await tx
 			.select({ ungenerated: count() })
 			.from(transactions)
 			.leftJoin(journalEntries, eq(journalEntries.transactionId, transactions.id))
-			.where(and(inPeriod, eq(transactions.isConfirmed, true), isNull(journalEntries.id)));
+			.where(and(upToEnd, eq(transactions.isConfirmed, true), isNull(journalEntries.id)));
 		if (ungenerated > 0) {
-			throw new ApiError(409, 'journal_not_generated', `${ungenerated} transaksi di tahun buku ${label} belum dibuatkan jurnal`);
+			throw new ApiError(409, 'journal_not_generated', `${ungenerated} transaksi sampai akhir tahun buku ${label} belum dibuatkan jurnal`);
 		}
 
 		const invalidRe = () =>

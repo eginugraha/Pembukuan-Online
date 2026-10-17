@@ -159,3 +159,21 @@ test('listFiscalYears reports status and permissions', async () => {
 	expect(ys[2]).toMatchObject({ ended: false, canClose: false });
 	expect(ys[1].netProfit).toBe('3150000.00');
 });
+
+test('unconfirmed or unjournaled transactions of EARLIER years block closing a later year', async () => {
+	const start = '2026-01-01';
+	{
+		const { companyId, userId, reId } = await books();
+		await makeUpload(companyId, userId, [{ date: '2025-06-15', description: 'Lama', debit: '1000' }]);
+		const err = await closeFiscalYear(companyId, userId, { periodStart: start, retainedEarningsAccountId: reId }, TODAY).then(() => null, (e) => e);
+		expect(err.code).toBe('pending_transactions');
+		expect(err.message).toBe('Masih ada 1 transaksi yang belum dikonfirmasi sampai akhir tahun buku 2026');
+	}
+	await resetDb();
+	{
+		const { companyId, userId, reId } = await books();
+		const { txnIds } = await makeUpload(companyId, userId, [{ date: '2025-06-15', description: 'Lama2', debit: '1000' }], { status: 'done' });
+		await db.update(transactions).set({ isConfirmed: true, accountId: await accountIdByCode(companyId, '5-2010') }).where(eq(transactions.id, txnIds[0]));
+		expect(await code(closeFiscalYear(companyId, userId, { periodStart: start, retainedEarningsAccountId: reId }, TODAY))).toMatchObject({ code: 'journal_not_generated' });
+	}
+});

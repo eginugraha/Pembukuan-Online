@@ -21,3 +21,7 @@ test('todayIso follows Asia/Jakarta (UTC+7), not the server timezone', () => {
 	expect(todayIso(new Date('2026-08-31T16:59:00Z'))).toBe('2026-08-31');
 	expect(todayIso(new Date('2026-12-31T17:00:00Z'))).toBe('2027-01-01');
 });
+
+test('todayIso of a close at 18:00 UTC is already the next day in Jakarta (closing page "Ditutup")', () => {
+	expect(todayIso(new Date('2026-12-31T18:00:00Z'))).toBe('2027-01-01');
+});

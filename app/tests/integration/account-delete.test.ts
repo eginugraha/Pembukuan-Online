@@ -1,7 +1,7 @@
 import { beforeEach, expect, test } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
 import { client, db } from '../../src/lib/server/db';
-import { accounts, categoryRules, journalEntries, journalLines, transactions } from '../../src/lib/server/db/schema';
+import { accounts, categoryRules, fiscalClosings, journalEntries, journalLines, transactions } from '../../src/lib/server/db/schema';
 import { createAccount } from '../../src/lib/server/accounts/service';
 import { deleteAccount, getAccountUsage } from '../../src/lib/server/accounts/delete';
 import { generateJournal } from '../../src/lib/server/journal/generate';
@@ -183,4 +183,19 @@ test('a failure after the data was moved rolls everything back (real fault injec
 	expect(await exists(beban)).toBe(true);
 	expect(await snapshot()).toEqual(before);
 	expect(await getAccountUsage(companyId, beban)).toMatchObject({ journalLines: 1, transactions: 1 });
+});
+
+test('an account used only as retained earnings of a zero-profit closing is rejected with 409 used_by_closing', async () => {
+	const c = await company();
+	const { id: re } = await createAccount(c.companyId, 'admin', { code: '3-1099', name: 'Laba Ditahan Uji', parentId: await c.id('3-0000') });
+	await db.insert(fiscalClosings).values({
+		companyId: c.companyId,
+		periodStart: '2025-01-01',
+		periodEnd: '2025-12-31',
+		journalId: null,
+		retainedEarningsAccountId: re,
+		closedBy: c.u.id
+	});
+	expect(await codeOf(deleteAccount(c.companyId, re))).toBe('used_by_closing');
+	expect(await exists(re)).toBe(true);
 });

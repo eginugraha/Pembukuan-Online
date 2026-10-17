@@ -3,7 +3,7 @@ import { D, toMoney } from '../../money';
 import { ApiError, notFound } from '../api';
 import { assertPeriodOpen } from '../closing/lock';
 import { db, type Executor } from '../db';
-import { accounts, categoryRules, companies, journalEntries, journalLines, transactions } from '../db/schema';
+import { accounts, categoryRules, companies, fiscalClosings, journalEntries, journalLines, transactions } from '../db/schema';
 
 export interface AccountUsage {
 	journalLines: number;
@@ -83,6 +83,13 @@ export async function deleteAccount(companyId: string, accountId: string, moveTo
 		const usage = await usageOf(tx, companyId, accountId);
 		if (usage.isBankAccount) {
 			throw new ApiError(409, 'bank_account', 'Akun ini dipakai sebagai akun bank perusahaan; ganti dulu di Pengaturan → Perusahaan');
+		}
+		const [{ n: closings }] = await tx
+			.select({ n: sql<number>`count(*)::int` })
+			.from(fiscalClosings)
+			.where(eq(fiscalClosings.retainedEarningsAccountId, accountId));
+		if (closings > 0) {
+			throw new ApiError(409, 'used_by_closing', 'Akun ini dipakai sebagai akun laba ditahan pada tutup buku; buka kembali tahun bukunya dulu');
 		}
 		if (usage.children > 0) {
 			throw new ApiError(409, 'has_children', 'Akun ini punya akun anak; hapus atau pindahkan akun anaknya terlebih dahulu');

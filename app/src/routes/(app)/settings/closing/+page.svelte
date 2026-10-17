@@ -9,7 +9,7 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
-	import { formatDate } from '$lib/dates';
+	import { formatDate, todayIso } from '$lib/dates';
 	import { formatAccounting } from '$lib/money';
 	import { formatPeriod } from '$lib/periods';
 
@@ -98,7 +98,7 @@
 						<td class="px-4 py-2.5">{formatPeriod(y.periodStart, y.periodEnd)}</td>
 						<td class="px-4 py-2.5"><Badge variant={y.status === 'closed' ? 'success' : 'warning'}>{y.status === 'closed' ? 'Ditutup' : 'Terbuka'}</Badge></td>
 						<td class="px-4 py-2.5 text-right tabular-nums">{formatAccounting(y.netProfit)}</td>
-						<td class="px-4 py-2.5">{y.closedAt ? `${formatDate(y.closedAt.slice(0, 10))}${y.closedByName ? ` · ${y.closedByName}` : ''}` : '—'}</td>
+						<td class="px-4 py-2.5">{y.closedAt ? `${formatDate(todayIso(new Date(y.closedAt)))}${y.closedByName ? ` · ${y.closedByName}` : ''}` : '—'}</td>
 						<td class="px-4 py-2.5 text-right">
 							{#if y.canClose}<Button size="sm" onclick={() => askClose(y)}>Tutup Buku</Button>{/if}
 							{#if y.canReopen}<Button size="sm" variant="outline" onclick={() => askReopen(y)}>Buka Kembali</Button>{/if}
