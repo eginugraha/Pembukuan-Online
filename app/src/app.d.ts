@@ -7,6 +7,7 @@ declare global {
 	namespace App {
 		interface Locals {
 			ctx: AppContext | null;
+			sessionToken?: string;
 		}
 	}
 }

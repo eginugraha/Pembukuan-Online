@@ -14,7 +14,7 @@
 	import { ROLE_LABELS } from '$lib/roles';
 	import FormField from '$lib/components/FormField.svelte';
 	import { FormState } from '$lib/forms/form-state.svelte';
-	import { UpdateProfileInput } from '$lib/schemas/profile';
+	import { ChangePasswordInput, UpdateProfileInput } from '$lib/schemas/profile';
 
 	let { data } = $props();
 	const user = $derived(data.ctx.user);
@@ -23,6 +23,7 @@
 	// Nilai awal form diambil sekali (snapshot), lalu diedit lokal.
 	// svelte-ignore state_referenced_locally
 	const nameForm = new FormState(UpdateProfileInput, { name: data.ctx.user.name });
+	const pwForm = new FormState(ChangePasswordInput, { currentPassword: '', newPassword: '', confirmPassword: '' });
 	let busy = $state(false);
 	let message = $state<string | null>(null);
 	let errorMessage = $state<string | null>(null);
@@ -84,6 +85,22 @@
 			busy = false;
 		}
 	}
+
+	async function savePassword(e: SubmitEvent) {
+		e.preventDefault();
+		message = errorMessage = null;
+		if (!pwForm.validateAll()) return;
+		busy = true;
+		try {
+			await apiFetch('/api/profile/password', { method: 'PUT', json: pwForm.values });
+			message = 'Password diganti. Perangkat lain dikeluarkan.';
+			pwForm.values.currentPassword = pwForm.values.newPassword = pwForm.values.confirmPassword = '';
+		} catch (err) {
+			errorMessage = pwForm.handleServerError(err);
+		} finally {
+			busy = false;
+		}
+	}
 </script>
 
 <svelte:head><title>Profil Saya · Jurnalku</title></svelte:head>
@@ -118,6 +135,24 @@
 				<div class="space-y-1.5"><Label for="p-email">Email</Label><Input id="p-email" value={user.email} disabled /></div>
 				<div class="space-y-1.5"><Label>Role</Label><p class="text-sm text-muted-foreground">{roleLabel}</p></div>
 				<Button type="submit" disabled={busy || nameForm.values.name.trim() === user.name}>Simpan</Button>
+			</form>
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root>
+		<Card.Header><Card.Title>Ganti password</Card.Title><Card.Description>Setelah diganti, perangkat lain akan dikeluarkan.</Card.Description></Card.Header>
+		<Card.Content>
+			<form class="space-y-4" onsubmit={savePassword} novalidate>
+				<FormField id="p-cur" label="Password saat ini" error={pwForm.error('currentPassword')}>
+					<Input type="password" autocomplete="current-password" bind:value={pwForm.values.currentPassword} {...pwForm.attrs('currentPassword', 'p-cur')} />
+				</FormField>
+				<FormField id="p-new" label="Password baru" hint="Minimal 8 karakter." error={pwForm.error('newPassword')}>
+					<Input type="password" autocomplete="new-password" bind:value={pwForm.values.newPassword} {...pwForm.attrs('newPassword', 'p-new')} />
+				</FormField>
+				<FormField id="p-conf" label="Konfirmasi password baru" error={pwForm.error('confirmPassword')}>
+					<Input type="password" autocomplete="new-password" bind:value={pwForm.values.confirmPassword} {...pwForm.attrs('confirmPassword', 'p-conf')} />
+				</FormField>
+				<Button type="submit" disabled={busy}>Ganti password</Button>
 			</form>
 		</Card.Content>
 	</Card.Root>

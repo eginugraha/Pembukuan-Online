@@ -50,3 +50,19 @@ test('member, company, profile, opening speak Indonesian', () => {
 	expect(o.date).toBe('Tanggal wajib diisi');
 	for (const e of [m, o]) expect(noEnglish(e)).toBe(true);
 });
+
+import { ChangePasswordInput } from '$lib/schemas/profile';
+
+test('change-password messages are Indonesian and field-specific', () => {
+	expect(fieldErrors(ChangePasswordInput, {})).toMatchObject({
+		currentPassword: 'Password saat ini wajib diisi',
+		newPassword: 'Password baru wajib diisi',
+		confirmPassword: 'Konfirmasi password wajib diisi'
+	});
+	expect(fieldErrors(ChangePasswordInput, { currentPassword: 'a', newPassword: 'abc', confirmPassword: 'abc' }).newPassword).toBe('Password baru minimal 8 karakter');
+	expect(fieldErrors(ChangePasswordInput, { currentPassword: 'a', newPassword: 'password-baru', confirmPassword: 'lain' })).toEqual({ confirmPassword: 'Konfirmasi password tidak sama' });
+	expect(fieldErrors(ChangePasswordInput, { currentPassword: 'sama-sama-1', newPassword: 'sama-sama-1', confirmPassword: 'sama-sama-1' })).toEqual({
+		newPassword: 'Password baru harus berbeda dari password saat ini'
+	});
+	expect(fieldErrors(ChangePasswordInput, { currentPassword: 'lama-lama-1', newPassword: 'baru-baru-2', confirmPassword: 'baru-baru-2' })).toEqual({});
+});

@@ -23,6 +23,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	if (!building && !path.startsWith('/api/auth')) {
 		const session = await auth.api.getSession({ headers: event.request.headers });
 		if (session && session.user.isActive) {
+			event.locals.sessionToken = session.session.token;
 			event.locals.ctx = await resolveContext(
 				{
 					id: session.user.id,
