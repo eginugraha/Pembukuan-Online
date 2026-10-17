@@ -1,4 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm';
+import { D, toMoney } from '../../money';
 import { ApiError, notFound } from '../api';
 import { db, type Executor } from '../db';
 import { accounts, categoryRules, companies, journalLines, transactions } from '../db/schema';
@@ -40,6 +41,32 @@ export async function getAccountUsage(companyId: string, accountId: string): Pro
 	return usageOf(db, companyId, accountId);
 }
 
+/**
+ * Setelah pemindahan, satu jurnal bisa punya beberapa baris untuk akun tujuan (mis. saldo awal akun lama dan
+ * akun tujuan). Gabungkan menjadi satu baris bersaldo bersih agar halaman Saldo Awal dan laporan tetap benar;
+ * bila saling meniadakan (net 0) baris dihapus. Jurnal tetap seimbang karena total debit-kredit tidak berubah.
+ */
+async function mergeDuplicateLines(tx: Executor, accountId: string): Promise<void> {
+	const dupes = await tx
+		.select({ journalId: journalLines.journalId, net: sql<string>`sum(${journalLines.debit} - ${journalLines.credit})` })
+		.from(journalLines)
+		.where(eq(journalLines.accountId, accountId))
+		.groupBy(journalLines.journalId)
+		.having(sql`count(*) > 1`);
+	for (const d of dupes) {
+		await tx.delete(journalLines).where(and(eq(journalLines.journalId, d.journalId), eq(journalLines.accountId, accountId)));
+		const net = D(d.net);
+		if (!net.isZero()) {
+			await tx.insert(journalLines).values({
+				journalId: d.journalId,
+				accountId,
+				debit: toMoney(net.gt(0) ? net : 0),
+				credit: toMoney(net.lt(0) ? net.neg() : 0)
+			});
+		}
+	}
+}
+
 const moveError = (message: string) => new ApiError(422, 'invalid_move_target', message, undefined, { field: 'moveToId' });
 
 /**
@@ -75,6 +102,7 @@ export async function deleteAccount(companyId: string, accountId: string, moveTo
 			if (target.normalBal !== account.normalBal) throw moveError('Akun tujuan harus bersaldo normal sama');
 
 			await tx.update(journalLines).set({ accountId: target.id }).where(eq(journalLines.accountId, accountId));
+			await mergeDuplicateLines(tx, target.id);
 			await tx.update(transactions).set({ accountId: target.id }).where(eq(transactions.accountId, accountId));
 			await tx.update(transactions).set({ aiSuggestedAccountId: target.id }).where(eq(transactions.aiSuggestedAccountId, accountId));
 			await tx.update(categoryRules).set({ accountId: target.id }).where(eq(categoryRules.accountId, accountId));
