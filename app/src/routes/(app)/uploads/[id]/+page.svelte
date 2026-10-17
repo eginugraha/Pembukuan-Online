@@ -66,7 +66,7 @@
 		});
 </script>
 
-<PageHeader title={upload.filename} description="Rekening {upload.accountNo} · {formatDate(upload.periodStart)} – {formatDate(upload.periodEnd)}">
+<PageHeader title={upload.filename} crumb={upload.filename} description="Rekening {upload.accountNo} · {formatDate(upload.periodStart)} – {formatDate(upload.periodEnd)}">
 	{#snippet actions()}
 		<StatusBadge status={upload.status} />
 		{#if data.canWrite && upload.status === 'review'}
