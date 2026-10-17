@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { afterNavigate, goto, invalidateAll, onNavigate } from '$app/navigation';
+	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
 	import { tick } from 'svelte';
 	import { page } from '$app/state';
 	import Menu from '@lucide/svelte/icons/menu';
@@ -68,18 +68,6 @@
 		drawerOpen = false;
 	});
 
-	// Transisi halus antarhalaman (View Transitions API). Browser tanpa dukungan atau pengguna dengan
-	// "reduce motion" langsung berpindah tanpa animasi.
-	onNavigate((navigation) => {
-		if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-		if (navigation.from?.url.pathname === navigation.to?.url.pathname) return;
-		return new Promise((resolve) => {
-			document.startViewTransition(async () => {
-				resolve();
-				await navigation.complete;
-			});
-		});
-	});
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && closeDrawer()} />
@@ -146,9 +134,13 @@
 				</div>
 			</header>
 
-			<main class="min-w-0 flex-1 px-4 pt-4 pb-10 [view-transition-name:main-content] sm:px-6 lg:px-8">
+			<main class="min-w-0 flex-1 px-4 pt-4 pb-10 sm:px-6 lg:px-8">
 				{#if ctx.companyId || page.url.pathname === '/profile'}
-					{@render children()}
+					<!-- Animasi masuk per halaman dengan CSS biasa: tidak menutupi sidebar seperti View Transition
+					     (yang memutus :hover dan membuat menu berkedip). -->
+					{#key page.url.pathname}
+						<div class="page-enter">{@render children()}</div>
+					{/key}
 				{:else}
 					<div class="panel mx-auto mt-20 max-w-md p-8 text-center">
 						<h1 class="text-xl font-bold">Belum terhubung ke perusahaan</h1>

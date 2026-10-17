@@ -259,16 +259,9 @@
 
 /* ── Gerak halus ──────────────────────────────────────────────── */
 @media (prefers-reduced-motion: no-preference) {
-	/* Pindah halaman: hanya konten utama yang beranimasi; sidebar & top bar diam. */
-	::view-transition-old(root),
-	::view-transition-new(root) {
-		animation: none;
-	}
-	::view-transition-old(main-content) {
-		animation: 140ms ease-out both jk-fade-out;
-	}
-	::view-transition-new(main-content) {
-		animation: 240ms cubic-bezier(0.2, 0.7, 0.2, 1) both jk-slide-in;
+	/* Pindah halaman: konten utama memudar & bergeser masuk; sidebar dan top bar tidak tersentuh. */
+	.page-enter {
+		animation: 220ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards jk-slide-in;
 	}
 	/* Indikator menu aktif meluncur ke menu yang baru diklik (di bawah teks, jadi teks tetap terbaca). */
 	.nav-indicator.is-animated {
@@ -289,9 +282,6 @@
 	}
 }
 
-@keyframes jk-fade-out {
-	to { opacity: 0; transform: translateY(-4px); }
-}
 @keyframes jk-slide-in {
 	from { opacity: 0; transform: translateY(8px); }
 }
