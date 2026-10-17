@@ -4,6 +4,7 @@ import * as accountOne from '../../src/routes/api/accounts/[id]/+server';
 import * as companies from '../../src/routes/api/companies/+server';
 import * as companyOne from '../../src/routes/api/companies/[id]/+server';
 import * as journal from '../../src/routes/api/journal/+server';
+import * as journalAccount from '../../src/routes/api/journal/[id]/account/+server';
 import * as journalGenerate from '../../src/routes/api/journal/generate/+server';
 import * as opening from '../../src/routes/api/opening-balance/+server';
 import * as ledger from '../../src/routes/api/reports/ledger/+server';
@@ -48,6 +49,7 @@ const ENDPOINTS: Array<{ name: string; handler: H; method: string; min: Level; b
 	{ name: 'DELETE /rules/:id', handler: ruleOne.DELETE, method: 'DELETE', min: 'admin', params: { id: RID } },
 	{ name: 'POST /journal/generate', handler: journalGenerate.POST, method: 'POST', min: 'accountant', body: { uploadId: RID } },
 	{ name: 'GET /journal', handler: journal.GET, method: 'GET', min: 'viewer' },
+	{ name: 'PATCH /journal/:id/account', handler: journalAccount.PATCH, method: 'PATCH', min: 'accountant', params: { id: RID }, body: { accountId: RID } },
 	{ name: 'GET /reports/ledger', handler: ledger.GET, method: 'GET', min: 'viewer' },
 	{ name: 'GET /reports/trial-balance', handler: trialBalance.GET, method: 'GET', min: 'viewer' },
 	{ name: 'GET /reports/balance-sheet', handler: balanceSheet.GET, method: 'GET', min: 'viewer' },

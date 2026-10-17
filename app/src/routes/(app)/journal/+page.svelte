@@ -6,8 +6,20 @@
 	import { formatIdr } from '$lib/money';
 	import DateField from '$lib/components/DateField.svelte';
 	import FilterActions from '$lib/components/FilterActions.svelte';
+	import EditJournalAccountDialog from '$lib/components/EditJournalAccountDialog.svelte';
+	import Pencil from '@lucide/svelte/icons/pencil';
+	import { invalidateAll } from '$app/navigation';
+	import { accountOptions } from '$lib/account-options';
 
 	let { data } = $props();
+	type Entry = (typeof data.entries)[number];
+	let dialogOpen = $state(false);
+	let editing = $state<{ id: string; refNo: string | null; description: string | null; accountId: string; accountLabel: string } | null>(null);
+	const options = $derived(accountOptions(data.accounts));
+	function edit(e: Entry, l: Entry['lines'][number]) {
+		editing = { id: e.id, refNo: e.refNo, description: e.description, accountId: l.accountId, accountLabel: `${l.accountCode} ${l.accountName}` };
+		dialogOpen = true;
+	}
 </script>
 
 <PageHeader title="Jurnal Umum" />
@@ -42,7 +54,22 @@
 							{#if i === 0}{e.refNo}{#if e.type === 'OPENING'} <Badge variant="secondary">Saldo awal</Badge>{/if}{/if}
 						</Table.Cell>
 						<Table.Cell class="max-w-sm min-w-48 whitespace-normal">{i === 0 ? e.description : ''}</Table.Cell>
-						<Table.Cell class={l.credit !== '0.00' ? 'pl-8' : ''}>{l.accountCode} {l.accountName}</Table.Cell>
+						<Table.Cell class={l.credit !== '0.00' ? 'pl-8' : ''}>
+							<span class="inline-flex items-center gap-1.5">
+								{l.accountCode} {l.accountName}
+								{#if data.canEdit && l.editable}
+									<button
+										type="button"
+										class="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-pale hover:text-deep"
+										aria-label="Ubah akun {l.accountCode} {l.accountName}"
+										title="Ubah akun"
+										onclick={() => edit(e, l)}
+									>
+										<Pencil class="size-3.5" />
+									</button>
+								{/if}
+							</span>
+						</Table.Cell>
 						<Table.Cell class="text-right tabular-nums">{l.debit !== '0.00' ? formatIdr(l.debit) : ''}</Table.Cell>
 						<Table.Cell class="text-right tabular-nums">{l.credit !== '0.00' ? formatIdr(l.credit) : ''}</Table.Cell>
 					</Table.Row>
@@ -57,3 +84,5 @@
 	</Table.Root>
 	</div>
 {/if}
+
+<EditJournalAccountDialog bind:open={dialogOpen} entry={editing} {options} onsaved={() => invalidateAll()} />

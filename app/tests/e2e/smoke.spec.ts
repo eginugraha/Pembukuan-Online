@@ -23,6 +23,19 @@ test('login → upload → review → journal → balanced trial balance', async
 	await page.getByRole('button', { name: 'Generate Jurnal' }).click();
 	await expect(page.getByText('5 jurnal dibuat')).toBeVisible();
 
+	// Koreksi: ubah akun kategori salah satu jurnal; jurnal tetap seimbang.
+	await page.goto('/journal?from=2026-08-01&to=2026-08-31');
+	const pencil = page.getByRole('button', { name: /^Ubah akun / }).first();
+	const oldLabel = (await pencil.getAttribute('aria-label'))!.replace('Ubah akun ', '');
+	await pencil.click();
+	await page.getByLabel('Akun baru').click();
+	await page.getByPlaceholder('Cari kode atau nama akun…').fill('5-2013');
+	await page.keyboard.press('Enter');
+	await page.getByRole('button', { name: 'Simpan' }).click();
+	await expect(page.getByRole('dialog')).toBeHidden();
+	await expect(page.getByText('5-2013 Beban Konsultan & Profesional').first()).toBeVisible();
+	expect(oldLabel).not.toContain('5-2013');
+
 	await page.goto('/trial-balance?as_of=2026-08-31');
 	await expect(page.getByText('Balance', { exact: true })).toBeVisible();
 });

@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, gte, lte } from 'drizzle-orm';
 import { sumMoney, toMoney } from '../../money';
 import { db } from '../db';
-import { accounts, journalEntries, journalLines } from '../db/schema';
+import { accounts, journalEntries, journalLines, transactions } from '../db/schema';
 
 export interface JournalEntryView {
 	id: string;
@@ -9,7 +9,7 @@ export interface JournalEntryView {
 	refNo: string | null;
 	description: string | null;
 	type: 'OPENING' | 'TRANSACTION';
-	lines: { accountCode: string; accountName: string; debit: string; credit: string }[];
+	lines: { lineId: string; accountId: string; accountCode: string; accountName: string; debit: string; credit: string; editable: boolean }[];
 }
 
 export async function listJournal(companyId: string, from: string, to: string) {
@@ -20,6 +20,9 @@ export async function listJournal(companyId: string, from: string, to: string) {
 			refNo: journalEntries.refNo,
 			description: journalEntries.description,
 			type: journalEntries.type,
+			lineId: journalLines.id,
+			accountId: accounts.id,
+			transactionAccountId: transactions.accountId,
 			accountCode: accounts.code,
 			accountName: accounts.name,
 			debit: journalLines.debit,
@@ -28,6 +31,7 @@ export async function listJournal(companyId: string, from: string, to: string) {
 		.from(journalEntries)
 		.innerJoin(journalLines, eq(journalLines.journalId, journalEntries.id))
 		.innerJoin(accounts, eq(accounts.id, journalLines.accountId))
+		.leftJoin(transactions, eq(transactions.id, journalEntries.transactionId))
 		.where(and(eq(journalEntries.companyId, companyId), gte(journalEntries.entryDate, from), lte(journalEntries.entryDate, to)))
 		.orderBy(asc(journalEntries.entryDate), asc(journalEntries.refNo), desc(journalLines.debit));
 
@@ -40,7 +44,9 @@ export async function listJournal(companyId: string, from: string, to: string) {
 			byId.set(r.id, entry);
 			entries.push(entry);
 		}
-		entry.lines.push({ accountCode: r.accountCode, accountName: r.accountName, debit: r.debit, credit: r.credit });
+		// Hanya akun kategori jurnal transaksi yang bisa diubah (baris bank dan saldo awal terkunci).
+		const editable = r.type === 'TRANSACTION' && r.transactionAccountId === r.accountId;
+		entry.lines.push({ lineId: r.lineId, accountId: r.accountId, accountCode: r.accountCode, accountName: r.accountName, debit: r.debit, credit: r.credit, editable });
 	}
 	return {
 		entries,
