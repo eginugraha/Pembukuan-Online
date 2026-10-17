@@ -5,6 +5,10 @@
 @import "@fontsource-variable/plus-jakarta-sans";
 
 @custom-variant dark (&:is(.dark *));
+/* Sidebar desktop diciutkan (data-sidebar di <html>, dipasang sebelum render). `rail-collapsed` hanya
+   untuk elemen di dalam sidebar desktop ([data-rail]); `sb-collapsed` untuk elemen lain (mis. padding konten). */
+@custom-variant rail-collapsed (&:is([data-sidebar='collapsed'] [data-rail], [data-sidebar='collapsed'] [data-rail] *));
+@custom-variant sb-collapsed (&:is([data-sidebar='collapsed'] *));
 
 /* Palet "Modern 3D" — warna dari referensi Planti (2.webp). */
 :root {

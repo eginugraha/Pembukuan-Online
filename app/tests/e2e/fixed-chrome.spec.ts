@@ -31,8 +31,8 @@ test('header, sidebar logo and full-width footer stay in place while content scr
 	expect(after.footer.x).toBe(0);
 	expect(after.footer.width).toBe(1280);
 	expect(Math.round(after.footer.y + after.footer.height)).toBe(720);
-	// Bagian bawah sidebar (Keluar) tetap terlihat di atas footer.
-	const logout = page.locator('aside').first().getByRole('button', { name: 'Keluar' });
-	const lb = (await logout.boundingBox())!;
+	// Bagian bawah sidebar (tombol ciutkan) tetap terlihat di atas footer.
+	const toggle = page.locator('aside').first().getByRole('button', { name: 'Ciutkan sidebar' });
+	const lb = (await toggle.boundingBox())!;
 	expect(lb.y + lb.height).toBeLessThanOrEqual(after.footer.y);
 });

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { page } from '$app/state';
 	import Menu from '@lucide/svelte/icons/menu';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -11,10 +11,19 @@
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import SimpleSelect from '$lib/components/SimpleSelect.svelte';
 	import { ROLE_LABELS } from '$lib/roles';
+	import { Button } from '$lib/components/ui/button/index.js';
+	import { applySidebar, readSidebar } from '$lib/sidebar';
 
 	let { data, children } = $props();
 	const ctx = $derived(data.ctx);
 	let drawerOpen = $state(false);
+	// Status ciut sidebar desktop; tampilan awal sudah benar lewat atribut data-sidebar dari app.html.
+	let collapsed = $state(false);
+	onMount(() => (collapsed = readSidebar() === 'collapsed'));
+	function toggleSidebar() {
+		collapsed = !collapsed;
+		applySidebar(collapsed ? 'collapsed' : 'expanded');
+	}
 
 	async function switchCompany(companyId: string) {
 		await fetch('/api/companies/switch', {
@@ -78,9 +87,9 @@
 	<div class="flex min-h-[calc(100vh-2.5rem)]">
 		<!-- Sidebar desktop: terkunci ke viewport di atas footer (fixed, bukan sticky, agar tidak bergeser
 		     di ujung scroll); logo & bagian bawah tetap, hanya menu yang scroll. -->
-		<aside class="fixed top-0 bottom-10 left-0 z-20 hidden w-64 border-r border-border bg-background lg:block">
+		<aside data-rail class="fixed top-0 bottom-10 left-0 z-20 hidden w-64 border-r border-border bg-background transition-[width] duration-200 motion-reduce:transition-none lg:block rail-collapsed:w-16">
 			<div class="h-full">
-				<AppSidebar nav={data.nav} {isActive} nextStep={data.nextStep} userName={ctx.user.name} userImage={ctx.user.image} {roleLabel} />
+				<AppSidebar nav={data.nav} {isActive} nextStep={data.nextStep} {collapsed} ontoggle={toggleSidebar} />
 			</div>
 		</aside>
 
@@ -92,12 +101,12 @@
 					<button bind:this={closeBtn} class="absolute top-5 right-4 rounded-lg p-1.5 text-ink/60 hover:bg-muted" aria-label="Tutup menu" onclick={closeDrawer}>
 						<X class="size-5" />
 					</button>
-					<AppSidebar nav={data.nav} {isActive} nextStep={data.nextStep} userName={ctx.user.name} userImage={ctx.user.image} {roleLabel} onnavigate={closeDrawer} />
+					<AppSidebar nav={data.nav} {isActive} nextStep={data.nextStep} onnavigate={closeDrawer} />
 				</aside>
 			</div>
 		{/if}
 
-		<div class="flex min-w-0 flex-1 flex-col lg:pl-64 bg-[linear-gradient(var(--header-tint)_0,var(--header-tint)_260px,var(--background)_260px)]">
+		<div class="flex min-w-0 flex-1 flex-col transition-[padding] duration-200 motion-reduce:transition-none lg:pl-64 lg:sb-collapsed:pl-16 bg-[linear-gradient(var(--header-tint)_0,var(--header-tint)_260px,var(--background)_260px)]">
 			<header class="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background/90 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
 				<button
 					bind:this={trigger}
@@ -119,14 +128,15 @@
 					/>
 				{/if}
 				{#if ctx.user.isSuperAdmin}
-					<a
+					<Button
 						href="/settings/company?new=1"
+						variant="outline"
 						aria-label="Perusahaan baru"
 						title="Perusahaan baru"
-						class="flex size-10 shrink-0 items-center justify-center gap-1 rounded-xl text-sm font-medium text-deep hover:bg-pale sm:size-auto sm:px-2 sm:py-2 sm:hover:underline"
+						class="shrink-0 text-deep max-sm:size-10 max-sm:px-0"
 					>
 						<Plus class="size-4" /><span class="hidden sm:inline">Perusahaan baru</span>
-					</a>
+					</Button>
 				{/if}
 				<div class="ml-auto flex items-center gap-2">
 					<ThemeToggle />

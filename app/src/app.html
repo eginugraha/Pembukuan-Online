@@ -13,6 +13,7 @@
 				var r = document.documentElement;
 				if (d) r.classList.add('dark'); else r.classList.remove('dark');
 				r.style.colorScheme = d ? 'dark' : 'light';
+				try { if (localStorage.getItem('jk-sidebar') === 'collapsed') r.dataset.sidebar = 'collapsed'; } catch (e) {}
 			})();
 		</script>
 		%sveltekit.head%
