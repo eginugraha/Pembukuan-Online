@@ -101,7 +101,7 @@
 		});
 </script>
 
-<PageHeader title="Chart of Accounts" description="Akun tidak dihapus, hanya dinonaktifkan. Hanya akun detail (leaf) yang dapat dipakai transaksi." />
+<PageHeader title="Chart of Accounts" description="Akun bisa dinonaktifkan atau dihapus; akun yang sudah dipakai dihapus dengan memindahkan datanya ke akun lain. Hanya akun detail (leaf) yang dapat dipakai transaksi." />
 {#if message}<Alert.Root class="mb-4"><Alert.Description>{message}</Alert.Description></Alert.Root>{/if}
 {#if errorMessage}<Alert.Root variant="destructive" class="mb-4"><Alert.Description>{errorMessage}</Alert.Description></Alert.Root>{/if}
 
