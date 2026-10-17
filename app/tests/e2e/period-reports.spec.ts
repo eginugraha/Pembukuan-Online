@@ -64,3 +64,12 @@ test('income statement shows PSAK sections with a comparative period', async ({ 
 	await page.getByRole('link', { name: 'Reset' }).click();
 	await expect(page).toHaveURL(/\/income-statement$/);
 });
+
+test('trial balance can show the state after closing journals', async ({ page }) => {
+	await login(page);
+	await page.goto('/trial-balance?from=2026-01-01&to=2026-12-31&closing=1');
+	await expect(page.getByRole('combobox', { name: 'Jurnal penutup' })).toContainText('Setelah jurnal penutup');
+	const reset = page.getByRole('link', { name: 'Reset' });
+	await expect(reset).toBeVisible();
+	await expect(reset).toHaveAttribute('href', '/trial-balance');
+});

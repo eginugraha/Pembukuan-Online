@@ -62,6 +62,7 @@ export async function getIncomeStatement(
 		.where(
 			and(
 				eq(journalEntries.companyId, companyId),
+				sql`${journalEntries.type} <> 'CLOSING'`,
 				gte(journalEntries.entryDate, range.from),
 				lte(journalEntries.entryDate, range.to)
 			)

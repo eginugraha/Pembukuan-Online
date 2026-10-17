@@ -13,5 +13,5 @@ export const GET: RequestHandler = (event) =>
 		const ctx = requireRole(event, 'viewer');
 		const company = await getCompanyReportInfo(ctx.companyId);
 		const range = rangeParams(event.url, defaultReportRange(todayIso(), company.fiscalYear), company.fiscalYear);
-		return json(await getTrialBalance(ctx.companyId, range));
+		return json(await getTrialBalance(ctx.companyId, range, { includeClosing: event.url.searchParams.get('closing') === '1' }));
 	});

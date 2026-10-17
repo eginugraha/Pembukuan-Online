@@ -1,10 +1,16 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { untrack, type Snippet } from 'svelte';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 	import DateField from '$lib/components/DateField.svelte';
 	import FilterActions from '$lib/components/FilterActions.svelte';
 
-	let { from, to, defaults }: { from: string; to: string; defaults: { from: string; to: string } } = $props();
+	let {
+		from,
+		to,
+		defaults,
+		extra,
+		extraActive = false
+	}: { from: string; to: string; defaults: { from: string; to: string }; extra?: Snippet; extraActive?: boolean } = $props();
 
 	let fromValue = $state(untrack(() => from));
 	let toValue = $state(untrack(() => to));
@@ -14,7 +20,7 @@
 		toValue = to;
 		error = '';
 	});
-	const active = $derived(from !== defaults.from || to !== defaults.to);
+	const active = $derived(from !== defaults.from || to !== defaults.to || extraActive);
 
 	function onsubmit(e: SubmitEvent) {
 		if (fromValue && toValue && fromValue > toValue) {
@@ -43,5 +49,6 @@
 		{/if}
 	</div>
 	<div><span class="text-xs font-semibold text-ink/70">Sampai</span><DateField name="to" bind:value={toValue} aria-label="Sampai" class="mt-1" /></div>
+	{@render extra?.()}
 	<FilterActions {active} />
 </form>

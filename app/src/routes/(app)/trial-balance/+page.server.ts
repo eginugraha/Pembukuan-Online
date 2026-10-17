@@ -13,6 +13,7 @@ export const load: PageServerLoad = async (event) => {
 		const company = await getCompanyReportInfo(ctx.companyId);
 		const defaults = defaultReportRange(todayIso(), company.fiscalYear);
 		const range = rangeParams(event.url, defaults, company.fiscalYear);
-		return { tb: await getTrialBalance(ctx.companyId, range), defaults, companyName: company.name };
+		const closing = event.url.searchParams.get('closing') === '1';
+		return { tb: await getTrialBalance(ctx.companyId, range, { includeClosing: closing }), closing, defaults, companyName: company.name };
 	});
 };

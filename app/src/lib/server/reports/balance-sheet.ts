@@ -25,8 +25,8 @@ type Acc = { id: string; code: string; name: string; type: string; parentId: str
 const isCurrentGroup = (code: string) => /^\d+-1/.test(code);
 
 /**
- * Laporan Posisi Keuangan per `asOf` (format vertikal PSAK). Belum ada jurnal penutup, jadi
- * laba rugi dihitung dari akun pendapatan/beban: tahun buku berjalan dan tahun-tahun sebelumnya.
+ * Laporan Posisi Keuangan per `asOf` (format vertikal PSAK). Jurnal penutup tahun buku berjalan
+ * diabaikan, jadi laba rugi dihitung dari akun pendapatan/beban: tahun buku berjalan dan tahun-tahun sebelumnya.
  */
 export async function getBalanceSheet(companyId: string, asOf: string, opts: { keep?: Set<string> } = {}) {
 	const keep = opts.keep;
@@ -48,6 +48,8 @@ export async function getBalanceSheet(companyId: string, asOf: string, opts: { k
 				and(
 					eq(journalEntries.companyId, companyId),
 					lte(journalEntries.entryDate, asOf),
+					// Jurnal penutup tahun buku berjalan diabaikan: laba berjalan tetap dihitung dari akun nominal.
+					sql`NOT (${journalEntries.type} = 'CLOSING' AND ${journalEntries.entryDate} >= ${fyStart})`,
 					from ? gte(journalEntries.entryDate, from) : undefined
 				)
 			)

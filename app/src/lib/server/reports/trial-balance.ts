@@ -15,11 +15,16 @@ export interface TrialBalanceRow {
 	closingCredit: string;
 }
 
-export async function getTrialBalance(companyId: string, range: { from: string; to: string }) {
+export async function getTrialBalance(
+	companyId: string,
+	range: { from: string; to: string },
+	opts: { includeClosing?: boolean } = {}
+) {
 	const { from, to } = range;
 	const net = sql`(${journalLines.debit} - ${journalLines.credit})`;
 	const isOpening = sql`(${journalEntries.entryDate} < ${from} OR ${journalEntries.type} = 'OPENING')`;
-	const isMovement = sql`(${journalEntries.type} <> 'OPENING' AND ${journalEntries.entryDate} >= ${from})`;
+	const skipTypes = opts.includeClosing ? sql`${journalEntries.type} <> 'OPENING'` : sql`${journalEntries.type} NOT IN ('OPENING', 'CLOSING')`;
+	const isMovement = sql`(${skipTypes} AND ${journalEntries.entryDate} >= ${from})`;
 	const sums = await db
 		.select({
 			accountId: accounts.id,

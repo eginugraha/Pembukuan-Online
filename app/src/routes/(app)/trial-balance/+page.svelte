@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import SimpleSelect from '$lib/components/SimpleSelect.svelte';
 	import PeriodFilter from '$lib/components/PeriodFilter.svelte';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
@@ -8,6 +10,14 @@
 
 	let { data } = $props();
 	const tb = $derived(data.tb);
+	let closing = $state(untrack(() => data.closing ? '1' : ''));
+	$effect(() => {
+		closing = data.closing ? '1' : '';
+	});
+	const closingOptions = [
+		{ value: '', label: 'Sebelum jurnal penutup' },
+		{ value: '1', label: 'Setelah jurnal penutup' }
+	];
 	const cell = (v: string) => (v !== '0.00' ? formatIdr(v) : '');
 </script>
 
@@ -17,7 +27,14 @@
 	{/snippet}
 </PageHeader>
 
-<PeriodFilter from={tb.from} to={tb.to} defaults={data.defaults} />
+<PeriodFilter from={tb.from} to={tb.to} defaults={data.defaults} extraActive={data.closing}>
+	{#snippet extra()}
+		<div class="w-56">
+			<span class="text-xs font-semibold text-ink/70">Jurnal penutup</span>
+			<SimpleSelect name="closing" bind:value={closing} options={closingOptions} aria-label="Jurnal penutup" class="mt-1" />
+		</div>
+	{/snippet}
+</PeriodFilter>
 
 	<div class="panel overflow-x-auto px-2 py-1">
 		<Table.Root>
