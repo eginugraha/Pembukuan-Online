@@ -13,6 +13,8 @@
 	import SimpleSelect from '$lib/components/SimpleSelect.svelte';
 	import { accountOptions as toAccountOptions } from '$lib/account-options';
 	import { COA_TEMPLATES, type CoaTemplateId } from '$lib/coa-templates';
+	import LogoCropDialog from '$lib/components/LogoCropDialog.svelte';
+	import { AVATAR_ACCEPT, AVATAR_MAX_INPUT_BYTES } from '$lib/image';
 
 	let { data } = $props();
 	// Nilai awal form diambil sekali dari data (snapshot), lalu diedit lokal.
@@ -28,6 +30,61 @@
 	const newForm = new FormState(CreateCompanyInput, { name: '', coaTemplate: 'general' as CoaTemplateId });
 	let message = $state<string | null>(null);
 	let errorMessage = $state<string | null>(null);
+	let logoFileInput = $state<HTMLInputElement | null>(null);
+	let pickedLogoFile = $state<File | null>(null);
+	let logoBusy = $state(false);
+
+	function onPickLogo(e: Event & { currentTarget: HTMLInputElement }) {
+		const file = e.currentTarget.files?.[0];
+		e.currentTarget.value = '';
+		if (!file) return;
+		if (!AVATAR_ACCEPT.includes(file.type)) {
+			errorMessage = 'Foto harus berformat JPG, PNG, atau WebP';
+			return;
+		}
+		if (file.size > AVATAR_MAX_INPUT_BYTES) {
+			errorMessage = 'Ukuran foto maksimal 5 MB';
+			return;
+		}
+		message = errorMessage = null;
+		pickedLogoFile = file;
+	}
+
+	async function onConfirmLogo(blob: Blob) {
+		logoBusy = true;
+		message = errorMessage = null;
+		try {
+			const form = new FormData();
+			form.append('file', blob, 'logo.webp');
+			const res = await fetch(`/api/companies/${data.company.id}/logo`, { method: 'PUT', body: form });
+			if (!res.ok) throw new Error((await res.json().catch(() => null))?.error?.message ?? 'Gagal mengunggah logo');
+			message = 'Logo perusahaan diperbarui.';
+			pickedLogoFile = null;
+			await invalidateAll();
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan';
+		} finally {
+			logoBusy = false;
+		}
+	}
+
+	function onCancelLogo() {
+		pickedLogoFile = null;
+	}
+
+	async function removeLogo() {
+		logoBusy = true;
+		message = errorMessage = null;
+		try {
+			await apiFetch(`/api/companies/${data.company.id}/logo`, { method: 'DELETE' });
+			message = 'Logo perusahaan dihapus.';
+			await invalidateAll();
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan';
+		} finally {
+			logoBusy = false;
+		}
+	}
 
 	async function save(e: SubmitEvent) {
 		e.preventDefault();
@@ -76,6 +133,26 @@
 			</form>
 		</Card.Content>
 	</Card.Root>
+{/if}
+
+<Card.Root class="mb-6 max-w-xl">
+	<Card.Header><Card.Title>Logo Perusahaan</Card.Title></Card.Header>
+	<Card.Content class="flex flex-wrap items-center gap-5">
+		{#if data.company.logoUrl}
+			<img src={data.company.logoUrl} alt="Logo perusahaan" class="size-16 rounded-lg object-contain" role="img" />
+		{/if}
+		<div class="flex flex-wrap gap-2">
+			<input bind:this={logoFileInput} type="file" accept={AVATAR_ACCEPT.join(',')} class="sr-only" aria-label="Pilih logo perusahaan" onchange={onPickLogo} />
+			<Button onclick={() => logoFileInput?.click()} disabled={logoBusy}>{data.company.logoUrl ? 'Ganti Logo' : 'Pilih Logo'}</Button>
+			{#if data.company.logoUrl}
+				<Button variant="ghost" onclick={removeLogo} disabled={logoBusy}>Hapus Logo</Button>
+			{/if}
+		</div>
+	</Card.Content>
+</Card.Root>
+
+{#if pickedLogoFile}
+	<LogoCropDialog file={pickedLogoFile} onconfirm={onConfirmLogo} oncancel={onCancelLogo} />
 {/if}
 
 <Card.Root class="max-w-xl">
