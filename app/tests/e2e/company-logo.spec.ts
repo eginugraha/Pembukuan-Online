@@ -12,6 +12,19 @@ test.beforeEach(async ({ page }) => {
 	await page.goto('/settings/company');
 });
 
+// A test can fail partway through an upload/remove cycle (after the upload, before the removal),
+// leaving the logo set. Clean it up unconditionally so a mid-test failure here can't leak logo
+// state into other specs (e.g. dashboard-charts.spec.ts's "no logo chip" assertion).
+test.afterEach(async ({ page }) => {
+	await page.keyboard.press('Escape').catch(() => {});
+	await page.goto('/settings/company');
+	const removeButton = page.getByRole('button', { name: 'Hapus Logo' });
+	if (await removeButton.isVisible().catch(() => false)) {
+		await removeButton.click();
+		await expect(page.getByText('Logo perusahaan dihapus.')).toBeVisible();
+	}
+});
+
 test('upload a logo through the crop dialog, see it applied, then remove it', async ({ page }) => {
 	await page.getByLabel('Pilih logo perusahaan').setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: PNG_SMALL });
 	await expect(page.getByRole('dialog', { name: 'Atur Logo' })).toBeVisible();

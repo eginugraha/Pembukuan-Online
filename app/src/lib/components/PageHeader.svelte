@@ -23,10 +23,12 @@
 		{#if items.length > 0}
 			<div class="mb-1"><Breadcrumb {items} /></div>
 		{/if}
-		{#if logoUrl}
-			<img src={logoUrl} alt="Logo perusahaan" class="mr-3 inline-block size-10 rounded-lg bg-chip-fixed p-1 object-contain align-middle" />
-		{/if}
-		<h1 class="text-2xl font-bold tracking-tight text-ink">{title}</h1>
+		<div class="flex items-center gap-3">
+			{#if logoUrl}
+				<img src={logoUrl} alt="Logo perusahaan" class="size-10 rounded-lg bg-chip-fixed p-1 object-contain" />
+			{/if}
+			<h1 class="text-2xl font-bold tracking-tight text-ink">{title}</h1>
+		</div>
 		{#if description}
 			<p class="mt-1 text-sm text-muted-foreground">{description}</p>
 		{/if}

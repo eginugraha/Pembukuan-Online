@@ -11,7 +11,7 @@
 		type LogoCrop
 	} from '$lib/logo-crop';
 
-	let { file, onconfirm, oncancel }: { file: File; onconfirm: (blob: Blob) => void; oncancel: () => void } = $props();
+	let { file, onconfirm, oncancel }: { file: File; onconfirm: (blob: Blob) => Promise<void>; oncancel: () => void } = $props();
 
 	let open = $state(true);
 	let canvasEl: HTMLCanvasElement | undefined = $state();
@@ -89,7 +89,7 @@
 		errorMessage = null;
 		try {
 			const blob = await renderLogoCrop(bitmap, crop);
-			onconfirm(blob);
+			await onconfirm(blob);
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : 'Gagal memproses gambar';
 		} finally {
@@ -116,7 +116,7 @@
 					bind:this={canvasEl}
 					width={LOGO_OUTPUT_SIZE}
 					height={LOGO_OUTPUT_SIZE}
-					class="h-64 w-64 touch-none rounded-xl border border-border bg-muted"
+					class="h-64 w-64 touch-none rounded-xl border border-border bg-chip-fixed"
 					class:cursor-grab={bitmap}
 					onpointerdown={onPointerDown}
 					onpointermove={onPointerMove}

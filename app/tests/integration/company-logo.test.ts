@@ -83,6 +83,7 @@ test('PUT/DELETE /api/companies/:id/logo require admin on the active company (vi
 	expect(put.body.image).toMatch(`/api/companies/${companyId}/logo?v=`);
 
 	expect((await call(DELETE_LOGO, fakeEvent({ ctx: viewerCtx, method: 'DELETE', params: { id: companyId } }))).status).toBe(403);
+	expect((await call(DELETE_LOGO, fakeEvent({ ctx: accountantCtx, method: 'DELETE', params: { id: companyId } }))).status).toBe(403);
 	expect((await call(DELETE_LOGO, fakeEvent({ ctx: adminCtx, method: 'DELETE', params: { id: companyId } }))).status).toBe(200);
 	expect(await getCompanyLogo(companyId)).toBeNull();
 });

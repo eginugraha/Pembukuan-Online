@@ -39,11 +39,11 @@
 		e.currentTarget.value = '';
 		if (!file) return;
 		if (!AVATAR_ACCEPT.includes(file.type)) {
-			errorMessage = 'Foto harus berformat JPG, PNG, atau WebP';
+			errorMessage = 'Logo harus berformat JPG, PNG, atau WebP';
 			return;
 		}
 		if (file.size > AVATAR_MAX_INPUT_BYTES) {
-			errorMessage = 'Ukuran foto maksimal 5 MB';
+			errorMessage = 'Ukuran logo maksimal 5 MB';
 			return;
 		}
 		message = errorMessage = null;
@@ -61,8 +61,6 @@
 			message = 'Logo perusahaan diperbarui.';
 			pickedLogoFile = null;
 			await invalidateAll();
-		} catch (err) {
-			errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan';
 		} finally {
 			logoBusy = false;
 		}
@@ -139,7 +137,7 @@
 	<Card.Header><Card.Title>Logo Perusahaan</Card.Title></Card.Header>
 	<Card.Content class="flex flex-wrap items-center gap-5">
 		{#if data.company.logoUrl}
-			<img src={data.company.logoUrl} alt="Logo perusahaan" class="size-16 rounded-lg object-contain" role="img" />
+			<img src={data.company.logoUrl} alt="Logo perusahaan" class="size-16 rounded-lg bg-chip-fixed object-contain" role="img" />
 		{/if}
 		<div class="flex flex-wrap gap-2">
 			<input bind:this={logoFileInput} type="file" accept={AVATAR_ACCEPT.join(',')} class="sr-only" aria-label="Pilih logo perusahaan" onchange={onPickLogo} />
