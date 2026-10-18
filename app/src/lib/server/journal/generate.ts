@@ -8,9 +8,9 @@ import { assertBalanced, buildTransactionLines } from './lines';
 
 async function maxRefSeq(tx: Tx, companyId: string, yyyymm: string): Promise<number> {
 	const [row] = await tx
-		.select({ max: sql<number>`coalesce(max(cast(substring(${journalEntries.refNo} from 12) as integer)), 0)::int` })
+		.select({ max: sql<number>`coalesce(max(cast(substring(${journalEntries.refNo} from 11) as integer)), 0)::int` })
 		.from(journalEntries)
-		.where(and(eq(journalEntries.companyId, companyId), like(journalEntries.refNo, `BCA-${yyyymm}-%`)));
+		.where(and(eq(journalEntries.companyId, companyId), like(journalEntries.refNo, `JE-${yyyymm}-%`)));
 	return row.max;
 }
 
@@ -77,7 +77,7 @@ export async function generateJournal(companyId: string, uploadId: string, userI
 					transactionId: t.id,
 					entryDate: t.txnDate,
 					description: t.description,
-					refNo: `BCA-${yyyymm}-${String(seq).padStart(4, '0')}`,
+					refNo: `JE-${yyyymm}-${String(seq).padStart(4, '0')}`,
 					createdBy: userId
 				})
 				.returning({ id: journalEntries.id });

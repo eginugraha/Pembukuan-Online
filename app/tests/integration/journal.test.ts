@@ -39,9 +39,9 @@ test('creates balanced entries with sequential refs ordered by date', async () =
 	expect(await generateJournal(companyId, uploadId, u.id)).toEqual({ created: 3 });
 	const entries = await db.select().from(journalEntries).orderBy(asc(journalEntries.refNo));
 	expect(entries.map((e) => [e.refNo, e.entryDate])).toEqual([
-		['BCA-202608-0001', '2026-08-02'],
-		['BCA-202608-0002', '2026-08-03'],
-		['BCA-202608-0003', '2026-08-05']
+		['JE-202608-0001', '2026-08-02'],
+		['JE-202608-0002', '2026-08-03'],
+		['JE-202608-0003', '2026-08-05']
 	]);
 	const linesOf = (id: string) =>
 		db.select({ accountId: journalLines.accountId, debit: journalLines.debit, credit: journalLines.credit }).from(journalLines).where(eq(journalLines.journalId, id));
@@ -58,6 +58,21 @@ test('creates balanced entries with sequential refs ordered by date', async () =
 		])
 	);
 	expect(await generateJournal(companyId, uploadId, u.id)).toEqual({ created: 0 });
+});
+
+test('a historical BCA- ref does not block or get counted into the new JE- sequence', async () => {
+	const { companyId, u, uploadId } = await confirmedUpload();
+	await db.insert(journalEntries).values({
+		companyId,
+		type: 'TRANSACTION',
+		entryDate: '2026-08-01',
+		refNo: 'BCA-202608-0007',
+		createdBy: u.id
+	});
+	await generateJournal(companyId, uploadId, u.id);
+	const refs = (await db.select({ refNo: journalEntries.refNo }).from(journalEntries).where(eq(journalEntries.companyId, companyId))).map((r) => r.refNo);
+	expect(refs).toContain('BCA-202608-0007');
+	expect(refs).toEqual(expect.arrayContaining(['JE-202608-0001', 'JE-202608-0002', 'JE-202608-0003']));
 });
 
 test('concurrent generate calls never duplicate entries or refs', async () => {

@@ -39,8 +39,8 @@ test('ledger of bank: opening, running balance, closing', async () => {
 	const ledger = await getLedger(companyId, bankAccountId, '2026-08-01', '2026-08-31');
 	expect(ledger.openingBalance).toBe('1000000.00');
 	expect(ledger.lines.map((l) => [l.refNo, l.debit, l.credit, l.balance])).toEqual([
-		['BCA-202608-0001', '0.00', '30000.00', '970000.00'],
-		['BCA-202608-0002', '2500000.00', '0.00', '3470000.00']
+		['JE-202608-0001', '0.00', '30000.00', '970000.00'],
+		['JE-202608-0002', '2500000.00', '0.00', '3470000.00']
 	]);
 	expect(ledger.closingBalance).toBe('3470000.00');
 
