@@ -1,6 +1,7 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { Badge } from '$lib/components/ui/badge/index.js';
+	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { formatDateLong } from '$lib/periods';
 	import { formatAccounting as amount } from '$lib/money';
@@ -10,6 +11,7 @@
 
 	let { data } = $props();
 	const cur = $derived(data.current);
+	const pdfHref = $derived(`/api/reports/balance-sheet/export?as_of=${cur.asOf}`);
 	const cmp = $derived(data.comparative);
 	const active = $derived(cur.asOf !== data.defaultAsOf);
 	const balanced = $derived(cur.balanced && cmp.balanced);
@@ -65,6 +67,7 @@
 <PageHeader title="Laporan Posisi Keuangan" description="{data.companyName} · Per {formatDateLong(cur.asOf)} dan {formatDateLong(cmp.asOf)}">
 	{#snippet actions()}
 		<Badge variant={balanced ? 'success' : 'destructive'}>{balanced ? 'Balance' : 'Tidak balance'}</Badge>
+		<Button href={pdfHref}>Unduh PDF</Button>
 	{/snippet}
 </PageHeader>
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { formatDate, monthRange, todayIso } from '$lib/dates';
 	import { formatIdr } from '$lib/money';
@@ -12,9 +13,18 @@
 	let { data } = $props();
 	const month = monthRange(todayIso());
 	const active = $derived(data.from !== month.from || data.to !== month.to || data.accountId !== '');
+	const xlsxHref = $derived(`/api/reports/ledger/export?format=xlsx&account_id=${data.accountId}&from=${data.from}&to=${data.to}`);
+	const csvHref = $derived(`/api/reports/ledger/export?format=csv&account_id=${data.accountId}&from=${data.from}&to=${data.to}`);
 </script>
 
-<PageHeader title="Buku Besar" />
+<PageHeader title="Buku Besar">
+	{#snippet actions()}
+		{#if data.ledger}
+			<Button href={xlsxHref} variant="outline">Unduh Excel</Button>
+			<Button href={csvHref} variant="outline">Unduh CSV</Button>
+		{/if}
+	{/snippet}
+</PageHeader>
 
 <form method="GET" class="panel mb-5 flex flex-wrap items-end gap-3 p-4">
 	<div class="min-w-72">

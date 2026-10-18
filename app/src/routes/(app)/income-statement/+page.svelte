@@ -1,6 +1,7 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import PeriodFilter from '$lib/components/PeriodFilter.svelte';
+	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { formatAccounting } from '$lib/money';
 	import { formatPeriod } from '$lib/periods';
@@ -9,6 +10,7 @@
 	let { data } = $props();
 	const cur = $derived(data.current);
 	const cmp = $derived(data.comparative);
+	const pdfHref = $derived(`/api/reports/income-statement/export?from=${cur.from}&to=${cur.to}`);
 </script>
 
 {#snippet section(s: IncomeSection, p: IncomeSection | undefined)}
@@ -40,7 +42,11 @@
 	</Table.Row>
 {/snippet}
 
-<PageHeader title="Laba Rugi" description="{data.companyName} · {formatPeriod(cur.from, cur.to)}" />
+<PageHeader title="Laba Rugi" description="{data.companyName} · {formatPeriod(cur.from, cur.to)}">
+	{#snippet actions()}
+		<Button href={pdfHref}>Unduh PDF</Button>
+	{/snippet}
+</PageHeader>
 
 <PeriodFilter from={cur.from} to={cur.to} defaults={data.defaults} rangeError={data.rangeError} />
 

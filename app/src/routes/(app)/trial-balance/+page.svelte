@@ -4,12 +4,14 @@
 	import SimpleSelect from '$lib/components/SimpleSelect.svelte';
 	import PeriodFilter from '$lib/components/PeriodFilter.svelte';
 	import { Badge } from '$lib/components/ui/badge/index.js';
+	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { formatIdr } from '$lib/money';
 	import { formatPeriod } from '$lib/periods';
 
 	let { data } = $props();
 	const tb = $derived(data.tb);
+	const pdfHref = $derived(`/api/reports/trial-balance/export?from=${tb.from}&to=${tb.to}&closing=${data.closing ? '1' : ''}`);
 	let closing = $state(untrack(() => data.closing ? '1' : ''));
 	$effect(() => {
 		closing = data.closing ? '1' : '';
@@ -24,6 +26,7 @@
 <PageHeader title="Neraca Saldo" description="{data.companyName} · {formatPeriod(tb.from, tb.to)}">
 	{#snippet actions()}
 		<Badge variant={tb.balanced ? 'success' : 'destructive'}>{tb.balanced ? 'Balance' : 'Tidak balance'}</Badge>
+		<Button href={pdfHref}>Unduh PDF</Button>
 	{/snippet}
 </PageHeader>
 
