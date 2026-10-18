@@ -515,7 +515,7 @@ In `tests/e2e/dashboard-charts.spec.ts`, add:
 
 ```ts
 test('dashboard shows no logo chip when the company has none', async ({ page }) => {
-	await expect(page.getByRole('img', { name: /^Logo/ })).toHaveCount(0);
+	await expect(page.getByRole('img', { name: 'Logo perusahaan' })).toHaveCount(0);
 });
 ```
 
@@ -532,11 +532,11 @@ In `src/lib/components/PageHeader.svelte`, add an optional prop `logoUrl?: strin
 
 ```svelte
 {#if logoUrl}
-	<img src={logoUrl} alt="" aria-hidden="true" class="mr-3 inline-block size-10 rounded-lg bg-white p-1 object-contain align-middle" />
+	<img src={logoUrl} alt="Logo perusahaan" class="mr-3 inline-block size-10 rounded-lg bg-white p-1 object-contain align-middle" />
 {/if}
 ```
 
-(`alt=""` + `aria-hidden="true"` because the adjacent title/description already convey the company identity to screen readers; `bg-white` is intentionally not a theme token — Global Constraints requires this chip to stay light regardless of dark mode so a transparent dark logo stays visible.)
+(Non-empty `alt` rather than a decorative `aria-hidden` image: the page title is literally "Dashboard", not the company name, so this image is the only thing on the page announcing "this is the company's logo" — it is not redundant with surrounding text. `bg-white` is intentionally not a theme token — Global Constraints requires this chip to stay light regardless of dark mode so a transparent dark logo stays visible.)
 
 In `src/routes/(app)/dashboard/+page.svelte`, pass it through:
 
