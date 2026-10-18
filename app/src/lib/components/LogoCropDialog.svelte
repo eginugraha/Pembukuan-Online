@@ -56,14 +56,25 @@
 	function onPointerMove(e: PointerEvent) {
 		if (!drag || !bitmap || !canvasEl || drag.pointerId !== e.pointerId) return;
 		const { dw, dh } = drawParams(bitmap.width, bitmap.height, crop);
-		const freeRangeX = Math.max(dw - LOGO_OUTPUT_SIZE, 0.001);
-		const freeRangeY = Math.max(dh - LOGO_OUTPUT_SIZE, 0.001);
+		// An axis whose content doesn't overflow the box (letterboxed) is always centered by
+		// axisOffset regardless of pan — leave that axis's pan untouched rather than dividing by
+		// a near-zero free range, which would saturate it to 0/1 and cause a jump-to-edge crop
+		// the instant the user zooms in past the fit boundary.
+		const freeRangeX = dw - LOGO_OUTPUT_SIZE;
+		const freeRangeY = dh - LOGO_OUTPUT_SIZE;
 		const displayW = canvasEl.clientWidth || LOGO_OUTPUT_SIZE;
 		const displayH = canvasEl.clientHeight || LOGO_OUTPUT_SIZE;
 		const deltaX = e.clientX - drag.startX;
 		const deltaY = e.clientY - drag.startY;
-		crop.panX = clamp(drag.startPanX - (deltaX / displayW) * (dw / freeRangeX), 0, 1);
-		crop.panY = clamp(drag.startPanY - (deltaY / displayH) * (dh / freeRangeY), 0, 1);
+		// Numerator is the box size (not dw/dh) so drag sensitivity is 1:1 with on-screen pixels
+		// and independent of zoom level: covering the full free range always takes one full
+		// box-width (or box-height) drag, however much that range currently measures.
+		if (freeRangeX > 0) {
+			crop.panX = clamp(drag.startPanX - (deltaX / displayW) * (LOGO_OUTPUT_SIZE / freeRangeX), 0, 1);
+		}
+		if (freeRangeY > 0) {
+			crop.panY = clamp(drag.startPanY - (deltaY / displayH) * (LOGO_OUTPUT_SIZE / freeRangeY), 0, 1);
+		}
 	}
 
 	function onPointerUp(e: PointerEvent) {
