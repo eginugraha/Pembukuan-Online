@@ -87,3 +87,7 @@ test('Laba Tahun Berjalan is formatted as rupiah', async ({ page }) => {
 	expect(text).toMatch(/^Rp\s?\(?[\d.]+,\d{2}\)?$/);
 	expect(text).not.toMatch(/\d+\.\d{2}$/);
 });
+
+test('dashboard shows no logo chip when the company has none', async ({ page }) => {
+	await expect(page.getByRole('img', { name: 'Logo perusahaan' })).toHaveCount(0);
+});

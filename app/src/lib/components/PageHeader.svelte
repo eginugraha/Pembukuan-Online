@@ -9,8 +9,9 @@
 		title,
 		description,
 		actions,
-		crumb
-	}: { title: string; description?: string; actions?: Snippet; crumb?: string } = $props();
+		crumb,
+		logoUrl
+	}: { title: string; description?: string; actions?: Snippet; crumb?: string; logoUrl?: string | null } = $props();
 
 	const items = $derived(page.url.pathname === '/dashboard' ? [] : buildBreadcrumb(page.url.pathname, NAV, crumb));
 </script>
@@ -21,6 +22,9 @@
 	<div class="min-w-0">
 		{#if items.length > 0}
 			<div class="mb-1"><Breadcrumb {items} /></div>
+		{/if}
+		{#if logoUrl}
+			<img src={logoUrl} alt="Logo perusahaan" class="mr-3 inline-block size-10 rounded-lg bg-chip-fixed p-1 object-contain align-middle" />
 		{/if}
 		<h1 class="text-2xl font-bold tracking-tight text-ink">{title}</h1>
 		{#if description}

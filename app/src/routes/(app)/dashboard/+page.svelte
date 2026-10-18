@@ -39,7 +39,7 @@
 	const companyName = $derived(data.ctx.companies.find((c) => c.id === data.ctx.companyId)?.name ?? '');
 </script>
 
-<PageHeader title="Dashboard" description="Ringkasan pembukuan {companyName}" />
+<PageHeader title="Dashboard" description="Ringkasan pembukuan {companyName}" logoUrl={data.ctx.companies.find((c) => c.id === data.ctx.companyId)?.logoUrl} />
 
 <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
 	<BankCard bank={d.bank} canSetBank={roleAtLeast(role, 'admin')} />
