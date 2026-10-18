@@ -1,4 +1,3 @@
-import PDFDocument from 'pdfkit';
 import { todayIso } from '$lib/dates';
 import { formatIdr } from '$lib/money';
 import { defaultReportRange, formatPeriod } from '$lib/periods';
@@ -6,29 +5,32 @@ import { apiHandler } from '$lib/server/api';
 import { requireRole } from '$lib/server/rbac';
 import { getCompanyReportInfo } from '$lib/server/reports/company';
 import { drawLetterhead, getCompanyLetterheadData } from '$lib/server/reports/pdf-letterhead';
+import { createPdfDocument, finishPdf, pdfResponse } from '$lib/server/reports/pdf-scaffold';
 import { getTrialBalance } from '$lib/server/reports/trial-balance';
 import { rangeParams } from '$lib/server/validation';
 import type { RequestHandler } from './$types';
 
+// Landscape A4 (usable width ~742pt dengan margin 50pt) supaya 6 kolom nominal cukup lebar
+// untuk angka besar seperti "125.000.000,00" tanpa membungkus ke baris kedua.
 const LEFT_X = 50;
-const RIGHT_X = 545;
+const RIGHT_X = 792;
 const ROW_H = 14;
 
 type Align = 'left' | 'right' | 'center';
 const COLS: Array<{ x: number; w: number; align: Align }> = [
-	{ x: 50, w: 40, align: 'left' }, // Kode
-	{ x: 90, w: 140, align: 'left' }, // Akun
-	{ x: 230, w: 52, align: 'right' }, // Saldo Awal Debit
-	{ x: 282, w: 53, align: 'right' }, // Saldo Awal Kredit
-	{ x: 335, w: 52, align: 'right' }, // Mutasi Debit
-	{ x: 387, w: 53, align: 'right' }, // Mutasi Kredit
-	{ x: 440, w: 52, align: 'right' }, // Saldo Akhir Debit
-	{ x: 492, w: 53, align: 'right' } // Saldo Akhir Kredit
+	{ x: 50, w: 50, align: 'left' }, // Kode
+	{ x: 100, w: 200, align: 'left' }, // Akun
+	{ x: 300, w: 82, align: 'right' }, // Saldo Awal Debit
+	{ x: 382, w: 82, align: 'right' }, // Saldo Awal Kredit
+	{ x: 464, w: 82, align: 'right' }, // Mutasi Debit
+	{ x: 546, w: 82, align: 'right' }, // Mutasi Kredit
+	{ x: 628, w: 82, align: 'right' }, // Saldo Akhir Debit
+	{ x: 710, w: 82, align: 'right' } // Saldo Akhir Kredit
 ];
 const GROUPS: Array<{ label: string; x: number; w: number }> = [
-	{ label: 'Saldo Awal', x: 230, w: 105 },
-	{ label: 'Mutasi', x: 335, w: 105 },
-	{ label: 'Saldo Akhir', x: 440, w: 105 }
+	{ label: 'Saldo Awal', x: 300, w: 164 },
+	{ label: 'Mutasi', x: 464, w: 164 },
+	{ label: 'Saldo Akhir', x: 628, w: 164 }
 ];
 
 /** Sama seperti helper `cell()` di halaman: kosongkan nilai nol, selain itu format rupiah. */
@@ -36,7 +38,9 @@ const cell = (v: string) => (v !== '0.00' ? formatIdr(v) : '');
 
 function drawRow(doc: PDFKit.PDFDocument, y: number, values: string[], opts: { bold?: boolean } = {}) {
 	doc.font(opts.bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(8);
-	COLS.forEach((c, i) => doc.text(values[i] ?? '', c.x, y, { width: c.w, align: c.align }));
+	// lineBreak: false memastikan setiap sel tabel selalu satu baris: tanpa ini pdfkit bisa
+	// membungkus atau memicu page-break otomatisnya sendiri di tengah sebuah sel.
+	COLS.forEach((c, i) => doc.text(values[i] ?? '', c.x, y, { width: c.w, align: c.align, lineBreak: false }));
 }
 
 export const GET: RequestHandler = (event) =>
@@ -50,10 +54,7 @@ export const GET: RequestHandler = (event) =>
 			getCompanyLetterheadData(ctx.companyId)
 		]);
 
-		const doc = new PDFDocument();
-		const chunks: Buffer[] = [];
-		doc.on('data', (c: Buffer) => chunks.push(c));
-		const done = new Promise<void>((resolve) => doc.on('end', resolve));
+		const doc = createPdfDocument({ layout: 'landscape' });
 
 		let y = drawLetterhead(doc, letterhead, 'Neraca Saldo', formatPeriod(range.from, range.to));
 		const pageBottom = doc.page.height - LEFT_X;
@@ -65,7 +66,7 @@ export const GET: RequestHandler = (event) =>
 		};
 
 		doc.font('Helvetica-Bold').fontSize(8);
-		GROUPS.forEach((g) => doc.text(g.label, g.x, y, { width: g.w, align: 'center' }));
+		GROUPS.forEach((g) => doc.text(g.label, g.x, y, { width: g.w, align: 'center', lineBreak: false }));
 		y += ROW_H;
 		drawRow(doc, y, ['Kode', 'Akun', 'Debit', 'Kredit', 'Debit', 'Kredit', 'Debit', 'Kredit'], { bold: true });
 		y += ROW_H;
@@ -101,14 +102,7 @@ export const GET: RequestHandler = (event) =>
 		ensureSpace();
 		doc.font('Helvetica-Bold').fontSize(10).text(tb.balanced ? 'Balance' : 'Tidak balance', LEFT_X, y);
 
-		doc.end();
-		await done;
-
+		const buf = await finishPdf(doc);
 		const filename = `neraca-saldo_${range.from}_${range.to}.pdf`;
-		return new Response(Buffer.concat(chunks), {
-			headers: {
-				'content-type': 'application/pdf',
-				'content-disposition': `attachment; filename="${filename}"`
-			}
-		});
+		return pdfResponse(buf, filename);
 	});

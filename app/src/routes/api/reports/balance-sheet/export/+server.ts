@@ -1,4 +1,3 @@
-import PDFDocument from 'pdfkit';
 import { todayIso } from '$lib/dates';
 import { formatAccounting } from '$lib/money';
 import { defaultBalanceSheetAsOf, formatDateLong } from '$lib/periods';
@@ -8,6 +7,7 @@ import type { BalanceSheetLine, BalanceSheetSection } from '$lib/server/reports/
 import { getBalanceSheetComparative } from '$lib/server/reports/balance-sheet';
 import { getCompanyReportInfo } from '$lib/server/reports/company';
 import { drawLetterhead, getCompanyLetterheadData } from '$lib/server/reports/pdf-letterhead';
+import { createPdfDocument, finishPdf, pdfResponse } from '$lib/server/reports/pdf-scaffold';
 import { dateParam } from '$lib/server/validation';
 import type { RequestHandler } from './$types';
 
@@ -26,9 +26,11 @@ const lineKey = (l: BalanceSheetLine) => l.accountId ?? l.name;
 
 function drawRow(doc: PDFKit.PDFDocument, y: number, name: string, cur: string, cmp: string, opts: { bold?: boolean; indent?: number } = {}) {
 	doc.font(opts.bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(8);
-	doc.text(name, NAME_X + (opts.indent ?? 0), y, { width: NAME_W - (opts.indent ?? 0) });
-	doc.text(cur, CUR_X, y, { width: CUR_W, align: 'right' });
-	doc.text(cmp, CMP_X, y, { width: CMP_W, align: 'right' });
+	// lineBreak: false memastikan setiap sel tabel selalu satu baris, sehingga `ensureSpace`
+	// (bukan page-break otomatis pdfkit) yang mengontrol kapan halaman baru dimulai.
+	doc.text(name, NAME_X + (opts.indent ?? 0), y, { width: NAME_W - (opts.indent ?? 0), lineBreak: false });
+	doc.text(cur, CUR_X, y, { width: CUR_W, align: 'right', lineBreak: false });
+	doc.text(cmp, CMP_X, y, { width: CMP_W, align: 'right', lineBreak: false });
 }
 
 export const GET: RequestHandler = (event) =>
@@ -41,10 +43,7 @@ export const GET: RequestHandler = (event) =>
 			getCompanyLetterheadData(ctx.companyId)
 		]);
 
-		const doc = new PDFDocument();
-		const chunks: Buffer[] = [];
-		doc.on('data', (c: Buffer) => chunks.push(c));
-		const done = new Promise<void>((resolve) => doc.on('end', resolve));
+		const doc = createPdfDocument();
 
 		let y = drawLetterhead(doc, letterhead, 'Laporan Posisi Keuangan', `Per ${formatDateLong(current.asOf)} dan ${formatDateLong(comparative.asOf)}`);
 		const pageBottom = doc.page.height - LEFT_X;
@@ -139,14 +138,7 @@ export const GET: RequestHandler = (event) =>
 			);
 		}
 
-		doc.end();
-		await done;
-
+		const buf = await finishPdf(doc);
 		const filename = `laporan-posisi-keuangan_${current.asOf}.pdf`;
-		return new Response(Buffer.concat(chunks), {
-			headers: {
-				'content-type': 'application/pdf',
-				'content-disposition': `attachment; filename="${filename}"`
-			}
-		});
+		return pdfResponse(buf, filename);
 	});
