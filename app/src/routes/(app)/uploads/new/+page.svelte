@@ -11,6 +11,7 @@
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { apiFetch, ClientApiError } from '$lib/api-client';
 	import { fieldErrors } from '$lib/forms/validation';
+	import { FormState } from '$lib/forms/form-state.svelte';
 	import { ManualEntryInput } from '$lib/schemas/upload';
 	import FormField from '$lib/components/FormField.svelte';
 	import DateField from '$lib/components/DateField.svelte';
@@ -58,9 +59,14 @@
 	type ManualRow = { date: string; description: string; direction: 'DB' | 'CR'; amount: string };
 
 	let activeTab = $state<'pdf' | 'manual'>('pdf');
-	let manualBank = $state('');
-	let manualAccountNo = $state('');
-	let manualOpeningBalance = $state('');
+
+	// Field tingkat form (bank, nomor rekening, saldo awal): error inline per field lewat FormState,
+	// sama seperti form lain di aplikasi ini (lihat settings/accounts, settings/opening-balance).
+	const manualTopEmpty = { bank: '', accountNo: '', openingBalance: '' };
+	const manualTopSchema = ManualEntryInput.pick({ bank: true, accountNo: true, openingBalance: true });
+	const manualTopToInput = (v: typeof manualTopEmpty) => ({ ...v, openingBalance: v.openingBalance || undefined });
+	const manualForm = new FormState(manualTopSchema, { ...manualTopEmpty }, manualTopToInput);
+
 	let manualRows = $state<ManualRow[]>([{ date: '', description: '', direction: 'DB', amount: '' }]);
 	let manualErrorMessage = $state<string | null>(null);
 	let manualBusy = $state(false);
@@ -72,31 +78,41 @@
 		manualRows = manualRows.filter((_, idx) => idx !== i);
 	}
 
-	const manualErrors = $derived(
-		fieldErrors(ManualEntryInput, {
-			bank: manualBank,
-			accountNo: manualAccountNo,
-			openingBalance: manualOpeningBalance || undefined,
-			rows: manualRows
-		})
-	);
+	// Baris transaksi: error per sel dihitung terhadap skema satu baris (bukan seluruh array),
+	// jadi pesan seperti "Jumlah harus lebih dari 0" bisa ditunjuk ke baris yang salah, bukan digabung jadi satu.
+	const manualRowSchema = ManualEntryInput.shape.rows.element;
+	const manualRowErrors = $derived(manualRows.map((row) => fieldErrors(manualRowSchema, row)));
+	const hasManualRowErrors = $derived(manualRowErrors.some((e) => Object.keys(e).length > 0));
+
+	let manualRowsSubmitted = $state(false);
+	let manualRowTouched = $state<Record<string, boolean>>({});
+	function touchRow(i: number, field: keyof ManualRow) {
+		manualRowTouched = { ...manualRowTouched, [`${i}:${field}`]: true };
+	}
+	function rowError(i: number, field: keyof ManualRow): string | undefined {
+		return manualRowsSubmitted || manualRowTouched[`${i}:${field}`] ? manualRowErrors[i]?.[field] : undefined;
+	}
 
 	async function submitManual(e: SubmitEvent) {
 		e.preventDefault();
 		manualErrorMessage = null;
-		if (Object.keys(manualErrors).length > 0) {
-			manualErrorMessage = Object.values(manualErrors)[0];
-			return;
-		}
+		manualRowsSubmitted = true;
+		const topValid = manualForm.validateAll();
+		if (!topValid || hasManualRowErrors) return;
 		manualBusy = true;
 		try {
 			const res = await apiFetch<{ id: string }>('/api/uploads/manual', {
 				method: 'POST',
-				json: { bank: manualBank, accountNo: manualAccountNo, openingBalance: manualOpeningBalance || undefined, rows: manualRows }
+				json: {
+					bank: manualForm.values.bank,
+					accountNo: manualForm.values.accountNo,
+					openingBalance: manualForm.values.openingBalance || undefined,
+					rows: manualRows
+				}
 			});
 			await goto(`/uploads/${res.id}`);
 		} catch (err) {
-			manualErrorMessage = err instanceof ClientApiError ? err.message : err instanceof Error ? err.message : 'Gagal menyimpan';
+			manualErrorMessage = manualForm.handleServerError(err);
 		} finally {
 			manualBusy = false;
 		}
@@ -156,14 +172,20 @@
 		<Card.Content class="pt-6">
 			<form class="space-y-4" onsubmit={submitManual}>
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-					<FormField id="manual-bank" label="Nama bank">
-						<input id="manual-bank" class={inputClass} bind:value={manualBank} />
+					<FormField id="manual-bank" label="Nama bank" error={manualForm.error('bank')}>
+						<input class={inputClass} bind:value={manualForm.values.bank} {...manualForm.attrs('bank', 'manual-bank')} />
 					</FormField>
-					<FormField id="manual-account-no" label="Nomor rekening">
-						<input id="manual-account-no" class={inputClass} bind:value={manualAccountNo} />
+					<FormField id="manual-account-no" label="Nomor rekening" error={manualForm.error('accountNo')}>
+						<input class={inputClass} bind:value={manualForm.values.accountNo} {...manualForm.attrs('accountNo', 'manual-account-no')} />
 					</FormField>
-					<FormField id="manual-opening-balance" label="Saldo awal (opsional)">
-						<input id="manual-opening-balance" class="{inputClass} text-right" inputmode="decimal" placeholder="0" bind:value={manualOpeningBalance} />
+					<FormField id="manual-opening-balance" label="Saldo awal (opsional)" error={manualForm.error('openingBalance')}>
+						<input
+							class="{inputClass} text-right"
+							inputmode="decimal"
+							placeholder="0"
+							bind:value={manualForm.values.openingBalance}
+							{...manualForm.attrs('openingBalance', 'manual-opening-balance')}
+						/>
 					</FormField>
 				</div>
 
@@ -180,12 +202,30 @@
 						</Table.Header>
 						<Table.Body>
 							{#each manualRows as row, i (i)}
+								{@const dateErr = rowError(i, 'date')}
+								{@const descErr = rowError(i, 'description')}
+								{@const amountErr = rowError(i, 'amount')}
 								<Table.Row>
 									<Table.Cell class="align-top">
-										<DateField bind:value={row.date} aria-label="Tanggal" />
+										<DateField
+											bind:value={row.date}
+											aria-label="Tanggal baris {i + 1}"
+											aria-invalid={dateErr ? 'true' : undefined}
+											aria-describedby={dateErr ? `manual-row-${i}-date-error` : undefined}
+											onblur={() => touchRow(i, 'date')}
+										/>
+										{#if dateErr}<p id="manual-row-{i}-date-error" role="alert" class="mt-1 text-xs font-medium text-destructive">{dateErr}</p>{/if}
 									</Table.Cell>
 									<Table.Cell class="align-top">
-										<input class={inputClass} aria-label="Keterangan" bind:value={row.description} />
+										<input
+											class={inputClass}
+											aria-label="Keterangan baris {i + 1}"
+											bind:value={row.description}
+											aria-invalid={descErr ? 'true' : undefined}
+											aria-describedby={descErr ? `manual-row-${i}-description-error` : undefined}
+											onblur={() => touchRow(i, 'description')}
+										/>
+										{#if descErr}<p id="manual-row-{i}-description-error" role="alert" class="mt-1 text-xs font-medium text-destructive">{descErr}</p>{/if}
 									</Table.Cell>
 									<Table.Cell class="align-top">
 										<div class="flex flex-col gap-1 text-sm whitespace-nowrap">
@@ -200,7 +240,17 @@
 										</div>
 									</Table.Cell>
 									<Table.Cell class="align-top">
-										<input class="{inputClass} text-right" inputmode="decimal" placeholder="0" aria-label="Jumlah" bind:value={row.amount} />
+										<input
+											class="{inputClass} text-right"
+											inputmode="decimal"
+											placeholder="0"
+											aria-label="Jumlah baris {i + 1}"
+											bind:value={row.amount}
+											aria-invalid={amountErr ? 'true' : undefined}
+											aria-describedby={amountErr ? `manual-row-${i}-amount-error` : undefined}
+											onblur={() => touchRow(i, 'amount')}
+										/>
+										{#if amountErr}<p id="manual-row-{i}-amount-error" role="alert" class="mt-1 text-right text-xs font-medium text-destructive">{amountErr}</p>{/if}
 									</Table.Cell>
 									<Table.Cell class="align-top">
 										<Button
