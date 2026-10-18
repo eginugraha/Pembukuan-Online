@@ -5,7 +5,9 @@ import { statementUploads, transactions } from '../../src/lib/server/db/schema';
 import { saveOpening } from '../../src/lib/server/journal/opening';
 import { createManualEntry, createUpload, type UploadDeps } from '../../src/lib/server/uploads/service';
 import type { ParsedStatement } from '../../src/lib/server/uploads/sidecar-client';
-import { accountIdByCode, makeCompany, makeUser } from './factory';
+import { POST } from '../../src/routes/api/uploads/manual/+server';
+import { accountIdByCode, addMember, contextFor, makeCompany, makeUser } from './factory';
+import { call, fakeEvent } from './event';
 import { resetDb } from './db';
 
 beforeEach(resetDb);
@@ -120,4 +122,25 @@ test('duplicate detection applies across manual and PDF paths for the same accou
 	};
 	const pdf = new File([new TextEncoder().encode('%PDF-1.4 fake')], 'st.pdf', { type: 'application/pdf' });
 	expect(await codeOf(createUpload({ companyId, userId: u.id, file: pdf }, pdfDeps))).toBe('duplicate_statement');
+});
+
+test('route: accountant can create, viewer cannot, invalid body reports Indonesian field errors', async () => {
+	const { companyId } = await makeCompany();
+	const accountant = await makeUser();
+	await addMember(accountant.id, companyId, 'accountant');
+	const viewer = await makeUser();
+	await addMember(viewer.id, companyId, 'viewer');
+
+	const body = { bank: 'Mandiri', accountNo: '1', rows: [{ date: '2026-08-10', description: 'X', direction: 'CR', amount: '1000' }] };
+
+	const forbidden = await call(POST, fakeEvent({ ctx: await contextFor(viewer, companyId), method: 'POST', body }));
+	expect(forbidden.status).toBe(403);
+
+	const ok = await call(POST, fakeEvent({ ctx: await contextFor(accountant, companyId), method: 'POST', body }));
+	expect(ok.status).toBe(201);
+	expect(ok.body.id).toBeString();
+
+	const invalid = await call(POST, fakeEvent({ ctx: await contextFor(accountant, companyId), method: 'POST', body: { bank: '', accountNo: '', rows: [] } }));
+	expect(invalid.status).toBe(400);
+	expect(invalid.body.error.fields).toMatchObject({ bank: 'Nama bank wajib diisi', accountNo: 'Nomor rekening wajib diisi', rows: 'Isi minimal satu baris transaksi' });
 });
