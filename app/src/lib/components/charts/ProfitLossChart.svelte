@@ -38,6 +38,9 @@
 	const ticks = $derived(
 		[0, 0.25, 0.5, 0.75, 1].map((f) => ({ v: max * f, y: zeroY - max * f * scale }))
 	);
+	const negTicks = $derived(
+		negMax > 0 ? [0.25, 0.5, 0.75, 1].map((f) => ({ v: negMax * f, y: zeroY + negMax * f * scale })) : []
+	);
 	const crossYear = $derived(rows.length > 0 && rows[0].month.slice(0, 4) !== rows[rows.length - 1].month.slice(0, 4));
 
 	const narrow = $derived(slot < 44);
@@ -47,6 +50,22 @@
 		`${full(r.month)}: pendapatan Rp${formatIdr(r.revenue)}, beban Rp${formatIdr(r.expense)}, laba Rp${formatIdr(r.netProfit)}`;
 
 	let active = $state<number | null>(null);
+	// Di layar sentuh, ketukan pertama pada satu batang menampilkan tooltip (tanpa pindah halaman);
+	// ketukan kedua pada batang yang sama baru membuka laporan bulan itu.
+	let lastPointerType: string | null = null;
+	let touchConfirmed = $state<number | null>(null);
+	const onPointerDown = (e: PointerEvent, i: number) => {
+		lastPointerType = e.pointerType;
+		if (e.pointerType === 'touch') active = i;
+	};
+	const onLinkClick = (e: MouseEvent, i: number) => {
+		if (lastPointerType === 'touch' && touchConfirmed !== i) {
+			e.preventDefault();
+			touchConfirmed = i;
+			return;
+		}
+		touchConfirmed = null;
+	};
 	const tipW = 190;
 	const tipX = $derived(active === null ? 0 : Math.min(Math.max(cx(active) - tipW / 2, left), W - tipW - 4));
 </script>
@@ -65,6 +84,10 @@
 			{#each ticks as t (t.v)}
 				<line x1={left} x2={W - 8} y1={t.y} y2={t.y} stroke="var(--border)" stroke-width="1" />
 				<text x={left - 6} y={t.y + 3} text-anchor="end" font-size="11" fill="var(--muted-foreground)">{formatIdrShort(t.v)}</text>
+			{/each}
+			{#each negTicks as t (t.v)}
+				<line x1={left} x2={W - 8} y1={t.y} y2={t.y} stroke="var(--border)" stroke-width="1" />
+				<text x={left - 6} y={t.y + 3} text-anchor="end" font-size="11" fill="var(--muted-foreground)">{formatIdrShort(-t.v)}</text>
 			{/each}
 			{#if negMax > 0}
 				<line x1={left} x2={W - 8} y1={zeroY} y2={zeroY} stroke="var(--muted-foreground)" stroke-width="1" />
@@ -89,6 +112,8 @@
 						href={href(r.month)}
 						aria-label={aria(r)}
 						class="outline-none"
+						onpointerdown={(e) => onPointerDown(e, i)}
+						onclick={(e) => onLinkClick(e, i)}
 						onmouseenter={() => (active = i)}
 						onmouseleave={() => (active = null)}
 						onfocus={() => (active = i)}

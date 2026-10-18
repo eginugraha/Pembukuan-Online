@@ -21,6 +21,20 @@ test('composition toggle switches to revenue', async ({ page }) => {
 	await expect(page.getByText('Total pendapatan').or(page.getByText('Belum ada pendapatan di tahun buku ini')).first()).toBeVisible();
 });
 
+test('composition toggle is operable with arrow keys (roving tabindex)', async ({ page }) => {
+	const group = page.getByRole('radiogroup', { name: 'Jenis komposisi' });
+	const beban = group.getByRole('radio', { name: 'Beban' });
+	const pendapatan = group.getByRole('radio', { name: 'Pendapatan' });
+	await beban.focus();
+	await expect(beban).toHaveAttribute('aria-checked', 'true');
+	await page.keyboard.press('ArrowRight');
+	await expect(pendapatan).toHaveAttribute('aria-checked', 'true');
+	await expect(pendapatan).toBeFocused();
+	await page.keyboard.press('ArrowLeft');
+	await expect(beban).toHaveAttribute('aria-checked', 'true');
+	await expect(beban).toBeFocused();
+});
+
 test('no horizontal scroll at 390px', async ({ page }) => {
 	await page.setViewportSize({ width: 390, height: 800 });
 	await page.reload();
@@ -33,6 +47,24 @@ test('month link opens the income statement', async ({ page }) => {
 	await expect(link).toBeVisible();
 	await link.click();
 	await expect(page).toHaveURL(/\/income-statement\?from=/);
+});
+
+test.describe('touch', () => {
+	test.use({ hasTouch: true });
+
+	test('first tap on a chart month reveals the tooltip instead of navigating; second tap navigates', async ({ page }) => {
+		const link = page.locator('a[href^="/income-statement?from="]').first();
+		await expect(link).toBeVisible();
+		const box = (await link.boundingBox())!;
+		const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+
+		await page.touchscreen.tap(center.x, center.y);
+		await expect(page).toHaveURL(/\/dashboard$/);
+		await expect(page.getByText(/^Pendapatan Rp/)).toBeVisible();
+
+		await page.touchscreen.tap(center.x, center.y);
+		await expect(page).toHaveURL(/\/income-statement\?from=/);
+	});
 });
 
 test('chart text stays readable at 390px', async ({ page }) => {

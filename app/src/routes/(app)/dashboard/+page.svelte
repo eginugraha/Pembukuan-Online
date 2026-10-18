@@ -17,6 +17,25 @@
 	const role = $derived(data.ctx.role);
 	let kind = $state<'expense' | 'revenue'>('expense');
 	const comp = $derived(d.composition[kind]);
+	const COMPOSITION_OPTIONS = [
+		['expense', 'Beban'],
+		['revenue', 'Pendapatan']
+	] as const;
+	const compositionButtons: Partial<Record<'expense' | 'revenue', HTMLButtonElement>> = {};
+
+	// Pola radiogroup: panah kiri/kanan dan Home/End memindah pilihan dan fokus (roving tabindex).
+	function onCompositionKeydown(e: KeyboardEvent) {
+		const i = COMPOSITION_OPTIONS.findIndex(([v]) => v === kind);
+		let next = i;
+		if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (i + 1) % COMPOSITION_OPTIONS.length;
+		else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (i - 1 + COMPOSITION_OPTIONS.length) % COMPOSITION_OPTIONS.length;
+		else if (e.key === 'Home') next = 0;
+		else if (e.key === 'End') next = COMPOSITION_OPTIONS.length - 1;
+		else return;
+		e.preventDefault();
+		kind = COMPOSITION_OPTIONS[next][0];
+		compositionButtons[kind]?.focus();
+	}
 	const companyName = $derived(data.ctx.companies.find((c) => c.id === data.ctx.companyId)?.name ?? '');
 </script>
 
@@ -50,13 +69,16 @@
 		<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
 			<h2 class="text-base font-semibold text-ink">Komposisi</h2>
 			<div role="radiogroup" aria-label="Jenis komposisi" class="inline-flex rounded-lg border border-border p-0.5 text-sm">
-				{#each [['expense', 'Beban'], ['revenue', 'Pendapatan']] as const as [value, text] (value)}
+				{#each COMPOSITION_OPTIONS as [value, text] (value)}
 					<button
+						bind:this={compositionButtons[value]}
 						type="button"
 						role="radio"
 						aria-checked={kind === value}
+						tabindex={kind === value ? 0 : -1}
 						class="rounded-md px-3 py-1 {kind === value ? 'bg-muted font-medium text-ink' : 'text-muted-foreground'}"
 						onclick={() => (kind = value)}
+						onkeydown={onCompositionKeydown}
 					>
 						{text}
 					</button>
