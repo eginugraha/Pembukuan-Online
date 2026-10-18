@@ -21,6 +21,7 @@ export interface CompanyMembership {
 	id: string;
 	name: string;
 	role: Role;
+	logoUrl: string | null;
 }
 export interface AppContext {
 	user: SessionUser;
@@ -40,10 +41,13 @@ interface HasLocals {
 export async function resolveContext(user: SessionUser, requestedCompanyId?: string | null): Promise<AppContext> {
 	const memberships: CompanyMembership[] = user.isSuperAdmin
 		? (
-				await db.select({ id: companies.id, name: companies.name }).from(companies).orderBy(asc(companies.name))
+				await db
+					.select({ id: companies.id, name: companies.name, logoUrl: companies.logoUrl })
+					.from(companies)
+					.orderBy(asc(companies.name))
 			).map((c) => ({ ...c, role: 'admin' as const }))
 		: await db
-				.select({ id: companies.id, name: companies.name, role: userCompanies.role })
+				.select({ id: companies.id, name: companies.name, role: userCompanies.role, logoUrl: companies.logoUrl })
 				.from(userCompanies)
 				.innerJoin(companies, eq(companies.id, userCompanies.companyId))
 				.where(eq(userCompanies.userId, user.id))

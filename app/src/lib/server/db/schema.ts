@@ -111,7 +111,18 @@ export const companies = pgTable('companies', {
 	bankAccountId: uuid('bank_account_id').references((): AnyPgColumn => accounts.id, {
 		onDelete: 'set null'
 	}),
+	logoUrl: text('logo_url'),
 	createdAt: createdAt()
+});
+
+// Logo perusahaan disimpan terpisah dari tabel companies agar query companies tetap ringan.
+export const companyLogos = pgTable('company_logos', {
+	companyId: uuid('company_id')
+		.primaryKey()
+		.references(() => companies.id, { onDelete: 'cascade' }),
+	content: bytea('content').notNull(),
+	mime: varchar('mime', { length: 20 }).notNull(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
 
 export const userCompanies = pgTable(
