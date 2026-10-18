@@ -1,5 +1,5 @@
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
-import { D, formatIdr } from '../../money';
+import { D, formatIdr, toMoney } from '../../money';
 import { ApiError, notFound } from '../api';
 import { normalizeDescription } from '../categorize/normalize';
 import { assertPeriodOpen } from '../closing/lock';
@@ -41,19 +41,14 @@ async function openingBalanceWarning(
 	return `Saldo awal di PDF (Rp ${formatIdr(parsed.opening_balance)}) berbeda dengan saldo Bank di buku per ${parsed.period_start} (Rp ${formatIdr(book)}).`;
 }
 
-export async function createUpload(
-	input: { companyId: string; userId: string; file: File },
-	deps: UploadDeps
+async function insertAndEnqueue(
+	company: { id: string },
+	meta: { userId: string; filename: string; bank: string },
+	parsed: ParsedStatement,
+	accountNo: string,
+	balanceWarning: string | null,
+	enqueue: (uploadId: string) => void
 ): Promise<{ id: string; balanceWarning: string | null }> {
-	await validateFile(input.file);
-	const company = await db.query.companies.findFirst({ where: eq(companies.id, input.companyId) });
-	if (!company) throw notFound('Perusahaan');
-
-	const parsed = await deps.parse(input.file); // PDF hanya diteruskan dari memori (D12)
-	const accountNo = normalizeAccountNo(parsed.account_no);
-
-	const balanceWarning = await openingBalanceWarning(company, parsed);
-
 	const id = await db.transaction(async (tx) => {
 		// Cek duplikat di dalam lock baris perusahaan agar dua upload bersamaan tidak sama-sama lolos.
 		await tx.execute(sql`select id from companies where id = ${company.id} for update`);
@@ -81,8 +76,9 @@ export async function createUpload(
 			.insert(statementUploads)
 			.values({
 				companyId: company.id,
-				uploadedBy: input.userId,
-				filename: input.file.name,
+				uploadedBy: meta.userId,
+				filename: meta.filename,
+				bank: meta.bank,
 				accountNo,
 				periodStart: parsed.period_start,
 				periodEnd: parsed.period_end,
@@ -110,8 +106,63 @@ export async function createUpload(
 		return upload.id;
 	});
 
-	deps.enqueue(id);
+	enqueue(id);
 	return { id, balanceWarning };
+}
+
+export async function createUpload(
+	input: { companyId: string; userId: string; file: File },
+	deps: UploadDeps
+): Promise<{ id: string; balanceWarning: string | null }> {
+	await validateFile(input.file);
+	const company = await db.query.companies.findFirst({ where: eq(companies.id, input.companyId) });
+	if (!company) throw notFound('Perusahaan');
+	const parsed = await deps.parse(input.file); // PDF hanya diteruskan dari memori (D12)
+	const accountNo = normalizeAccountNo(parsed.account_no);
+	const balanceWarning = await openingBalanceWarning(company, parsed);
+	return insertAndEnqueue(company, { userId: input.userId, filename: input.file.name, bank: 'BCA' }, parsed, accountNo, balanceWarning, deps.enqueue);
+}
+
+export interface ManualRow {
+	date: string;
+	description: string;
+	direction: 'DB' | 'CR';
+	amount: string;
+}
+
+export async function createManualEntry(
+	input: { companyId: string; userId: string; bank: string; accountNo: string; openingBalance?: string; rows: ManualRow[] },
+	deps: { enqueue: (uploadId: string) => void }
+): Promise<{ id: string; balanceWarning: string | null }> {
+	const company = await db.query.companies.findFirst({ where: eq(companies.id, input.companyId) });
+	if (!company) throw notFound('Perusahaan');
+	const accountNo = normalizeAccountNo(input.accountNo);
+
+	const sorted = input.rows
+		.map((r, i) => ({ r, i }))
+		.sort((a, b) => a.r.date.localeCompare(b.r.date) || a.i - b.i)
+		.map(({ r }) => r);
+
+	const opening = input.openingBalance ?? (company.bankAccountId ? await balanceAtStartOf(db, company.id, company.bankAccountId, sorted[0].date) : '0');
+
+	let running = D(opening);
+	const parsedTransactions = sorted.map((r, idx) => {
+		running = r.direction === 'CR' ? running.plus(r.amount) : running.minus(r.amount);
+		return { line_no: idx + 1, date: r.date, description: r.description, amount: toMoney(r.amount), direction: r.direction, balance: toMoney(running) };
+	});
+
+	const parsed: ParsedStatement = {
+		account_no: accountNo,
+		period_start: sorted[0].date,
+		period_end: sorted[sorted.length - 1].date,
+		opening_balance: toMoney(opening),
+		closing_balance: toMoney(running),
+		transactions: parsedTransactions
+	};
+
+	const balanceWarning = await openingBalanceWarning(company, parsed);
+	const filename = `Input manual — ${parsed.period_start} s/d ${parsed.period_end}`;
+	return insertAndEnqueue(company, { userId: input.userId, filename, bank: input.bank }, parsed, accountNo, balanceWarning, deps.enqueue);
 }
 
 export async function listUploads(companyId: string) {
