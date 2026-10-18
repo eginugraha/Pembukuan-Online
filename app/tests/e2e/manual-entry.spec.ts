@@ -10,6 +10,15 @@ test.beforeEach(async ({ page }) => {
 	await page.goto('/uploads/new');
 });
 
+// A successful submission leaves a real, unconfirmed upload in the shared e2e DB (there is no
+// per-spec DB reset — see global-setup.ts). Left alone, that pending batch adds a second
+// "Konfirmasi semua saran" group on /review, breaking smoke.spec.ts's strict single-match
+// assertion. Delete whatever this test created, same pattern as company-logo.spec.ts's cleanup.
+test.afterEach(async ({ page }) => {
+	const match = page.url().match(/\/uploads\/([0-9a-f-]{36})$/);
+	if (match) await page.request.delete(`/api/uploads/${match[1]}`);
+});
+
 test('creates a manual batch with two rows and redirects to its detail page', async ({ page }) => {
 	await page.getByRole('tab', { name: 'Input Manual' }).click();
 	await page.getByLabel('Nama bank').fill('Mandiri');
