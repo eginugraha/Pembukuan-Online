@@ -18,6 +18,7 @@
 	let bitmap: ImageBitmap | null = $state(null);
 	let crop: LogoCrop = $state({ zoom: 1, panX: 0.5, panY: 0.5 });
 	let errorMessage = $state<string | null>(null);
+	let uploadErrorMessage = $state<string | null>(null);
 	let busy = $state(false);
 
 	type Drag = { pointerId: number; startX: number; startY: number; startPanX: number; startPanY: number };
@@ -30,6 +31,7 @@
 	$effect(() => {
 		bitmap = null;
 		errorMessage = null;
+		uploadErrorMessage = null;
 		crop = { zoom: 1, panX: 0.5, panY: 0.5 };
 		loadBitmap(file)
 			.then((b) => {
@@ -86,12 +88,12 @@
 	async function confirm() {
 		if (!bitmap) return;
 		busy = true;
-		errorMessage = null;
+		uploadErrorMessage = null;
 		try {
 			const blob = await renderLogoCrop(bitmap, crop);
 			await onconfirm(blob);
 		} catch (err) {
-			errorMessage = err instanceof Error ? err.message : 'Gagal memproses gambar';
+			uploadErrorMessage = err instanceof Error ? err.message : 'Gagal memproses gambar';
 		} finally {
 			busy = false;
 		}
@@ -134,6 +136,9 @@
 					class="w-full"
 				/>
 			</div>
+		{/if}
+		{#if uploadErrorMessage}
+			<p class="text-sm text-destructive">{uploadErrorMessage}</p>
 		{/if}
 		<Dialog.Footer>
 			<Button type="button" variant="outline" onclick={cancel}>Batal</Button>
