@@ -7,6 +7,7 @@ import { AddMemberInput } from '$lib/schemas/member';
 import { OpeningInput } from '$lib/schemas/opening';
 import { UpdateProfileInput } from '$lib/schemas/profile';
 import { CreateRuleInput } from '$lib/schemas/rule';
+import { ManualEntryInput } from '$lib/schemas/upload';
 import { DEFAULT_COA } from '../../src/lib/server/company/coa-data';
 import { IT_COA } from '../../src/lib/server/company/coa-it';
 
@@ -65,4 +66,18 @@ test('change-password messages are Indonesian and field-specific', () => {
 		newPassword: 'Password baru harus berbeda dari password saat ini'
 	});
 	expect(fieldErrors(ChangePasswordInput, { currentPassword: 'lama-lama-1', newPassword: 'baru-baru-2', confirmPassword: 'baru-baru-2' })).toEqual({});
+});
+
+test('manual entry: required fields, and a row amount of zero is rejected', () => {
+	// `rows: []` (not omitted) so the array's own `.min(1)` message fires, not Zod's
+	// default "expected array, received undefined" for a missing key.
+	expect(fieldErrors(ManualEntryInput, { bank: '', accountNo: '', rows: [] })).toMatchObject({
+		bank: 'Nama bank wajib diisi',
+		accountNo: 'Nomor rekening wajib diisi',
+		rows: 'Isi minimal satu baris transaksi'
+	});
+	const valid = { bank: 'Mandiri', accountNo: '123', rows: [{ date: '2026-08-01', description: 'Transfer', direction: 'DB', amount: '10000' }] };
+	expect(fieldErrors(ManualEntryInput, valid)).toEqual({});
+	const zero = { ...valid, rows: [{ ...valid.rows[0], amount: '0' }] };
+	expect(fieldErrors(ManualEntryInput, zero).rows).toBe('Jumlah harus lebih dari 0');
 });
