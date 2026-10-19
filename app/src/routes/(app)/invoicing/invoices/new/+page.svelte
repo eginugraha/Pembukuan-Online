@@ -21,8 +21,8 @@
 	let { data } = $props();
 
 	const contactOptions = $derived(data.contacts.map((c) => ({ value: c.id, label: c.name })));
-	const receivableOptions = $derived(accountOptions(data.accounts));
-	const taxAccountOptions = $derived(accountOptions(data.accounts));
+	const receivableOptions = $derived(accountOptions(data.accounts.filter((a) => a.type === 'ASSET')));
+	const taxAccountOptions = $derived(accountOptions(data.accounts.filter((a) => a.type === 'ASSET' || a.type === 'LIABILITY')));
 	const revenueOptions = $derived(accountOptions(data.accounts.filter((a) => a.type === 'REVENUE')));
 
 	// --- Field header: sama seperti form lain (lihat settings/rules, uploads/new) ---

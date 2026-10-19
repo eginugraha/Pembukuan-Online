@@ -103,7 +103,7 @@ test('cancelling an invoice paid via an advance receipt releases the receipt bac
 	const { id: receiptId } = await createAdvanceReceipt(companyId, u.id, { contactId: contact.id, receiptDate: '2026-10-02', amount: '1000000', deferredRevenueAccountId: deferred });
 	await payInvoiceByAdvanceReceipt(companyId, u.id, invoiceId, receiptId, '2026-10-10');
 
-	await cancelInvoice(companyId, u.id, invoiceId);
+	await cancelInvoice(companyId, u.id, invoiceId, { callerIsAdmin: true });
 
 	expect((await db.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) }))?.status).toBe('CANCELLED');
 	expect((await db.query.advanceReceipts.findFirst({ where: eq(advanceReceipts.id, receiptId) }))).toMatchObject({ status: 'ACTIVE', appliedToInvoiceId: null });
@@ -135,7 +135,7 @@ test('cancelling a bank-paid invoice leaves an unrelated, separately-applied adv
 	const { id: receiptId } = await createAdvanceReceipt(companyId, u.id, { contactId: contact.id, receiptDate: '2026-10-02', amount: '1000000', deferredRevenueAccountId: deferred });
 	await payInvoiceByAdvanceReceipt(companyId, u.id, invoiceAId, receiptId, '2026-10-10');
 
-	await cancelInvoice(companyId, u.id, invoiceBId);
+	await cancelInvoice(companyId, u.id, invoiceBId, { callerIsAdmin: true });
 
 	expect((await db.query.advanceReceipts.findFirst({ where: eq(advanceReceipts.id, receiptId) }))).toMatchObject({ status: 'APPLIED', appliedToInvoiceId: invoiceAId });
 });
@@ -146,7 +146,7 @@ test("refunding an advance receipt after its invoice was already cancelled only 
 	const { contact, invoiceId, deferred } = await setup(companyId, u.id);
 	const { id: receiptId } = await createAdvanceReceipt(companyId, u.id, { contactId: contact.id, receiptDate: '2026-10-02', amount: '1000000', deferredRevenueAccountId: deferred });
 	await payInvoiceByAdvanceReceipt(companyId, u.id, invoiceId, receiptId, '2026-10-10');
-	await cancelInvoice(companyId, u.id, invoiceId);
+	await cancelInvoice(companyId, u.id, invoiceId, { callerIsAdmin: true });
 
 	const invoiceEntriesBefore = await db.select().from(journalEntries).where(eq(journalEntries.invoiceId, invoiceId));
 	const receiptEntriesBefore = await db.select().from(journalEntries).where(eq(journalEntries.advanceReceiptId, receiptId));

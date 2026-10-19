@@ -13,6 +13,9 @@
 	let { data } = $props();
 
 	const STATUS_LABELS = { ACTIVE: 'Aktif', APPLIED: 'Terpakai', REFUNDED: 'Dibatalkan' } as const;
+	// Terpakai (sudah dipakai melunasi invoice) vs Dibatalkan (dikembalikan, mati) dibedakan seperti
+	// badge lain di aplikasi: secondary untuk status "selesai terpakai", outline untuk yang nonaktif.
+	const STATUS_VARIANTS = { ACTIVE: 'default', APPLIED: 'secondary', REFUNDED: 'outline' } as const;
 	const canCancel = $derived(data.advanceReceipt.status === 'ACTIVE' && roleAtLeast(data.ctx.role, 'admin'));
 
 	let cancelOpen = $state(false);
@@ -49,7 +52,7 @@
 	<Card.Content class="grid grid-cols-2 gap-4 pt-6 text-sm sm:grid-cols-4">
 		<div>
 			<p class="text-muted-foreground">Status</p>
-			<Badge variant={data.advanceReceipt.status === 'ACTIVE' ? 'default' : 'outline'}>{STATUS_LABELS[data.advanceReceipt.status]}</Badge>
+			<Badge variant={STATUS_VARIANTS[data.advanceReceipt.status]}>{STATUS_LABELS[data.advanceReceipt.status]}</Badge>
 		</div>
 		<div>
 			<p class="text-muted-foreground">Tanggal terima</p>

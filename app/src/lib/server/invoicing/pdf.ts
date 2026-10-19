@@ -54,16 +54,39 @@ export function drawDocumentPdf(
 	}
 	y += 10;
 
-	drawRow(doc, y, COLS.map((c) => c.label), { bold: true });
-	y += ROW_H;
-	doc.moveTo(LEFT_X, y).lineTo(RIGHT_X, y).stroke();
-	y += 6;
+	// Page-break manual, pola yang sama dengan rute-rute PDF Export (lihat
+	// api/reports/trial-balance/export): cek sisa ruang sebelum menggambar tiap baris/blok, dan
+	// kalau tidak cukup `addPage()` lalu mulai lagi dari margin atas. Margin dokumen dari
+	// `createPdfDocument` sama dengan LEFT_X, jadi ambang ini sinkron dengan ambang pdfkit sendiri.
+	const pageBottom = doc.page.height - LEFT_X;
+	const ensureSpace = (extra = ROW_H) => {
+		if (y + extra > pageBottom) {
+			doc.addPage();
+			y = LEFT_X;
+			return true;
+		}
+		return false;
+	};
+
+	const drawHeader = () => {
+		drawRow(doc, y, COLS.map((c) => c.label), { bold: true });
+		y += ROW_H;
+		doc.moveTo(LEFT_X, y).lineTo(RIGHT_X, y).stroke();
+		y += 6;
+	};
+
+	ensureSpace(ROW_H * 2 + 6);
+	drawHeader();
 
 	for (const line of opts.lines) {
+		// Halaman lanjutan mengulang header kolom supaya tabelnya tetap terbaca.
+		if (ensureSpace()) drawHeader();
 		drawRow(doc, y, [line.description, line.quantity, formatIdr(line.unitPrice), formatIdr(line.amount)]);
 		y += ROW_H;
 	}
 
+	// Blok total (garis + hingga 3 baris) dijaga tetap utuh di satu halaman.
+	ensureSpace(12 + ROW_H * 3);
 	y += 4;
 	doc.moveTo(LEFT_X, y).lineTo(RIGHT_X, y).stroke();
 	y += 8;
@@ -83,9 +106,12 @@ export function drawDocumentPdf(
 
 	y += 10;
 	if (opts.notes) {
-		doc.font('Helvetica').fontSize(9).text(opts.notes, LEFT_X, y, { width: RIGHT_X - LEFT_X });
+		doc.font('Helvetica').fontSize(9);
+		ensureSpace(doc.heightOfString(opts.notes, { width: RIGHT_X - LEFT_X }));
+		doc.text(opts.notes, LEFT_X, y, { width: RIGHT_X - LEFT_X });
 		y = doc.y + 10;
 	}
 
+	ensureSpace(14);
 	doc.font('Helvetica-Bold').fontSize(10).text(`Status: ${opts.statusLabel}`, LEFT_X, y, { lineBreak: false });
 }

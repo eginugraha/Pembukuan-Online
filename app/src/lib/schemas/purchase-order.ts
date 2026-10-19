@@ -21,6 +21,7 @@ export const CreatePurchaseOrderInput = z
 			.string()
 			.trim()
 			.regex(/^\d{1,3}(\.\d{1,2})?$/, 'Tarif PPN tidak valid')
+			.refine((v) => Number(v) <= 100, 'Tarif PPN maksimal 100%')
 			.optional(),
 		taxAccountId: requiredId('Akun PPN').optional(),
 		notes: optionalText('Catatan', 500),

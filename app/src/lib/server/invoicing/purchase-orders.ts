@@ -1,8 +1,8 @@
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { D, sumMoney, toMoney } from '../../money';
 import { CreatePurchaseOrderInput, POLineInput } from '../../schemas/purchase-order';
 import { assertAccountOfType } from './accounts';
-import { assertLeafAccount } from '../accounts/queries';
+import { assertContact } from './contacts';
 import { ApiError, notFound } from '../api';
 import { assertPeriodOpen } from '../closing/lock';
 import { db, type Tx } from '../db';
@@ -53,13 +53,25 @@ export interface PODetail {
 	lines: POLineRow[];
 }
 
-async function computeLines(tx: Tx, companyId: string, lines: POLineInput[]) {
-	const computed = [];
-	for (const l of lines) {
-		await assertAccountOfType(tx, companyId, l.expenseAccountId, 'EXPENSE');
-		computed.push({ ...l, amount: toMoney(D(l.quantity).times(l.unitPrice)) });
-	}
-	return computed;
+/** Akun PPN boleh ASSET atau LIABILITY (tergantung template bagan akun), tapi tidak pernah pendapatan/biaya/ekuitas. */
+const TAX_ACCOUNT_TYPES: Array<'ASSET' | 'LIABILITY'> = ['ASSET', 'LIABILITY'];
+
+/**
+ * Validasi semua akun yang dirujuk PO. Dipanggil saat Draft dibuat DAN lagi saat diposting
+ * (Terima), karena akun bisa dinonaktifkan/diberi anak/diubah tipenya di antara keduanya.
+ */
+async function assertPOAccounts(
+	tx: Tx,
+	companyId: string,
+	accts: { payableAccountId: string; taxAccountId: string | null | undefined; expenseAccountIds: string[] }
+) {
+	await assertAccountOfType(tx, companyId, accts.payableAccountId, 'LIABILITY');
+	if (accts.taxAccountId) await assertAccountOfType(tx, companyId, accts.taxAccountId, TAX_ACCOUNT_TYPES);
+	for (const id of accts.expenseAccountIds) await assertAccountOfType(tx, companyId, id, 'EXPENSE');
+}
+
+function computeLines(lines: POLineInput[]) {
+	return lines.map((l) => ({ ...l, amount: toMoney(D(l.quantity).times(l.unitPrice)) }));
 }
 
 /** Buat PO Draft: akun divalidasi, subtotal/pajak/total dihitung di server, tanpa nomor dan tanpa jurnal. */
@@ -69,10 +81,14 @@ export async function createPurchaseOrder(
 	input: CreatePurchaseOrderInput
 ): Promise<{ id: string }> {
 	return db.transaction(async (tx) => {
-		await assertAccountOfType(tx, companyId, input.payableAccountId, 'LIABILITY');
-		if (input.taxAccountId) await assertLeafAccount(tx, companyId, input.taxAccountId);
+		await assertContact(tx, companyId, input.contactId, 'VENDOR');
+		await assertPOAccounts(tx, companyId, {
+			payableAccountId: input.payableAccountId,
+			taxAccountId: input.taxAccountId,
+			expenseAccountIds: input.lines.map((l) => l.expenseAccountId)
+		});
 
-		const computedLines = await computeLines(tx, companyId, input.lines);
+		const computedLines = computeLines(input.lines);
 		const subtotal = sumMoney(computedLines.map((l) => l.amount));
 		const taxAmount = input.taxRate ? toMoney(subtotal.times(input.taxRate).div(100)) : '0.00';
 		const total = toMoney(subtotal.plus(taxAmount));
@@ -125,7 +141,7 @@ export async function listPurchaseOrders(companyId: string): Promise<POListRow[]
 			contactName: contacts.name
 		})
 		.from(purchaseOrders)
-		.innerJoin(contacts, eq(contacts.id, purchaseOrders.contactId))
+		.innerJoin(contacts, and(eq(contacts.id, purchaseOrders.contactId), eq(contacts.companyId, companyId)))
 		.where(eq(purchaseOrders.companyId, companyId))
 		.orderBy(asc(purchaseOrders.issueDate));
 }
@@ -169,6 +185,12 @@ export async function receivePurchaseOrder(companyId: string, userId: string, po
 
 		const lines = await tx.select().from(purchaseOrderLines).where(eq(purchaseOrderLines.poId, poId)).orderBy(asc(purchaseOrderLines.lineNo));
 
+		await assertPOAccounts(tx, companyId, {
+			payableAccountId: po.payableAccountId,
+			taxAccountId: D(po.taxAmount).gt(0) ? po.taxAccountId : null,
+			expenseAccountIds: lines.map((l) => l.expenseAccountId)
+		});
+
 		const journalLineInputs: JournalLineInput[] = [
 			...lines.map((l) => ({ accountId: l.expenseAccountId, debit: l.amount, credit: '0.00' }))
 		];
@@ -193,13 +215,19 @@ export async function receivePurchaseOrder(companyId: string, userId: string, po
 
 /**
  * Batalkan PO: Draft/Diterbitkan cukup ubah status (tanpa jurnal, karena jurnal hanya diposting
- * saat Diterima), Diterima membalik jurnal yang sudah diposting. Mengikuti pola `cancelInvoice`
- * (Task 7): status awal dibaca sekali di luar lock untuk menentukan jalur mana yang berlaku --
- * itu dianggap "niat" pemanggil, konsisten dengan role yang sudah diputuskan di route berdasarkan
- * status yang sama. Begitu company di-lock, status dibaca ulang di tiap jalur supaya balapan
- * dengan transisi lain (`receivePurchaseOrder`) tidak diam-diam meloncat ke jalur yang berbeda.
+ * saat Diterima), Diterima membalik jurnal yang sudah diposting. Mengikuti pola `cancelInvoice`:
+ * status awal dibaca sekali di luar lock untuk menentukan jalur, lalu dibaca ulang di bawah lock
+ * company di tiap jalur supaya balapan dengan `receivePurchaseOrder` tidak diam-diam meloncat ke
+ * jalur lain. Otorisasi akhir juga diputuskan di bawah lock itu: route meneruskan `callerIsAdmin`,
+ * dan membatalkan PO yang sudah Diterima (diposting) wajib admin -- pemanggil non-admin ditolak
+ * 403 `forbidden` meski cek role di route (yang melihat status belum Diterima) sudah lolos.
  */
-export async function cancelPurchaseOrder(companyId: string, userId: string, poId: string): Promise<void> {
+export async function cancelPurchaseOrder(
+	companyId: string,
+	userId: string,
+	poId: string,
+	opts: { callerIsAdmin: boolean }
+): Promise<void> {
 	const po = await db.query.purchaseOrders.findFirst({ where: eq(purchaseOrders.id, poId) });
 	if (!po || po.companyId !== companyId) throw notFound('PO');
 	if (po.status === 'CANCELLED') throw new ApiError(409, 'invalid_status', 'PO sudah dibatalkan');
@@ -210,6 +238,7 @@ export async function cancelPurchaseOrder(companyId: string, userId: string, poI
 
 			const current = await tx.query.purchaseOrders.findFirst({ where: eq(purchaseOrders.id, poId) });
 			if (!current || current.companyId !== companyId) throw notFound('PO');
+			if (current.status === 'RECEIVED' && !opts.callerIsAdmin) throw cancelReceivedForbidden();
 			if (current.status === 'RECEIVED' || current.status === 'CANCELLED') {
 				throw new ApiError(409, 'invalid_status', 'PO sudah berubah status, muat ulang lalu coba batalkan lagi');
 			}
@@ -224,9 +253,14 @@ export async function cancelPurchaseOrder(companyId: string, userId: string, poI
 		const current = await tx.query.purchaseOrders.findFirst({ where: eq(purchaseOrders.id, poId) });
 		if (!current || current.companyId !== companyId) throw notFound('PO');
 		if (current.status === 'CANCELLED') throw new ApiError(409, 'invalid_status', 'PO sudah dibatalkan');
+		if (!opts.callerIsAdmin) throw cancelReceivedForbidden();
 
 		await reverseJournalEntries(tx, { companyId, createdBy: userId, purchaseOrderId: poId, descriptionPrefix: 'Pembalikan' });
 
 		await tx.update(purchaseOrders).set({ status: 'CANCELLED' }).where(eq(purchaseOrders.id, poId));
 	});
+}
+
+function cancelReceivedForbidden(): ApiError {
+	return new ApiError(403, 'forbidden', 'Hanya admin yang dapat membatalkan PO yang sudah diterima');
 }

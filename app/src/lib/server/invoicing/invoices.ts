@@ -2,7 +2,7 @@ import { and, asc, eq, sql } from 'drizzle-orm';
 import { D, sumMoney, toMoney } from '../../money';
 import { CreateInvoiceInput, InvoiceLineInput } from '../../schemas/invoice';
 import { assertAccountOfType } from './accounts';
-import { assertLeafAccount } from '../accounts/queries';
+import { assertContact } from './contacts';
 import { ApiError, notFound } from '../api';
 import { assertPeriodOpen } from '../closing/lock';
 import { db, type Tx } from '../db';
@@ -52,13 +52,25 @@ export interface InvoiceDetail {
 	lines: InvoiceLineRow[];
 }
 
-async function computeLines(tx: Tx, companyId: string, lines: InvoiceLineInput[]) {
-	const computed = [];
-	for (const l of lines) {
-		await assertAccountOfType(tx, companyId, l.revenueAccountId, 'REVENUE');
-		computed.push({ ...l, amount: toMoney(D(l.quantity).times(l.unitPrice)) });
-	}
-	return computed;
+/** Akun PPN boleh ASSET atau LIABILITY (tergantung template bagan akun), tapi tidak pernah pendapatan/biaya/ekuitas. */
+const TAX_ACCOUNT_TYPES: Array<'ASSET' | 'LIABILITY'> = ['ASSET', 'LIABILITY'];
+
+/**
+ * Validasi semua akun yang dirujuk invoice. Dipanggil saat Draft dibuat DAN lagi saat diposting
+ * (Kirim), karena akun bisa dinonaktifkan/diberi anak/diubah tipenya di antara keduanya.
+ */
+async function assertInvoiceAccounts(
+	tx: Tx,
+	companyId: string,
+	accts: { receivableAccountId: string; taxAccountId: string | null | undefined; revenueAccountIds: string[] }
+) {
+	await assertAccountOfType(tx, companyId, accts.receivableAccountId, 'ASSET');
+	if (accts.taxAccountId) await assertAccountOfType(tx, companyId, accts.taxAccountId, TAX_ACCOUNT_TYPES);
+	for (const id of accts.revenueAccountIds) await assertAccountOfType(tx, companyId, id, 'REVENUE');
+}
+
+function computeLines(lines: InvoiceLineInput[]) {
+	return lines.map((l) => ({ ...l, amount: toMoney(D(l.quantity).times(l.unitPrice)) }));
 }
 
 /** Buat invoice Draft: akun divalidasi, subtotal/pajak/total dihitung di server, tanpa nomor dan tanpa jurnal. */
@@ -68,10 +80,14 @@ export async function createInvoice(
 	input: CreateInvoiceInput
 ): Promise<{ id: string }> {
 	return db.transaction(async (tx) => {
-		await assertAccountOfType(tx, companyId, input.receivableAccountId, 'ASSET');
-		if (input.taxAccountId) await assertLeafAccount(tx, companyId, input.taxAccountId);
+		await assertContact(tx, companyId, input.contactId, 'CUSTOMER');
+		await assertInvoiceAccounts(tx, companyId, {
+			receivableAccountId: input.receivableAccountId,
+			taxAccountId: input.taxAccountId,
+			revenueAccountIds: input.lines.map((l) => l.revenueAccountId)
+		});
 
-		const computedLines = await computeLines(tx, companyId, input.lines);
+		const computedLines = computeLines(input.lines);
 		const subtotal = sumMoney(computedLines.map((l) => l.amount));
 		const taxAmount = input.taxRate ? toMoney(subtotal.times(input.taxRate).div(100)) : '0.00';
 		const total = toMoney(subtotal.plus(taxAmount));
@@ -123,7 +139,7 @@ export async function listInvoices(companyId: string): Promise<InvoiceListRow[]>
 			contactName: contacts.name
 		})
 		.from(invoices)
-		.innerJoin(contacts, eq(contacts.id, invoices.contactId))
+		.innerJoin(contacts, and(eq(contacts.id, invoices.contactId), eq(contacts.companyId, companyId)))
 		.where(eq(invoices.companyId, companyId))
 		.orderBy(asc(invoices.issueDate));
 }
@@ -151,6 +167,12 @@ export async function sendInvoice(companyId: string, userId: string, invoiceId: 
 		await assertPeriodOpen(tx, companyId, [date]);
 
 		const lines = await tx.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, invoiceId)).orderBy(asc(invoiceLines.lineNo));
+
+		await assertInvoiceAccounts(tx, companyId, {
+			receivableAccountId: invoice.receivableAccountId,
+			taxAccountId: D(invoice.taxAmount).gt(0) ? invoice.taxAccountId : null,
+			revenueAccountIds: lines.map((l) => l.revenueAccountId)
+		});
 
 		const invoiceNo = await nextDocumentNumber(tx, companyId, 'INV', date.slice(0, 4));
 
@@ -235,6 +257,10 @@ export async function payInvoiceByAdvanceReceipt(
 
 		await assertPeriodOpen(tx, companyId, [date]);
 
+		// Validasi ulang akun saat posting: bisa saja dinonaktifkan/diubah sejak dokumennya dibuat.
+		await assertAccountOfType(tx, companyId, receipt.deferredRevenueAccountId, 'LIABILITY');
+		await assertAccountOfType(tx, companyId, invoice.receivableAccountId, 'ASSET');
+
 		await postJournal(tx, {
 			companyId,
 			entryDate: date,
@@ -257,15 +283,21 @@ export async function payInvoiceByAdvanceReceipt(
 /**
  * Batalkan invoice: Draft cukup ubah status (tanpa jurnal), Terkirim/Lunas membalik jurnal yang
  * sudah diposting. Status awal dibaca sekali di luar lock untuk menentukan jalur mana yang berlaku
- * (Draft vs Terkirim/Lunas) -- itu dianggap "niat" pemanggil (konsisten dengan role yang sudah
- * diputuskan di route berdasarkan status yang sama). Begitu company di-lock, status dibaca ulang:
- * kalau sudah berubah dari Draft (misalnya `sendInvoice` menyusup di antara baca awal dan lock
- * diperoleh), jalur Draft INI ditolak dengan invalid_status daripada diam-diam lanjut membalik
- * jurnal -- supaya tidak melompat ke logika Terkirim/Lunas di bawah otorisasi (role) yang sebetulnya
- * hanya mencukupi untuk membatalkan Draft. Pemanggil cukup mengulang permintaannya; baca ulang akan
- * melihat status yang benar dan route akan meminta role yang sesuai.
+ * (Draft vs Terkirim/Lunas). Begitu company di-lock, status dibaca ulang:
+ * - kalau sudah berubah dari Draft (misalnya `sendInvoice` menyusup di antara baca awal dan lock
+ *   diperoleh), jalur Draft INI tidak diam-diam lanjut membalik jurnal (Task 7);
+ * - otorisasi: route memutuskan role berdasarkan baca status-nya sendiri, yang bisa basi. Karena
+ *   itu route meneruskan `callerIsAdmin` (role pemanggil yang sebenarnya), dan keputusan akhir
+ *   diambil DI SINI, di bawah lock yang sama dengan baca ulang status: membatalkan invoice yang
+ *   sudah diposting (Terkirim/Lunas) wajib admin -- pemanggil non-admin ditolak 403 `forbidden`
+ *   meski cek role di route (yang melihat Draft) sudah lolos.
  */
-export async function cancelInvoice(companyId: string, userId: string, invoiceId: string): Promise<void> {
+export async function cancelInvoice(
+	companyId: string,
+	userId: string,
+	invoiceId: string,
+	opts: { callerIsAdmin: boolean }
+): Promise<void> {
 	const invoice = await db.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) });
 	if (!invoice || invoice.companyId !== companyId) throw notFound('Invoice');
 	if (invoice.status === 'CANCELLED') throw new ApiError(409, 'invalid_status', 'Invoice sudah dibatalkan');
@@ -277,6 +309,7 @@ export async function cancelInvoice(companyId: string, userId: string, invoiceId
 			const current = await tx.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) });
 			if (!current || current.companyId !== companyId) throw notFound('Invoice');
 			if (current.status !== 'DRAFT') {
+				if (isPostedInvoiceStatus(current.status) && !opts.callerIsAdmin) throw cancelPostedForbidden();
 				throw new ApiError(409, 'invalid_status', 'Invoice sudah bukan Draft, muat ulang lalu coba batalkan lagi');
 			}
 
@@ -290,6 +323,7 @@ export async function cancelInvoice(companyId: string, userId: string, invoiceId
 		const current = await tx.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) });
 		if (!current || current.companyId !== companyId) throw notFound('Invoice');
 		if (current.status === 'CANCELLED') throw new ApiError(409, 'invalid_status', 'Invoice sudah dibatalkan');
+		if (!opts.callerIsAdmin) throw cancelPostedForbidden();
 
 		await reverseJournalEntries(tx, { companyId, createdBy: userId, invoiceId, descriptionPrefix: 'Pembalikan' });
 
@@ -308,4 +342,12 @@ export async function cancelInvoice(companyId: string, userId: string, invoiceId
 
 		await tx.update(invoices).set({ status: 'CANCELLED' }).where(eq(invoices.id, invoiceId));
 	});
+}
+
+function isPostedInvoiceStatus(status: InvoiceDetail['status']): boolean {
+	return status === 'SENT' || status === 'PAID';
+}
+
+function cancelPostedForbidden(): ApiError {
+	return new ApiError(403, 'forbidden', 'Hanya admin yang dapat membatalkan invoice yang sudah dikirim atau lunas');
 }

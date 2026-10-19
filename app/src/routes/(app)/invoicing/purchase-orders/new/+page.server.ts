@@ -7,7 +7,7 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async (event) => {
 	const ctx = requirePageRole(event, 'accountant');
 	const [contacts, accounts] = await Promise.all([
-		listContacts(ctx.companyId, { kind: 'VENDOR' }),
+		listContacts(ctx.companyId, { kind: 'VENDOR', activeOnly: true }),
 		listLeafAccounts(db, ctx.companyId)
 	]);
 	return { contacts, accounts };

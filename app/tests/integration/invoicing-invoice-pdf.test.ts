@@ -35,6 +35,43 @@ test('PDF contains the contact name, invoice number, line description, and total
 	expect(text).toContain('1.500.000,00');
 });
 
+test('a 60-line invoice breaks onto more than one page, keeping every line and the totals on real pages', async () => {
+	const { companyId } = await makeCompany();
+	const u = await makeUser();
+	await addMember(u.id, companyId, 'viewer');
+	const [contact] = await db.insert(contacts).values({ companyId, kind: 'CUSTOMER', name: 'PT Panjang' }).returning();
+	const receivable = await accountIdByCode(companyId, '1-1003');
+	const revenue = await accountIdByCode(companyId, '4-1001');
+	const N = 60;
+	const desc = (i: number) => `Baris ke-${String(i).padStart(2, '0')}`;
+	const { id } = await createInvoice(companyId, u.id, {
+		contactId: contact.id,
+		issueDate: '2026-10-01',
+		receivableAccountId: receivable,
+		notes: 'Catatan penutup invoice panjang',
+		lines: Array.from({ length: N }, (_, i) => ({ description: desc(i + 1), quantity: '1', unitPrice: '1000', revenueAccountId: revenue }))
+	});
+
+	const res = await GET(fakeEvent({ ctx: await contextFor(u, companyId), path: `/api/invoicing/invoices/${id}/pdf`, params: { id } }) as never);
+	expect(res.status).toBe(200);
+	const result = await new PDFParse({ data: new Uint8Array(await res.arrayBuffer()) }).getText();
+	expect(result.total).toBeGreaterThan(1);
+
+	// Every line lands on exactly one page (none lost off the bottom edge, none duplicated).
+	for (let i = 1; i <= N; i++) {
+		expect(result.pages.filter((p) => p.text.includes(desc(i)))).toHaveLength(1);
+	}
+	// The first page can't hold all 60 rows, so the last one must be on a later page.
+	expect(result.pages[0].text).not.toContain(desc(N));
+	// The continuation page repeats the column header.
+	expect(result.pages[1].text).toContain('Harga Satuan');
+	// Totals, notes, and status all land on the final page.
+	const lastPage = result.pages[result.pages.length - 1].text;
+	expect(lastPage).toContain('60.000,00');
+	expect(lastPage).toContain('Catatan penutup invoice panjang');
+	expect(lastPage).toContain('Status: Draft');
+});
+
 test('no company context is a 401', async () => {
 	const res = await GET(fakeEvent({ ctx: null, path: '/api/invoicing/invoices/x/pdf', params: { id: 'x' } }) as never);
 	expect(res.status).toBe(401);

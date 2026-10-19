@@ -21,8 +21,8 @@
 	let { data } = $props();
 
 	const contactOptions = $derived(data.contacts.map((c) => ({ value: c.id, label: c.name })));
-	const payableOptions = $derived(accountOptions(data.accounts));
-	const taxAccountOptions = $derived(accountOptions(data.accounts));
+	const payableOptions = $derived(accountOptions(data.accounts.filter((a) => a.type === 'LIABILITY')));
+	const taxAccountOptions = $derived(accountOptions(data.accounts.filter((a) => a.type === 'ASSET' || a.type === 'LIABILITY')));
 	const expenseOptions = $derived(accountOptions(data.accounts.filter((a) => a.type === 'EXPENSE')));
 
 	// --- Field header: sama seperti form lain (lihat invoicing/invoices/new) ---

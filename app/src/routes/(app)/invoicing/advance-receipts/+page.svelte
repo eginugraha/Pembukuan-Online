@@ -10,6 +10,9 @@
 
 	let { data } = $props();
 	const STATUS_LABELS = { ACTIVE: 'Aktif', APPLIED: 'Terpakai', REFUNDED: 'Dibatalkan' } as const;
+	// Terpakai (sudah dipakai melunasi invoice) vs Dibatalkan (dikembalikan, mati) dibedakan seperti
+	// badge lain di aplikasi: secondary untuk status "selesai terpakai", outline untuk yang nonaktif.
+	const STATUS_VARIANTS = { ACTIVE: 'default', APPLIED: 'secondary', REFUNDED: 'outline' } as const;
 	type AdvanceReceipt = (typeof data.advanceReceipts)[number];
 	const RECEIPT_COLUMNS: Column<AdvanceReceipt>[] = [
 		{ key: 'receiptNo', label: 'No.', sortable: true, searchable: true, text: (r) => r.receiptNo },
@@ -38,7 +41,7 @@
 		{:else if col.key === 'amount'}
 			{formatIdr(r.amount)}
 		{:else if col.key === 'status'}
-			<Badge variant={r.status === 'ACTIVE' ? 'default' : 'outline'}>{STATUS_LABELS[r.status]}</Badge>
+			<Badge variant={STATUS_VARIANTS[r.status]}>{STATUS_LABELS[r.status]}</Badge>
 		{/if}
 	{/snippet}
 </DataTable>

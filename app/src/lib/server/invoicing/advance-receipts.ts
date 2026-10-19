@@ -1,6 +1,7 @@
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { CreateAdvanceReceiptInput } from '../../schemas/advance-receipt';
 import { assertAccountOfType } from './accounts';
+import { assertContact } from './contacts';
 import { ApiError, notFound } from '../api';
 import { assertPeriodOpen } from '../closing/lock';
 import { db } from '../db';
@@ -46,6 +47,7 @@ export async function createAdvanceReceipt(
 		const company = await tx.query.companies.findFirst({ where: eq(companies.id, companyId) });
 		if (!company?.bankAccountId) throw new ApiError(409, 'bank_account_not_set', 'Akun bank perusahaan belum diatur di Pengaturan → Perusahaan');
 
+		await assertContact(tx, companyId, input.contactId, 'CUSTOMER');
 		await assertAccountOfType(tx, companyId, input.deferredRevenueAccountId, 'LIABILITY');
 		await assertPeriodOpen(tx, companyId, [input.receiptDate]);
 
@@ -94,7 +96,7 @@ export async function listAdvanceReceipts(companyId: string): Promise<AdvanceRec
 			contactName: contacts.name
 		})
 		.from(advanceReceipts)
-		.innerJoin(contacts, eq(contacts.id, advanceReceipts.contactId))
+		.innerJoin(contacts, and(eq(contacts.id, advanceReceipts.contactId), eq(contacts.companyId, companyId)))
 		.where(eq(advanceReceipts.companyId, companyId))
 		.orderBy(asc(advanceReceipts.receiptDate));
 }
