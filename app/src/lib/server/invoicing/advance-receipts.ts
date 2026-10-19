@@ -129,7 +129,10 @@ export async function cancelAdvanceReceipt(companyId: string, userId: string, id
 			throw new ApiError(409, 'invalid_status', 'Uang muka harus berstatus Aktif untuk dibatalkan');
 		}
 
-		await reverseJournalEntries(tx, { companyId, createdBy: userId, advanceReceiptId: id, descriptionPrefix: 'Pembalikan' });
+		// onlyUnlinked: true -- a receipt's id also sits on any invoice-payment entry that applied it
+		// (Task 9) and that entry's own reversal, both of which carry invoiceId too. Without this,
+		// refunding the receipt would also re-reverse those invoice-linked entries every time.
+		await reverseJournalEntries(tx, { companyId, createdBy: userId, advanceReceiptId: id, descriptionPrefix: 'Pembalikan', onlyUnlinked: true });
 
 		await tx.update(advanceReceipts).set({ status: 'REFUNDED' }).where(eq(advanceReceipts.id, id));
 	});

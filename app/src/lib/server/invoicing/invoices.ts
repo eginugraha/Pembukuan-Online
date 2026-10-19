@@ -1,4 +1,4 @@
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { D, sumMoney, toMoney } from '../../money';
 import { CreateInvoiceInput, InvoiceLineInput } from '../../schemas/invoice';
 import { assertAccountOfType } from './accounts';
@@ -297,7 +297,13 @@ export async function cancelInvoice(companyId: string, userId: string, invoiceId
 			await tx
 				.update(advanceReceipts)
 				.set({ status: 'ACTIVE', appliedToInvoiceId: null })
-				.where(eq(advanceReceipts.id, current.paidViaAdvanceReceiptId));
+				.where(
+					and(
+						eq(advanceReceipts.id, current.paidViaAdvanceReceiptId),
+						eq(advanceReceipts.status, 'APPLIED'),
+						eq(advanceReceipts.appliedToInvoiceId, invoiceId)
+					)
+				);
 		}
 
 		await tx.update(invoices).set({ status: 'CANCELLED' }).where(eq(invoices.id, invoiceId));
