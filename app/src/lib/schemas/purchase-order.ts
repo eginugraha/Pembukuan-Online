@@ -31,3 +31,6 @@ export const CreatePurchaseOrderInput = z
 		path: ['taxAccountId']
 	});
 export type CreatePurchaseOrderInput = z.infer<typeof CreatePurchaseOrderInput>;
+
+export const ReceivePurchaseOrderInput = z.object({ date: isoDate });
+export type ReceivePurchaseOrderInput = z.infer<typeof ReceivePurchaseOrderInput>;

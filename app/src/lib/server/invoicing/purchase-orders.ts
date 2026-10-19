@@ -4,9 +4,12 @@ import { CreatePurchaseOrderInput, POLineInput } from '../../schemas/purchase-or
 import { assertAccountOfType } from './accounts';
 import { assertLeafAccount } from '../accounts/queries';
 import { ApiError, notFound } from '../api';
+import { assertPeriodOpen } from '../closing/lock';
 import { db, type Tx } from '../db';
 import { contacts, purchaseOrderLines, purchaseOrders } from '../db/schema';
 import { nextDocumentNumber } from './numbering';
+import { postJournal, reverseJournalEntries } from './posting';
+import type { JournalLineInput } from '../journal/lines';
 
 export { CreatePurchaseOrderInput, POLineInput };
 
@@ -150,5 +153,80 @@ export async function issuePurchaseOrder(companyId: string, userId: string, poId
 		const poNo = await nextDocumentNumber(tx, companyId, 'PO', po.issueDate.slice(0, 4));
 
 		await tx.update(purchaseOrders).set({ poNo, status: 'ISSUED' }).where(eq(purchaseOrders.id, poId));
+	});
+}
+
+/** Terima PO Diterbitkan: posting jurnal penerimaan (Dr biaya / Cr utang usaha + PPN), tandai Diterima. */
+export async function receivePurchaseOrder(companyId: string, userId: string, poId: string, date: string): Promise<void> {
+	return db.transaction(async (tx) => {
+		await tx.execute(sql`select id from companies where id = ${companyId} for update`);
+
+		const po = await tx.query.purchaseOrders.findFirst({ where: eq(purchaseOrders.id, poId) });
+		if (!po || po.companyId !== companyId) throw notFound('PO');
+		if (po.status !== 'ISSUED') throw new ApiError(409, 'invalid_status', 'PO harus berstatus Diterbitkan untuk diterima');
+
+		await assertPeriodOpen(tx, companyId, [date]);
+
+		const lines = await tx.select().from(purchaseOrderLines).where(eq(purchaseOrderLines.poId, poId)).orderBy(asc(purchaseOrderLines.lineNo));
+
+		const journalLineInputs: JournalLineInput[] = [
+			...lines.map((l) => ({ accountId: l.expenseAccountId, debit: l.amount, credit: '0.00' }))
+		];
+		if (D(po.taxAmount).gt(0)) {
+			journalLineInputs.push({ accountId: po.taxAccountId!, debit: po.taxAmount, credit: '0.00' });
+		}
+		journalLineInputs.push({ accountId: po.payableAccountId, debit: '0.00', credit: po.total });
+
+		await postJournal(tx, {
+			companyId,
+			entryDate: date,
+			description: `Penerimaan ${po.poNo}`,
+			refNo: po.poNo!,
+			createdBy: userId,
+			lines: journalLineInputs,
+			purchaseOrderId: poId
+		});
+
+		await tx.update(purchaseOrders).set({ status: 'RECEIVED' }).where(eq(purchaseOrders.id, poId));
+	});
+}
+
+/**
+ * Batalkan PO: Draft/Diterbitkan cukup ubah status (tanpa jurnal, karena jurnal hanya diposting
+ * saat Diterima), Diterima membalik jurnal yang sudah diposting. Mengikuti pola `cancelInvoice`
+ * (Task 7): status awal dibaca sekali di luar lock untuk menentukan jalur mana yang berlaku --
+ * itu dianggap "niat" pemanggil, konsisten dengan role yang sudah diputuskan di route berdasarkan
+ * status yang sama. Begitu company di-lock, status dibaca ulang di tiap jalur supaya balapan
+ * dengan transisi lain (`receivePurchaseOrder`) tidak diam-diam meloncat ke jalur yang berbeda.
+ */
+export async function cancelPurchaseOrder(companyId: string, userId: string, poId: string): Promise<void> {
+	const po = await db.query.purchaseOrders.findFirst({ where: eq(purchaseOrders.id, poId) });
+	if (!po || po.companyId !== companyId) throw notFound('PO');
+	if (po.status === 'CANCELLED') throw new ApiError(409, 'invalid_status', 'PO sudah dibatalkan');
+
+	if (po.status !== 'RECEIVED') {
+		return db.transaction(async (tx) => {
+			await tx.execute(sql`select id from companies where id = ${companyId} for update`);
+
+			const current = await tx.query.purchaseOrders.findFirst({ where: eq(purchaseOrders.id, poId) });
+			if (!current || current.companyId !== companyId) throw notFound('PO');
+			if (current.status === 'RECEIVED' || current.status === 'CANCELLED') {
+				throw new ApiError(409, 'invalid_status', 'PO sudah berubah status, muat ulang lalu coba batalkan lagi');
+			}
+
+			await tx.update(purchaseOrders).set({ status: 'CANCELLED' }).where(eq(purchaseOrders.id, poId));
+		});
+	}
+
+	return db.transaction(async (tx) => {
+		await tx.execute(sql`select id from companies where id = ${companyId} for update`);
+
+		const current = await tx.query.purchaseOrders.findFirst({ where: eq(purchaseOrders.id, poId) });
+		if (!current || current.companyId !== companyId) throw notFound('PO');
+		if (current.status === 'CANCELLED') throw new ApiError(409, 'invalid_status', 'PO sudah dibatalkan');
+
+		await reverseJournalEntries(tx, { companyId, createdBy: userId, purchaseOrderId: poId, descriptionPrefix: 'Pembalikan' });
+
+		await tx.update(purchaseOrders).set({ status: 'CANCELLED' }).where(eq(purchaseOrders.id, poId));
 	});
 }
