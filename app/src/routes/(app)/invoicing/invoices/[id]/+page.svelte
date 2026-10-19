@@ -4,6 +4,7 @@
 	import DateField from '$lib/components/DateField.svelte';
 	import FormField from '$lib/components/FormField.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import SearchSelect from '$lib/components/SearchSelect.svelte';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
@@ -12,6 +13,14 @@
 	import { formatDate, todayIso } from '$lib/dates';
 	import { formatIdr } from '$lib/money';
 	import { roleAtLeast } from '$lib/roles';
+
+	interface AdvanceReceiptOption {
+		id: string;
+		receiptNo: string;
+		amount: string;
+		status: 'ACTIVE' | 'APPLIED' | 'REFUNDED';
+		contactId: string;
+	}
 
 	let { data } = $props();
 
@@ -25,6 +34,10 @@
 	let sendDate = $state('');
 	let payOpen = $state(false);
 	let payDate = $state('');
+	let advanceOpen = $state(false);
+	let advanceDate = $state('');
+	let advanceReceiptOptions = $state<{ value: string; label: string }[]>([]);
+	let selectedAdvanceReceiptId = $state('');
 	let cancelOpen = $state(false);
 	let error = $state<string | null>(null);
 	let busy = $state(false);
@@ -69,6 +82,39 @@
 		}
 	}
 
+	async function askAdvance() {
+		advanceDate = todayIso();
+		error = null;
+		selectedAdvanceReceiptId = '';
+		try {
+			const res = await apiFetch<{ advanceReceipts: AdvanceReceiptOption[] }>('/api/invoicing/advance-receipts');
+			advanceReceiptOptions = res.advanceReceipts
+				.filter((r) => r.contactId === data.invoice.contactId && r.status === 'ACTIVE')
+				.map((r) => ({ value: r.id, label: `${r.receiptNo} — ${formatIdr(r.amount)}` }));
+		} catch (err) {
+			error = err instanceof ClientApiError ? err.message : 'Terjadi kesalahan';
+			advanceReceiptOptions = [];
+		}
+		advanceOpen = true;
+	}
+
+	async function doPayAdvance() {
+		error = null;
+		busy = true;
+		try {
+			await apiFetch(`/api/invoicing/invoices/${data.invoice.id}/pay`, {
+				method: 'POST',
+				json: { date: advanceDate, method: 'ADVANCE_RECEIPT', advanceReceiptId: selectedAdvanceReceiptId }
+			});
+			advanceOpen = false;
+			await invalidateAll();
+		} catch (err) {
+			error = err instanceof ClientApiError ? err.message : 'Terjadi kesalahan';
+		} finally {
+			busy = false;
+		}
+	}
+
 	function askCancel() {
 		error = null;
 		cancelOpen = true;
@@ -93,6 +139,7 @@
 	{#snippet actions()}
 		{#if canSend}<Button onclick={askSend}>Kirim</Button>{/if}
 		{#if canPay}<Button onclick={askPay}>Bayar dari Bank</Button>{/if}
+		{#if canPay}<Button variant="outline" onclick={askAdvance}>Terapkan Uang Muka</Button>{/if}
 		{#if canCancel}<Button variant="outline" onclick={askCancel}>Batalkan</Button>{/if}
 	{/snippet}
 </PageHeader>
@@ -181,6 +228,39 @@
 		<Dialog.Footer>
 			<Button type="button" variant="outline" onclick={() => (payOpen = false)}>Batal</Button>
 			<Button type="button" disabled={busy || !payDate} onclick={doPay}>{busy ? 'Memproses…' : 'Bayar'}</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
+
+<Dialog.Root bind:open={advanceOpen}>
+	<Dialog.Content>
+		<Dialog.Header>
+			<Dialog.Title>Terapkan uang muka?</Dialog.Title>
+			<Dialog.Description>Uang muka pelanggan ini akan dipakai untuk melunasi invoice (Dr pendapatan diterima dimuka / Cr piutang).</Dialog.Description>
+		</Dialog.Header>
+		{#if advanceReceiptOptions.length === 0}
+			<p class="text-sm text-muted-foreground">Tidak ada uang muka aktif untuk pelanggan ini.</p>
+		{:else}
+			<FormField id="advance-receipt" label="Uang muka">
+				<SearchSelect
+					bind:value={selectedAdvanceReceiptId}
+					options={advanceReceiptOptions}
+					placeholder="Pilih uang muka…"
+					searchPlaceholder="Cari no. uang muka…"
+					emptyText="Tidak ada uang muka yang cocok"
+					id="advance-receipt"
+				/>
+			</FormField>
+			<FormField id="advance-date" label="Tanggal pelunasan">
+				<DateField id="advance-date" bind:value={advanceDate} />
+			</FormField>
+		{/if}
+		{#if error}<p role="alert" class="text-sm font-medium text-destructive">{error}</p>{/if}
+		<Dialog.Footer>
+			<Button type="button" variant="outline" onclick={() => (advanceOpen = false)}>Batal</Button>
+			<Button type="button" disabled={busy || !advanceDate || !selectedAdvanceReceiptId} onclick={doPayAdvance}>
+				{busy ? 'Memproses…' : 'Terapkan'}
+			</Button>
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

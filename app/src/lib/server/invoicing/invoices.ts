@@ -6,7 +6,7 @@ import { assertLeafAccount } from '../accounts/queries';
 import { ApiError, notFound } from '../api';
 import { assertPeriodOpen } from '../closing/lock';
 import { db, type Tx } from '../db';
-import { companies, contacts, invoiceLines, invoices } from '../db/schema';
+import { advanceReceipts, companies, contacts, invoiceLines, invoices } from '../db/schema';
 import { nextDocumentNumber } from './numbering';
 import { postJournal, reverseJournalEntries } from './posting';
 import type { JournalLineInput } from '../journal/lines';
@@ -207,6 +207,53 @@ export async function payInvoiceByBank(companyId: string, userId: string, invoic
 	});
 }
 
+/** Bayar invoice Terkirim lewat uang muka: posting jurnal pelunasan (Dr pendapatan diterima dimuka / Cr piutang), tandai invoice Lunas dan uang muka Terpakai. */
+export async function payInvoiceByAdvanceReceipt(
+	companyId: string,
+	userId: string,
+	invoiceId: string,
+	advanceReceiptId: string,
+	date: string
+): Promise<void> {
+	return db.transaction(async (tx) => {
+		await tx.execute(sql`select id from companies where id = ${companyId} for update`);
+
+		const invoice = await tx.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) });
+		if (!invoice || invoice.companyId !== companyId) throw notFound('Invoice');
+		if (invoice.status !== 'SENT') throw new ApiError(409, 'invalid_status', 'Invoice harus berstatus Terkirim untuk dibayar');
+
+		const receipt = await tx.query.advanceReceipts.findFirst({ where: eq(advanceReceipts.id, advanceReceiptId) });
+		if (!receipt || receipt.companyId !== companyId) throw notFound('Uang muka');
+		if (receipt.status !== 'ACTIVE') throw new ApiError(409, 'invalid_status', 'Uang muka ini sudah tidak aktif');
+
+		if (receipt.contactId !== invoice.contactId) {
+			throw new ApiError(422, 'contact_mismatch', 'Uang muka ini milik kontak yang berbeda dari invoice');
+		}
+		if (!D(receipt.amount).eq(invoice.total)) {
+			throw new ApiError(422, 'amount_mismatch', 'Jumlah uang muka tidak sama dengan total invoice');
+		}
+
+		await assertPeriodOpen(tx, companyId, [date]);
+
+		await postJournal(tx, {
+			companyId,
+			entryDate: date,
+			refNo: invoice.invoiceNo!,
+			description: `Pelunasan ${invoice.invoiceNo} via ${receipt.receiptNo}`,
+			createdBy: userId,
+			lines: [
+				{ accountId: receipt.deferredRevenueAccountId, debit: invoice.total, credit: '0.00' },
+				{ accountId: invoice.receivableAccountId, debit: '0.00', credit: invoice.total }
+			],
+			invoiceId,
+			advanceReceiptId: receipt.id
+		});
+
+		await tx.update(invoices).set({ status: 'PAID', paidViaAdvanceReceiptId: receipt.id }).where(eq(invoices.id, invoiceId));
+		await tx.update(advanceReceipts).set({ status: 'APPLIED', appliedToInvoiceId: invoiceId }).where(eq(advanceReceipts.id, receipt.id));
+	});
+}
+
 /**
  * Batalkan invoice: Draft cukup ubah status (tanpa jurnal), Terkirim/Lunas membalik jurnal yang
  * sudah diposting. Status awal dibaca sekali di luar lock untuk menentukan jalur mana yang berlaku
@@ -245,6 +292,13 @@ export async function cancelInvoice(companyId: string, userId: string, invoiceId
 		if (current.status === 'CANCELLED') throw new ApiError(409, 'invalid_status', 'Invoice sudah dibatalkan');
 
 		await reverseJournalEntries(tx, { companyId, createdBy: userId, invoiceId, descriptionPrefix: 'Pembalikan' });
+
+		if (current.paidViaAdvanceReceiptId) {
+			await tx
+				.update(advanceReceipts)
+				.set({ status: 'ACTIVE', appliedToInvoiceId: null })
+				.where(eq(advanceReceipts.id, current.paidViaAdvanceReceiptId));
+		}
 
 		await tx.update(invoices).set({ status: 'CANCELLED' }).where(eq(invoices.id, invoiceId));
 	});
