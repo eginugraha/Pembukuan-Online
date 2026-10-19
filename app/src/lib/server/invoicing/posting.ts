@@ -1,5 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { todayIso } from '../../dates';
+import { assertPeriodOpen } from '../closing/lock';
 import type { Tx } from '../db';
 import { journalEntries, journalLines } from '../db/schema';
 import { assertBalanced, type JournalLineInput } from '../journal/lines';
@@ -59,6 +60,12 @@ export async function reverseJournalEntries(tx: Tx, params: ReverseJournalEntrie
 		throw new Error('reverseJournalEntries requires at least one of invoiceId, purchaseOrderId, or advanceReceiptId');
 	}
 
+	const today = todayIso();
+	// Every journal posting -- including a reversal -- must respect the fiscal lock; reversals post
+	// dated today, so that's the date checked here. Centralized here (rather than in each caller)
+	// so Task 8/12's cancelAdvanceReceipt/cancelPurchaseOrder inherit this check automatically.
+	await assertPeriodOpen(tx, params.companyId, [today]);
+
 	const originals = await tx
 		.select()
 		.from(journalEntries)
@@ -69,7 +76,7 @@ export async function reverseJournalEntries(tx: Tx, params: ReverseJournalEntrie
 		await postJournal(tx, {
 			companyId: params.companyId,
 			createdBy: params.createdBy,
-			entryDate: todayIso(),
+			entryDate: today,
 			description: `${params.descriptionPrefix} ${original.refNo}`,
 			// original.refNo is nullable in the schema; postJournal's refNo is required, so a null
 			// here is coerced to '' rather than special-cased — no caller in this codebase posts

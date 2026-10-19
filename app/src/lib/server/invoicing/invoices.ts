@@ -188,7 +188,7 @@ export async function payInvoiceByBank(companyId: string, userId: string, invoic
 		await assertPeriodOpen(tx, companyId, [date]);
 
 		const company = await tx.query.companies.findFirst({ where: eq(companies.id, companyId) });
-		if (!company?.bankAccountId) throw new ApiError(409, 'no_bank_account', 'Perusahaan belum punya akun bank');
+		if (!company?.bankAccountId) throw new ApiError(409, 'bank_account_not_set', 'Akun bank perusahaan belum diatur di Pengaturan → Perusahaan');
 
 		await postJournal(tx, {
 			companyId,
@@ -207,16 +207,34 @@ export async function payInvoiceByBank(companyId: string, userId: string, invoic
 	});
 }
 
-/** Batalkan invoice: Draft cukup ubah status, Terkirim/Lunas membalik jurnal yang sudah diposting. */
+/**
+ * Batalkan invoice: Draft cukup ubah status (tanpa jurnal), Terkirim/Lunas membalik jurnal yang
+ * sudah diposting. Status awal dibaca sekali di luar lock untuk menentukan jalur mana yang berlaku
+ * (Draft vs Terkirim/Lunas) -- itu dianggap "niat" pemanggil (konsisten dengan role yang sudah
+ * diputuskan di route berdasarkan status yang sama). Begitu company di-lock, status dibaca ulang:
+ * kalau sudah berubah dari Draft (misalnya `sendInvoice` menyusup di antara baca awal dan lock
+ * diperoleh), jalur Draft INI ditolak dengan invalid_status daripada diam-diam lanjut membalik
+ * jurnal -- supaya tidak melompat ke logika Terkirim/Lunas di bawah otorisasi (role) yang sebetulnya
+ * hanya mencukupi untuk membatalkan Draft. Pemanggil cukup mengulang permintaannya; baca ulang akan
+ * melihat status yang benar dan route akan meminta role yang sesuai.
+ */
 export async function cancelInvoice(companyId: string, userId: string, invoiceId: string): Promise<void> {
 	const invoice = await db.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) });
 	if (!invoice || invoice.companyId !== companyId) throw notFound('Invoice');
-
 	if (invoice.status === 'CANCELLED') throw new ApiError(409, 'invalid_status', 'Invoice sudah dibatalkan');
 
 	if (invoice.status === 'DRAFT') {
-		await db.update(invoices).set({ status: 'CANCELLED' }).where(eq(invoices.id, invoiceId));
-		return;
+		return db.transaction(async (tx) => {
+			await tx.execute(sql`select id from companies where id = ${companyId} for update`);
+
+			const current = await tx.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) });
+			if (!current || current.companyId !== companyId) throw notFound('Invoice');
+			if (current.status !== 'DRAFT') {
+				throw new ApiError(409, 'invalid_status', 'Invoice sudah bukan Draft, muat ulang lalu coba batalkan lagi');
+			}
+
+			await tx.update(invoices).set({ status: 'CANCELLED' }).where(eq(invoices.id, invoiceId));
+		});
 	}
 
 	return db.transaction(async (tx) => {

@@ -105,3 +105,23 @@ test('reverseJournalEntries throws a programmer error when no back-link id is pa
 		db.transaction((tx) => reverseJournalEntries(tx, { companyId, createdBy: u.id, descriptionPrefix: 'Pembalikan' }))
 	).rejects.toThrow('reverseJournalEntries requires at least one of invoiceId, purchaseOrderId, or advanceReceiptId');
 });
+
+test('reverseJournalEntries is rejected when the current fiscal period is closed', async () => {
+	const { companyId, bankAccountId } = await makeCompany();
+	const u = await makeUser();
+	const revenue = await accountIdByCode(companyId, '4-1001');
+	const [contact] = await db.insert(contacts).values({ companyId, kind: 'CUSTOMER', name: 'PT X' }).returning();
+	const [invoice] = await db.insert(invoices).values({ companyId, contactId: contact.id, issueDate: '2026-10-01', receivableAccountId: bankAccountId, subtotal: '0', total: '0' }).returning();
+	await db.transaction((tx) =>
+		postJournal(tx, { companyId, createdBy: u.id, entryDate: '2026-10-01', description: 'x', refNo: 'INV-2026-0001', lines: [{ accountId: bankAccountId, debit: '100000.00', credit: '0.00' }, { accountId: revenue, debit: '0.00', credit: '100000.00' }], invoiceId: invoice.id })
+	);
+
+	const { fiscalClosings } = await import('../../src/lib/server/db/schema');
+	const retained = await accountIdByCode(companyId, '3-1001');
+	// Reversals post dated today (via todayIso()), so close a period that covers today's real date.
+	await db.insert(fiscalClosings).values({ companyId, periodStart: '2026-01-01', periodEnd: '2026-12-31', retainedEarningsAccountId: retained, closedBy: u.id });
+
+	await expect(
+		db.transaction((tx) => reverseJournalEntries(tx, { companyId, createdBy: u.id, invoiceId: invoice.id, descriptionPrefix: 'Pembalikan' }))
+	).rejects.toMatchObject({ code: 'period_closed' });
+});
