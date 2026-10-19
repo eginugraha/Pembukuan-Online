@@ -17,9 +17,15 @@
 
 	const STATUS_LABELS = { DRAFT: 'Draft', SENT: 'Terkirim', PAID: 'Lunas', CANCELLED: 'Dibatalkan' } as const;
 	const canSend = $derived(data.invoice.status === 'DRAFT' && roleAtLeast(data.ctx.role, 'accountant'));
+	const canPay = $derived(data.invoice.status === 'SENT' && roleAtLeast(data.ctx.role, 'accountant'));
+	const cancelRole = $derived(data.invoice.status === 'DRAFT' ? 'accountant' : 'admin');
+	const canCancel = $derived(data.invoice.status !== 'CANCELLED' && roleAtLeast(data.ctx.role, cancelRole));
 
 	let sendOpen = $state(false);
 	let sendDate = $state('');
+	let payOpen = $state(false);
+	let payDate = $state('');
+	let cancelOpen = $state(false);
 	let error = $state<string | null>(null);
 	let busy = $state(false);
 
@@ -42,11 +48,52 @@
 			busy = false;
 		}
 	}
+
+	function askPay() {
+		payDate = todayIso();
+		error = null;
+		payOpen = true;
+	}
+
+	async function doPay() {
+		error = null;
+		busy = true;
+		try {
+			await apiFetch(`/api/invoicing/invoices/${data.invoice.id}/pay`, { method: 'POST', json: { date: payDate, method: 'BANK' } });
+			payOpen = false;
+			await invalidateAll();
+		} catch (err) {
+			error = err instanceof ClientApiError ? err.message : 'Terjadi kesalahan';
+		} finally {
+			busy = false;
+		}
+	}
+
+	function askCancel() {
+		error = null;
+		cancelOpen = true;
+	}
+
+	async function doCancel() {
+		error = null;
+		busy = true;
+		try {
+			await apiFetch(`/api/invoicing/invoices/${data.invoice.id}/cancel`, { method: 'POST', json: {} });
+			cancelOpen = false;
+			await invalidateAll();
+		} catch (err) {
+			error = err instanceof ClientApiError ? err.message : 'Terjadi kesalahan';
+		} finally {
+			busy = false;
+		}
+	}
 </script>
 
 <PageHeader title={data.invoice.invoiceNo ?? 'Draft'} description={data.contact.name}>
 	{#snippet actions()}
 		{#if canSend}<Button onclick={askSend}>Kirim</Button>{/if}
+		{#if canPay}<Button onclick={askPay}>Bayar dari Bank</Button>{/if}
+		{#if canCancel}<Button variant="outline" onclick={askCancel}>Batalkan</Button>{/if}
 	{/snippet}
 </PageHeader>
 
@@ -117,6 +164,41 @@
 		<Dialog.Footer>
 			<Button type="button" variant="outline" onclick={() => (sendOpen = false)}>Batal</Button>
 			<Button type="button" disabled={busy || !sendDate} onclick={doSend}>{busy ? 'Mengirim…' : 'Kirim'}</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
+
+<Dialog.Root bind:open={payOpen}>
+	<Dialog.Content>
+		<Dialog.Header>
+			<Dialog.Title>Bayar dari bank?</Dialog.Title>
+			<Dialog.Description>Jurnal pelunasan akan diposting (Dr bank / Cr piutang) dan invoice ditandai Lunas.</Dialog.Description>
+		</Dialog.Header>
+		<FormField id="pay-date" label="Tanggal bayar">
+			<DateField id="pay-date" bind:value={payDate} />
+		</FormField>
+		{#if error}<p role="alert" class="text-sm font-medium text-destructive">{error}</p>{/if}
+		<Dialog.Footer>
+			<Button type="button" variant="outline" onclick={() => (payOpen = false)}>Batal</Button>
+			<Button type="button" disabled={busy || !payDate} onclick={doPay}>{busy ? 'Memproses…' : 'Bayar'}</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
+
+<Dialog.Root bind:open={cancelOpen}>
+	<Dialog.Content>
+		<Dialog.Header>
+			<Dialog.Title>Batalkan invoice?</Dialog.Title>
+			<Dialog.Description>
+				{data.invoice.status === 'DRAFT'
+					? 'Invoice Draft akan dibatalkan tanpa jurnal.'
+					: 'Jurnal yang sudah diposting akan dibalik (Pembalikan) dan invoice ditandai Dibatalkan.'}
+			</Dialog.Description>
+		</Dialog.Header>
+		{#if error}<p role="alert" class="text-sm font-medium text-destructive">{error}</p>{/if}
+		<Dialog.Footer>
+			<Button type="button" variant="outline" onclick={() => (cancelOpen = false)}>Batal</Button>
+			<Button type="button" variant="destructive" disabled={busy} onclick={doCancel}>{busy ? 'Memproses…' : 'Batalkan'}</Button>
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

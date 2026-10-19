@@ -6,9 +6,9 @@ import { assertLeafAccount } from '../accounts/queries';
 import { ApiError, notFound } from '../api';
 import { assertPeriodOpen } from '../closing/lock';
 import { db, type Tx } from '../db';
-import { contacts, invoiceLines, invoices } from '../db/schema';
+import { companies, contacts, invoiceLines, invoices } from '../db/schema';
 import { nextDocumentNumber } from './numbering';
-import { postJournal } from './posting';
+import { postJournal, reverseJournalEntries } from './posting';
 import type { JournalLineInput } from '../journal/lines';
 
 export { CreateInvoiceInput, InvoiceLineInput };
@@ -173,5 +173,61 @@ export async function sendInvoice(companyId: string, userId: string, invoiceId: 
 		});
 
 		await tx.update(invoices).set({ invoiceNo, status: 'SENT' }).where(eq(invoices.id, invoiceId));
+	});
+}
+
+/** Bayar invoice Terkirim lewat bank: posting jurnal pelunasan (Dr bank / Cr piutang) dan tandai Lunas. */
+export async function payInvoiceByBank(companyId: string, userId: string, invoiceId: string, date: string): Promise<void> {
+	return db.transaction(async (tx) => {
+		await tx.execute(sql`select id from companies where id = ${companyId} for update`);
+
+		const invoice = await tx.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) });
+		if (!invoice || invoice.companyId !== companyId) throw notFound('Invoice');
+		if (invoice.status !== 'SENT') throw new ApiError(409, 'invalid_status', 'Invoice harus berstatus Terkirim untuk dibayar');
+
+		await assertPeriodOpen(tx, companyId, [date]);
+
+		const company = await tx.query.companies.findFirst({ where: eq(companies.id, companyId) });
+		if (!company?.bankAccountId) throw new ApiError(409, 'no_bank_account', 'Perusahaan belum punya akun bank');
+
+		await postJournal(tx, {
+			companyId,
+			entryDate: date,
+			refNo: invoice.invoiceNo!,
+			description: `Pelunasan ${invoice.invoiceNo}`,
+			createdBy: userId,
+			lines: [
+				{ accountId: company.bankAccountId, debit: invoice.total, credit: '0.00' },
+				{ accountId: invoice.receivableAccountId, debit: '0.00', credit: invoice.total }
+			],
+			invoiceId
+		});
+
+		await tx.update(invoices).set({ status: 'PAID' }).where(eq(invoices.id, invoiceId));
+	});
+}
+
+/** Batalkan invoice: Draft cukup ubah status, Terkirim/Lunas membalik jurnal yang sudah diposting. */
+export async function cancelInvoice(companyId: string, userId: string, invoiceId: string): Promise<void> {
+	const invoice = await db.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) });
+	if (!invoice || invoice.companyId !== companyId) throw notFound('Invoice');
+
+	if (invoice.status === 'CANCELLED') throw new ApiError(409, 'invalid_status', 'Invoice sudah dibatalkan');
+
+	if (invoice.status === 'DRAFT') {
+		await db.update(invoices).set({ status: 'CANCELLED' }).where(eq(invoices.id, invoiceId));
+		return;
+	}
+
+	return db.transaction(async (tx) => {
+		await tx.execute(sql`select id from companies where id = ${companyId} for update`);
+
+		const current = await tx.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) });
+		if (!current || current.companyId !== companyId) throw notFound('Invoice');
+		if (current.status === 'CANCELLED') throw new ApiError(409, 'invalid_status', 'Invoice sudah dibatalkan');
+
+		await reverseJournalEntries(tx, { companyId, createdBy: userId, invoiceId, descriptionPrefix: 'Pembalikan' });
+
+		await tx.update(invoices).set({ status: 'CANCELLED' }).where(eq(invoices.id, invoiceId));
 	});
 }
