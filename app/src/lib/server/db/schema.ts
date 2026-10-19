@@ -10,6 +10,7 @@ import {
 	numeric,
 	pgEnum,
 	pgTable,
+	primaryKey,
 	text,
 	timestamp,
 	unique,
@@ -258,7 +259,10 @@ export const journalEntries = pgTable(
 		description: text('description'),
 		refNo: varchar('ref_no', { length: 50 }),
 		createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
-		createdAt: createdAt()
+		createdAt: createdAt(),
+		invoiceId: uuid('invoice_id').references(() => invoices.id, { onDelete: 'set null' }),
+		purchaseOrderId: uuid('purchase_order_id').references(() => purchaseOrders.id, { onDelete: 'set null' }),
+		advanceReceiptId: uuid('advance_receipt_id').references(() => advanceReceipts.id, { onDelete: 'set null' })
 	},
 	(t) => [index('journal_entries_company_date_idx').on(t.companyId, t.entryDate)]
 );
@@ -302,4 +306,120 @@ export const journalLines = pgTable(
 			sql`${t.debit} >= 0 AND ${t.credit} >= 0 AND ((${t.debit} = 0) <> (${t.credit} = 0))`
 		)
 	]
+);
+
+// ── Invoicing ─────────────────────────────────────────────────
+export const contactKind = pgEnum('contact_kind', ['CUSTOMER', 'VENDOR', 'BOTH']);
+export const invoiceStatus = pgEnum('invoice_status', ['DRAFT', 'SENT', 'PAID', 'CANCELLED']);
+export const poStatus = pgEnum('po_status', ['DRAFT', 'ISSUED', 'RECEIVED', 'CANCELLED']);
+export const advanceReceiptStatus = pgEnum('advance_receipt_status', ['ACTIVE', 'APPLIED', 'REFUNDED']);
+
+export const contacts = pgTable('contacts', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+	kind: contactKind('kind').notNull(),
+	name: text('name').notNull(),
+	npwp: varchar('npwp', { length: 20 }),
+	address: text('address'),
+	email: text('email'),
+	phone: varchar('phone', { length: 30 }),
+	isActive: boolean('is_active').notNull().default(true),
+	createdAt: createdAt()
+});
+
+export const invoices = pgTable(
+	'invoices',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+		contactId: uuid('contact_id').notNull().references(() => contacts.id),
+		invoiceNo: varchar('invoice_no', { length: 30 }),
+		issueDate: day('issue_date').notNull(),
+		receivableAccountId: uuid('receivable_account_id').notNull().references(() => accounts.id),
+		status: invoiceStatus('status').notNull().default('DRAFT'),
+		subtotal: money('subtotal').notNull(),
+		taxRate: numeric('tax_rate', { precision: 5, scale: 2 }),
+		taxAccountId: uuid('tax_account_id').references(() => accounts.id),
+		taxAmount: money('tax_amount').notNull().default('0'),
+		total: money('total').notNull(),
+		notes: text('notes'),
+		paidViaAdvanceReceiptId: uuid('paid_via_advance_receipt_id').references((): AnyPgColumn => advanceReceipts.id),
+		createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: createdAt()
+	},
+	(t) => [unique('invoices_company_no_uq').on(t.companyId, t.invoiceNo)]
+);
+
+export const invoiceLines = pgTable('invoice_lines', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	invoiceId: uuid('invoice_id').notNull().references(() => invoices.id, { onDelete: 'cascade' }),
+	lineNo: integer('line_no').notNull(),
+	description: text('description').notNull(),
+	quantity: numeric('quantity', { precision: 12, scale: 2 }).notNull(),
+	unitPrice: money('unit_price').notNull(),
+	amount: money('amount').notNull(),
+	revenueAccountId: uuid('revenue_account_id').notNull().references(() => accounts.id)
+});
+
+export const purchaseOrders = pgTable(
+	'purchase_orders',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+		contactId: uuid('contact_id').notNull().references(() => contacts.id),
+		poNo: varchar('po_no', { length: 30 }),
+		issueDate: day('issue_date').notNull(),
+		expectedDate: day('expected_date'),
+		payableAccountId: uuid('payable_account_id').notNull().references(() => accounts.id),
+		status: poStatus('status').notNull().default('DRAFT'),
+		subtotal: money('subtotal').notNull(),
+		taxRate: numeric('tax_rate', { precision: 5, scale: 2 }),
+		taxAccountId: uuid('tax_account_id').references(() => accounts.id),
+		taxAmount: money('tax_amount').notNull().default('0'),
+		total: money('total').notNull(),
+		notes: text('notes'),
+		createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: createdAt()
+	},
+	(t) => [unique('purchase_orders_company_no_uq').on(t.companyId, t.poNo)]
+);
+
+export const purchaseOrderLines = pgTable('purchase_order_lines', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	poId: uuid('po_id').notNull().references(() => purchaseOrders.id, { onDelete: 'cascade' }),
+	lineNo: integer('line_no').notNull(),
+	description: text('description').notNull(),
+	quantity: numeric('quantity', { precision: 12, scale: 2 }).notNull(),
+	unitPrice: money('unit_price').notNull(),
+	amount: money('amount').notNull(),
+	expenseAccountId: uuid('expense_account_id').notNull().references(() => accounts.id)
+});
+
+export const advanceReceipts = pgTable(
+	'advance_receipts',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+		contactId: uuid('contact_id').notNull().references(() => contacts.id),
+		receiptNo: varchar('receipt_no', { length: 30 }).notNull(),
+		receiptDate: day('receipt_date').notNull(),
+		amount: money('amount').notNull(),
+		status: advanceReceiptStatus('status').notNull().default('ACTIVE'),
+		deferredRevenueAccountId: uuid('deferred_revenue_account_id').notNull().references(() => accounts.id),
+		appliedToInvoiceId: uuid('applied_to_invoice_id').references((): AnyPgColumn => invoices.id),
+		createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: createdAt()
+	},
+	(t) => [unique('advance_receipts_company_no_uq').on(t.companyId, t.receiptNo)]
+);
+
+export const documentNumberCounters = pgTable(
+	'document_number_counters',
+	{
+		companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+		prefix: varchar('prefix', { length: 10 }).notNull(),
+		year: varchar('year', { length: 4 }).notNull(),
+		lastSeq: integer('last_seq').notNull().default(0)
+	},
+	(t) => [primaryKey({ columns: [t.companyId, t.prefix, t.year] })]
 );
