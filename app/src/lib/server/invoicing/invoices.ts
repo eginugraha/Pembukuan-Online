@@ -1,11 +1,15 @@
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import { D, sumMoney, toMoney } from '../../money';
 import { CreateInvoiceInput, InvoiceLineInput } from '../../schemas/invoice';
 import { assertAccountOfType } from './accounts';
 import { assertLeafAccount } from '../accounts/queries';
-import { notFound } from '../api';
+import { ApiError, notFound } from '../api';
+import { assertPeriodOpen } from '../closing/lock';
 import { db, type Tx } from '../db';
 import { contacts, invoiceLines, invoices } from '../db/schema';
+import { nextDocumentNumber } from './numbering';
+import { postJournal } from './posting';
+import type { JournalLineInput } from '../journal/lines';
 
 export { CreateInvoiceInput, InvoiceLineInput };
 
@@ -133,4 +137,41 @@ export async function getInvoice(companyId: string, invoiceId: string): Promise<
 		.where(eq(invoiceLines.invoiceId, invoiceId))
 		.orderBy(asc(invoiceLines.lineNo));
 	return { ...row, lines };
+}
+
+/** Kirim invoice Draft: beri nomor urut dan posting jurnal (Dr piutang / Cr pendapatan + PPN). */
+export async function sendInvoice(companyId: string, userId: string, invoiceId: string, date: string): Promise<void> {
+	return db.transaction(async (tx) => {
+		await tx.execute(sql`select id from companies where id = ${companyId} for update`);
+
+		const invoice = await tx.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) });
+		if (!invoice || invoice.companyId !== companyId) throw notFound('Invoice');
+		if (invoice.status !== 'DRAFT') throw new ApiError(409, 'invalid_status', 'Invoice sudah bukan Draft');
+
+		await assertPeriodOpen(tx, companyId, [date]);
+
+		const lines = await tx.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, invoiceId)).orderBy(asc(invoiceLines.lineNo));
+
+		const invoiceNo = await nextDocumentNumber(tx, companyId, 'INV', date.slice(0, 4));
+
+		const journalLineInputs: JournalLineInput[] = [
+			{ accountId: invoice.receivableAccountId, debit: invoice.total, credit: '0.00' },
+			...lines.map((l) => ({ accountId: l.revenueAccountId, debit: '0.00', credit: l.amount }))
+		];
+		if (D(invoice.taxAmount).gt(0)) {
+			journalLineInputs.push({ accountId: invoice.taxAccountId!, debit: '0.00', credit: invoice.taxAmount });
+		}
+
+		await postJournal(tx, {
+			companyId,
+			entryDate: date,
+			description: `Invoice ${invoiceNo}`,
+			refNo: invoiceNo,
+			createdBy: userId,
+			lines: journalLineInputs,
+			invoiceId
+		});
+
+		await tx.update(invoices).set({ invoiceNo, status: 'SENT' }).where(eq(invoices.id, invoiceId));
+	});
 }

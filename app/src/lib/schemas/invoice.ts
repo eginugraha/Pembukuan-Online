@@ -30,3 +30,6 @@ export const CreateInvoiceInput = z
 		path: ['taxAccountId']
 	});
 export type CreateInvoiceInput = z.infer<typeof CreateInvoiceInput>;
+
+export const SendInvoiceInput = z.object({ date: isoDate });
+export type SendInvoiceInput = z.infer<typeof SendInvoiceInput>;
