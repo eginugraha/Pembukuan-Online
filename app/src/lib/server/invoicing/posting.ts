@@ -45,20 +45,24 @@ interface ReverseJournalEntriesParams extends BackLinks {
 	descriptionPrefix: string;
 }
 
+// Not idempotent: calling this twice for the same back-link id(s) will also pick up and
+// reverse the reversal entries created by the first call (they carry the same back-link
+// columns), creating a second round of reversed-reversal entries. The ledger stays balanced
+// either way, but callers must only invoke this once per cancellation.
 export async function reverseJournalEntries(tx: Tx, params: ReverseJournalEntriesParams): Promise<void> {
-	const backLinkFilter = params.invoiceId
-		? eq(journalEntries.invoiceId, params.invoiceId)
-		: params.purchaseOrderId
-			? eq(journalEntries.purchaseOrderId, params.purchaseOrderId)
-			: params.advanceReceiptId
-				? eq(journalEntries.advanceReceiptId, params.advanceReceiptId)
-				: undefined;
-	if (!backLinkFilter) return;
+	const backLinkFilters = [
+		params.invoiceId !== undefined ? eq(journalEntries.invoiceId, params.invoiceId) : undefined,
+		params.purchaseOrderId !== undefined ? eq(journalEntries.purchaseOrderId, params.purchaseOrderId) : undefined,
+		params.advanceReceiptId !== undefined ? eq(journalEntries.advanceReceiptId, params.advanceReceiptId) : undefined
+	].filter((f): f is NonNullable<typeof f> => f !== undefined);
+	if (backLinkFilters.length === 0) {
+		throw new Error('reverseJournalEntries requires at least one of invoiceId, purchaseOrderId, or advanceReceiptId');
+	}
 
 	const originals = await tx
 		.select()
 		.from(journalEntries)
-		.where(and(eq(journalEntries.companyId, params.companyId), backLinkFilter));
+		.where(and(eq(journalEntries.companyId, params.companyId), ...backLinkFilters));
 
 	for (const original of originals) {
 		const lines = await tx.select().from(journalLines).where(eq(journalLines.journalId, original.id));
@@ -67,6 +71,9 @@ export async function reverseJournalEntries(tx: Tx, params: ReverseJournalEntrie
 			createdBy: params.createdBy,
 			entryDate: todayIso(),
 			description: `${params.descriptionPrefix} ${original.refNo}`,
+			// original.refNo is nullable in the schema; postJournal's refNo is required, so a null
+			// here is coerced to '' rather than special-cased — no caller in this codebase posts
+			// without a refNo, so this path isn't expected to be hit in practice.
 			refNo: original.refNo ?? '',
 			lines: lines.map((l) => ({ accountId: l.accountId, debit: l.credit, credit: l.debit })),
 			invoiceId: original.invoiceId ?? undefined,
