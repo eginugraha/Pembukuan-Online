@@ -1,7 +1,9 @@
 <script lang="ts">
 	import BookOpen from '@lucide/svelte/icons/book-open';
+	import BookUser from '@lucide/svelte/icons/book-user';
 	import Building2 from '@lucide/svelte/icons/building-2';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import HandCoins from '@lucide/svelte/icons/hand-coins';
 	import History from '@lucide/svelte/icons/history';
 	import Landmark from '@lucide/svelte/icons/landmark';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
@@ -9,7 +11,9 @@
 	import ListChecks from '@lucide/svelte/icons/list-checks';
 	import ListTree from '@lucide/svelte/icons/list-tree';
 	import Lock from '@lucide/svelte/icons/lock';
+	import Receipt from '@lucide/svelte/icons/receipt';
 	import Scale from '@lucide/svelte/icons/scale';
+	import ShoppingCart from '@lucide/svelte/icons/shopping-cart';
 	import TrendingUp from '@lucide/svelte/icons/trending-up';
 	import Upload from '@lucide/svelte/icons/upload';
 	import Users from '@lucide/svelte/icons/users';
@@ -69,7 +73,11 @@
 		accounts: ListTree,
 		rules: WandSparkles,
 		wallet: Wallet,
-		closing: Lock
+		closing: Lock,
+		contacts: BookUser,
+		invoice: Receipt,
+		advance: HandCoins,
+		po: ShoppingCart
 	};
 	const groupLabel = (label: string | null, i: number) => label ?? (i === 0 ? 'Menu Utama' : null);
 </script>

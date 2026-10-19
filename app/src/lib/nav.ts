@@ -32,6 +32,15 @@ export const NAV: NavGroup[] = [
 		]
 	},
 	{
+		label: 'Invoicing',
+		items: [
+			{ label: 'Kontak', href: '/invoicing/contacts', min: 'viewer', icon: 'contacts' },
+			{ label: 'Invoice', href: '/invoicing/invoices', min: 'viewer', icon: 'invoice' },
+			{ label: 'Uang Muka', href: '/invoicing/advance-receipts', min: 'viewer', icon: 'advance' },
+			{ label: 'Purchase Order', href: '/invoicing/purchase-orders', min: 'viewer', icon: 'po' }
+		]
+	},
+	{
 		label: 'Laporan Keuangan',
 		items: [
 			{ label: 'Laba Rugi', href: '/income-statement', min: 'viewer', icon: 'income' },
