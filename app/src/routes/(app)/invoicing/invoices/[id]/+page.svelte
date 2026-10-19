@@ -137,6 +137,7 @@
 
 <PageHeader title={data.invoice.invoiceNo ?? 'Draft'} description={data.contact.name}>
 	{#snippet actions()}
+		<Button href="/api/invoicing/invoices/{data.invoice.id}/pdf">Unduh PDF</Button>
 		{#if canSend}<Button onclick={askSend}>Kirim</Button>{/if}
 		{#if canPay}<Button onclick={askPay}>Bayar dari Bank</Button>{/if}
 		{#if canPay}<Button variant="outline" onclick={askAdvance}>Terapkan Uang Muka</Button>{/if}
