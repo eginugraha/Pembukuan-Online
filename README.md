@@ -45,5 +45,9 @@ cd app && bunx playwright install chromium && bun run test:e2e
 Letakkan eStatement BCA asli di `sample/` untuk pengujian parser lokal (`sidecar/tests/test_parser_sample.py`). Folder `sample/`, `samples/`, dan semua file `*.pdf` di-gitignore. **Jangan commit data keuangan.**
 
 ## Lisensi
-
-MIT
+ 
+Didistribusikan di bawah lisensi MIT. Lihat berkas `LICENSE` untuk detail.
+ 
+## Maintainer
+ 
+Dikelola oleh [Sabio](https://sabio.co.id/), perusahaan pengembang perangkat lunak di Bandung.
