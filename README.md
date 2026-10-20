@@ -1,4 +1,4 @@
-# Jurnalku
+# Pembukuan Online
 
 Pembukuan otomatis dari eStatement BCA (PDF): parse → kategorisasi (rule + AI lokal) → jurnal double-entry → Buku Besar → Neraca Saldo. Open source, self-hosted, multi-perusahaan, multi-user dengan RBAC.
 

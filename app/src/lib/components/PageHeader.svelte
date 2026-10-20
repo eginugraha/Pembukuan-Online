@@ -21,7 +21,7 @@
 <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
 	<div class="min-w-0">
 		{#if items.length > 0}
-			<div class="mb-1"><Breadcrumb {items} /></div>
+			<div class="mb-3"><Breadcrumb {items} /></div>
 		{/if}
 		<div class="flex items-center gap-3">
 			{#if logoUrl}
