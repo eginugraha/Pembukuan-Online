@@ -31,29 +31,15 @@ import * as invoiceOne from '../../src/routes/api/invoicing/invoices/[id]/+serve
 import * as invoicePdf from '../../src/routes/api/invoicing/invoices/[id]/pdf/+server';
 import * as purchaseOrdersApi from '../../src/routes/api/invoicing/purchase-orders/+server';
 import * as purchaseOrderOne from '../../src/routes/api/invoicing/purchase-orders/[id]/+server';
-import * as purchaseOrderIssue from '../../src/routes/api/invoicing/purchase-orders/[id]/issue/+server';
-import * as purchaseOrderReceive from '../../src/routes/api/invoicing/purchase-orders/[id]/receive/+server';
-import * as purchaseOrderCancel from '../../src/routes/api/invoicing/purchase-orders/[id]/cancel/+server';
 import * as purchaseOrderPdf from '../../src/routes/api/invoicing/purchase-orders/[id]/pdf/+server';
-import { db } from '../../src/lib/server/db';
-import { contacts as contactsTable } from '../../src/lib/server/db/schema';
-import { createPurchaseOrder, issuePurchaseOrder, receivePurchaseOrder } from '../../src/lib/server/invoicing/purchase-orders';
 import type { AppContext } from '../../src/lib/server/rbac';
-import { accountIdByCode, addMember, contextFor, makeCompany, makeUser } from './factory';
+import { addMember, contextFor, makeCompany, makeUser } from './factory';
 import { call, fakeEvent } from './event';
 import { resetDb } from './db';
 
 type Level = 'viewer' | 'accountant' | 'admin' | 'super';
 type H = (e: never) => Response | Promise<Response>;
 const RID = '00000000-0000-4000-8000-000000000000';
-
-/**
- * Dokumen nyata untuk endpoint batal Invoice/PO, yang role minimumnya bergantung pada status
- * dokumen (Draft/Diterbitkan → accountant, Terkirim/Diterima → admin). Dengan id acak, route
- * menolak 404 sebelum sempat memutuskan role, jadi matrix-nya butuh dokumen sungguhan per status.
- * Diisi di beforeAll; `params` berupa fungsi supaya dibaca saat test berjalan.
- */
-const docs = { issuedPO: '', receivedPO: '' };
 
 const ENDPOINTS: Array<{ name: string; handler: H; method: string; min: Level; body?: unknown; form?: boolean; params?: Record<string, string> | (() => Record<string, string>) }> = [
 	{ name: 'GET /uploads', handler: uploads.GET, method: 'GET', min: 'viewer' },
@@ -105,10 +91,8 @@ const ENDPOINTS: Array<{ name: string; handler: H; method: string; min: Level; b
 	{ name: 'POST /invoicing/purchase-orders', handler: purchaseOrdersApi.POST, method: 'POST', min: 'accountant', body: {} },
 	{ name: 'GET /invoicing/purchase-orders/:id', handler: purchaseOrderOne.GET, method: 'GET', min: 'viewer', params: { id: RID } },
 	{ name: 'GET /invoicing/purchase-orders/:id/pdf', handler: purchaseOrderPdf.GET, method: 'GET', min: 'viewer', params: { id: RID } },
-	{ name: 'POST /invoicing/purchase-orders/:id/issue', handler: purchaseOrderIssue.POST, method: 'POST', min: 'accountant', params: { id: RID } },
-	{ name: 'POST /invoicing/purchase-orders/:id/receive', handler: purchaseOrderReceive.POST, method: 'POST', min: 'accountant', params: { id: RID }, body: { date: '2026-10-15' } },
-	{ name: 'POST /invoicing/purchase-orders/:id/cancel (Diterbitkan)', handler: purchaseOrderCancel.POST, method: 'POST', min: 'accountant', params: () => ({ id: docs.issuedPO }) },
-	{ name: 'POST /invoicing/purchase-orders/:id/cancel (Diterima)', handler: purchaseOrderCancel.POST, method: 'POST', min: 'admin', params: () => ({ id: docs.receivedPO }) }
+	{ name: 'PUT /invoicing/purchase-orders/:id', handler: purchaseOrderOne.PUT, method: 'PUT', min: 'accountant', params: { id: RID }, body: {} },
+	{ name: 'DELETE /invoicing/purchase-orders/:id', handler: purchaseOrderOne.DELETE, method: 'DELETE', min: 'accountant', params: { id: RID } }
 ];
 
 const ORDER: Level[] = ['viewer', 'accountant', 'admin', 'super'];
@@ -123,20 +107,6 @@ beforeAll(async () => {
 		ctxs[level] = await contextFor(u);
 	}
 	ctxs.super = await contextFor(await makeUser({ isSuperAdmin: true }));
-
-	const userId = ctxs.admin.user.id;
-	const [contact] = await db.insert(contactsTable).values({ companyId, kind: 'BOTH', name: 'PT Matrix' }).returning();
-	const poInput = {
-		contactId: contact.id,
-		issueDate: '2026-10-01',
-		payableAccountId: await accountIdByCode(companyId, '2-1001'),
-		lines: [{ description: 'Sewa', quantity: '1', unitPrice: '1000', expenseAccountId: await accountIdByCode(companyId, '5-2010') }]
-	};
-	docs.issuedPO = (await createPurchaseOrder(companyId, userId, poInput)).id;
-	await issuePurchaseOrder(companyId, userId, docs.issuedPO);
-	docs.receivedPO = (await createPurchaseOrder(companyId, userId, poInput)).id;
-	await issuePurchaseOrder(companyId, userId, docs.receivedPO);
-	await receivePurchaseOrder(companyId, userId, docs.receivedPO, '2026-10-15');
 });
 
 function event(ep: (typeof ENDPOINTS)[number], ctx: AppContext | null) {

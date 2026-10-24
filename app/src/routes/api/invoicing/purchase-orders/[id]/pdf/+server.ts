@@ -16,7 +16,7 @@ export const GET: RequestHandler = (event) =>
 		const [contact, company] = await Promise.all([getContact(ctx.companyId, po.contactId), getCompanyLetterheadData(ctx.companyId)]);
 
 		const doc = createPdfDocument();
-		const y = drawLetterhead(doc, company, 'PURCHASE ORDER', `${po.poNo ?? 'DRAFT'} — ${formatDate(po.issueDate)}`);
+		const y = drawLetterhead(doc, company, 'PURCHASE ORDER', `${po.poNo} — ${formatDate(po.issueDate)}`);
 		drawDocumentPdf(doc, y, {
 			contact,
 			lines: po.lines,
@@ -28,5 +28,5 @@ export const GET: RequestHandler = (event) =>
 		});
 
 		const buf = await finishPdf(doc);
-		return pdfResponse(buf, `po-${po.poNo ?? po.id}.pdf`);
+		return pdfResponse(buf, `po-${po.poNo}.pdf`);
 	});
