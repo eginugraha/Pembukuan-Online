@@ -50,6 +50,13 @@
       "when": 1792846932256,
       "tag": "0006_fast_sauron",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792853822760,
+      "tag": "0007_sudden_old_lace",
+      "breakpoints": true
     }
   ]
 }

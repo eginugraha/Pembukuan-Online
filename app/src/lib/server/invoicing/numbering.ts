@@ -10,7 +10,7 @@ import { documentNumberCounters } from '../db/schema';
 export async function nextDocumentNumber(
 	tx: Tx,
 	companyId: string,
-	prefix: 'INV' | 'UM' | 'PO',
+	prefix: 'INV' | 'PO',
 	year: string
 ): Promise<string> {
 	const [row] = await tx

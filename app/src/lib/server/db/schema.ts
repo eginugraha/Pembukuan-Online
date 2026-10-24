@@ -261,8 +261,7 @@ export const journalEntries = pgTable(
 		createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
 		createdAt: createdAt(),
 		invoiceId: uuid('invoice_id').references(() => invoices.id, { onDelete: 'set null' }),
-		purchaseOrderId: uuid('purchase_order_id').references(() => purchaseOrders.id, { onDelete: 'set null' }),
-		advanceReceiptId: uuid('advance_receipt_id').references(() => advanceReceipts.id, { onDelete: 'set null' })
+		purchaseOrderId: uuid('purchase_order_id').references(() => purchaseOrders.id, { onDelete: 'set null' })
 	},
 	(t) => [index('journal_entries_company_date_idx').on(t.companyId, t.entryDate)]
 );
@@ -312,7 +311,6 @@ export const journalLines = pgTable(
 export const contactKind = pgEnum('contact_kind', ['CUSTOMER', 'VENDOR', 'BOTH']);
 export const invoiceStatus = pgEnum('invoice_status', ['DRAFT', 'SENT', 'PAID', 'CANCELLED']);
 export const poStatus = pgEnum('po_status', ['DRAFT', 'ISSUED', 'RECEIVED', 'CANCELLED']);
-export const advanceReceiptStatus = pgEnum('advance_receipt_status', ['ACTIVE', 'APPLIED', 'REFUNDED']);
 
 export const contacts = pgTable('contacts', {
 	id: uuid('id').primaryKey().defaultRandom(),
@@ -346,7 +344,6 @@ export const invoices = pgTable(
 		taxAmount: money('tax_amount').notNull().default('0'),
 		total: money('total').notNull(),
 		notes: text('notes'),
-		paidViaAdvanceReceiptId: uuid('paid_via_advance_receipt_id').references((): AnyPgColumn => advanceReceipts.id),
 		createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
 		createdAt: createdAt()
 	},
@@ -397,24 +394,6 @@ export const purchaseOrderLines = pgTable('purchase_order_lines', {
 	amount: money('amount').notNull(),
 	expenseAccountId: uuid('expense_account_id').notNull().references(() => accounts.id)
 });
-
-export const advanceReceipts = pgTable(
-	'advance_receipts',
-	{
-		id: uuid('id').primaryKey().defaultRandom(),
-		companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
-		contactId: uuid('contact_id').notNull().references(() => contacts.id),
-		receiptNo: varchar('receipt_no', { length: 30 }).notNull(),
-		receiptDate: day('receipt_date').notNull(),
-		amount: money('amount').notNull(),
-		status: advanceReceiptStatus('status').notNull().default('ACTIVE'),
-		deferredRevenueAccountId: uuid('deferred_revenue_account_id').notNull().references(() => accounts.id),
-		appliedToInvoiceId: uuid('applied_to_invoice_id').references((): AnyPgColumn => invoices.id),
-		createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
-		createdAt: createdAt()
-	},
-	(t) => [unique('advance_receipts_company_no_uq').on(t.companyId, t.receiptNo)]
-);
 
 export const documentNumberCounters = pgTable(
 	'document_number_counters',

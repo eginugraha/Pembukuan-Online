@@ -32,9 +32,6 @@ import * as invoiceSend from '../../src/routes/api/invoicing/invoices/[id]/send/
 import * as invoicePay from '../../src/routes/api/invoicing/invoices/[id]/pay/+server';
 import * as invoiceCancel from '../../src/routes/api/invoicing/invoices/[id]/cancel/+server';
 import * as invoicePdf from '../../src/routes/api/invoicing/invoices/[id]/pdf/+server';
-import * as advanceReceiptsApi from '../../src/routes/api/invoicing/advance-receipts/+server';
-import * as advanceReceiptOne from '../../src/routes/api/invoicing/advance-receipts/[id]/+server';
-import * as advanceReceiptCancel from '../../src/routes/api/invoicing/advance-receipts/[id]/cancel/+server';
 import * as purchaseOrdersApi from '../../src/routes/api/invoicing/purchase-orders/+server';
 import * as purchaseOrderOne from '../../src/routes/api/invoicing/purchase-orders/[id]/+server';
 import * as purchaseOrderIssue from '../../src/routes/api/invoicing/purchase-orders/[id]/issue/+server';
@@ -109,11 +106,6 @@ const ENDPOINTS: Array<{ name: string; handler: H; method: string; min: Level; b
 	{ name: 'POST /invoicing/invoices/:id/pay', handler: invoicePay.POST, method: 'POST', min: 'accountant', params: { id: RID }, body: { date: '2026-10-05', method: 'BANK' } },
 	{ name: 'POST /invoicing/invoices/:id/cancel (Draft)', handler: invoiceCancel.POST, method: 'POST', min: 'accountant', params: () => ({ id: docs.draftInvoice }) },
 	{ name: 'POST /invoicing/invoices/:id/cancel (Terkirim)', handler: invoiceCancel.POST, method: 'POST', min: 'admin', params: () => ({ id: docs.sentInvoice }) },
-	// Invoicing: Uang muka
-	{ name: 'GET /invoicing/advance-receipts', handler: advanceReceiptsApi.GET, method: 'GET', min: 'viewer' },
-	{ name: 'POST /invoicing/advance-receipts', handler: advanceReceiptsApi.POST, method: 'POST', min: 'accountant', body: {} },
-	{ name: 'GET /invoicing/advance-receipts/:id', handler: advanceReceiptOne.GET, method: 'GET', min: 'viewer', params: { id: RID } },
-	{ name: 'POST /invoicing/advance-receipts/:id/cancel', handler: advanceReceiptCancel.POST, method: 'POST', min: 'admin', params: { id: RID } },
 	// Invoicing: Purchase Order
 	{ name: 'GET /invoicing/purchase-orders', handler: purchaseOrdersApi.GET, method: 'GET', min: 'viewer' },
 	{ name: 'POST /invoicing/purchase-orders', handler: purchaseOrdersApi.POST, method: 'POST', min: 'accountant', body: {} },

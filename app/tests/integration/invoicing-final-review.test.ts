@@ -2,9 +2,8 @@ import { beforeEach, expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { db } from '../../src/lib/server/db';
 import { accounts, contacts, fiscalClosings, invoices, journalEntries, purchaseOrders } from '../../src/lib/server/db/schema';
-import { createInvoice, listInvoices, payInvoiceByAdvanceReceipt, sendInvoice } from '../../src/lib/server/invoicing/invoices';
+import { createInvoice, listInvoices, sendInvoice } from '../../src/lib/server/invoicing/invoices';
 import { createPurchaseOrder, issuePurchaseOrder, listPurchaseOrders, receivePurchaseOrder } from '../../src/lib/server/invoicing/purchase-orders';
-import { createAdvanceReceipt, listAdvanceReceipts } from '../../src/lib/server/invoicing/advance-receipts';
 import { assertAccountOfType } from '../../src/lib/server/invoicing/accounts';
 import { createContact, listContacts, updateContact } from '../../src/lib/server/invoicing/contacts';
 import { CreateInvoiceInput } from '../../src/lib/schemas/invoice';
@@ -87,15 +86,6 @@ test('a PO to a CUSTOMER-only contact is rejected with wrong_contact_kind', asyn
 	await expect(createPurchaseOrder(companyId, u.id, await poInput(companyId, await contact(companyId, 'CUSTOMER')))).rejects.toMatchObject({ code: 'wrong_contact_kind' });
 });
 
-test('an advance receipt from a VENDOR-only contact is rejected with wrong_contact_kind', async () => {
-	const { companyId } = await makeCompany();
-	const u = await makeUser();
-	const deferred = await accountIdByCode(companyId, '2-1007');
-	await expect(
-		createAdvanceReceipt(companyId, u.id, { contactId: await contact(companyId, 'VENDOR'), receiptDate: '2026-10-02', amount: '1000', deferredRevenueAccountId: deferred })
-	).rejects.toMatchObject({ code: 'wrong_contact_kind' });
-});
-
 test('BOTH contacts are accepted on invoices and POs', async () => {
 	const { companyId } = await makeCompany();
 	const u = await makeUser();
@@ -119,10 +109,6 @@ test("invoicing another company's contact is rejected as not found", async () =>
 	const foreign = await contact(b.companyId, 'CUSTOMER');
 	await expect(createInvoice(a.companyId, u.id, await invoiceInput(a.companyId, foreign))).rejects.toMatchObject({ status: 404, code: 'not_found' });
 	await expect(createPurchaseOrder(a.companyId, u.id, await poInput(a.companyId, await contact(b.companyId, 'VENDOR')))).rejects.toMatchObject({ status: 404 });
-	const deferred = await accountIdByCode(a.companyId, '2-1007');
-	await expect(
-		createAdvanceReceipt(a.companyId, u.id, { contactId: foreign, receiptDate: '2026-10-02', amount: '1000', deferredRevenueAccountId: deferred })
-	).rejects.toMatchObject({ status: 404 });
 });
 
 test("list views never join in another company's contact name, even for a pre-existing mismatched row", async () => {
@@ -136,7 +122,6 @@ test("list views never join in another company's contact name, even for a pre-ex
 	await db.insert(purchaseOrders).values({ companyId: a.companyId, contactId: foreign.id, issueDate: '2026-10-01', payableAccountId: payable, status: 'DRAFT', subtotal: '0', taxAmount: '0', total: '0' });
 	expect((await listInvoices(a.companyId)).map((r) => r.contactName)).not.toContain('Rahasia PT B');
 	expect((await listPurchaseOrders(a.companyId)).map((r) => r.contactName)).not.toContain('Rahasia PT B');
-	expect((await listAdvanceReceipts(a.companyId)).map((r) => r.contactName)).not.toContain('Rahasia PT B');
 });
 
 test('listContacts activeOnly hides deactivated contacts', async () => {
@@ -178,36 +163,6 @@ test('receiving a PO whose payable account was deactivated after the Draft was c
 	await db.update(accounts).set({ isActive: false }).where(eq(accounts.id, await accountIdByCode(companyId, '2-1001')));
 	await expect(receivePurchaseOrder(companyId, u.id, id, '2026-10-15')).rejects.toMatchObject({ code: 'invalid_account' });
 	expect((await db.query.purchaseOrders.findFirst({ where: eq(purchaseOrders.id, id) }))?.status).toBe('ISSUED');
-});
-
-async function sentInvoiceWithReceipt(companyId: string, userId: string) {
-	const c = await contact(companyId, 'CUSTOMER');
-	const { id: invoiceId } = await createInvoice(companyId, userId, await invoiceInput(companyId, c));
-	await sendInvoice(companyId, userId, invoiceId, '2026-10-01');
-	const deferred = await accountIdByCode(companyId, '2-1007');
-	const { id: receiptId } = await createAdvanceReceipt(companyId, userId, { contactId: c, receiptDate: '2026-10-02', amount: '1000000', deferredRevenueAccountId: deferred });
-	return { invoiceId, receiptId, deferred };
-}
-
-test('paying by advance receipt whose deferred-revenue account was deactivated is rejected', async () => {
-	const { companyId } = await makeCompany();
-	const u = await makeUser();
-	const { invoiceId, receiptId, deferred } = await sentInvoiceWithReceipt(companyId, u.id);
-	await db.update(accounts).set({ isActive: false }).where(eq(accounts.id, deferred));
-	await expect(payInvoiceByAdvanceReceipt(companyId, u.id, invoiceId, receiptId, '2026-10-10')).rejects.toMatchObject({ code: 'invalid_account' });
-	expect((await db.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) }))?.status).toBe('SENT');
-});
-
-// ---- Minor 6: advance-receipt payment respects the period lock ----
-
-test('paying by advance receipt into a closed fiscal period is rejected with period_closed', async () => {
-	const { companyId } = await makeCompany();
-	const u = await makeUser();
-	const { invoiceId, receiptId } = await sentInvoiceWithReceipt(companyId, u.id);
-	const retained = await accountIdByCode(companyId, '3-1001');
-	await db.insert(fiscalClosings).values({ companyId, periodStart: '2026-01-01', periodEnd: '2026-09-30', retainedEarningsAccountId: retained, closedBy: u.id });
-	await expect(payInvoiceByAdvanceReceipt(companyId, u.id, invoiceId, receiptId, '2026-09-15')).rejects.toMatchObject({ code: 'period_closed' });
-	expect((await db.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) }))?.status).toBe('SENT');
 });
 
 // ---- Minor 4: tax rate capped at 100 ----

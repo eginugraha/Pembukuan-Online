@@ -35,8 +35,5 @@ export type CreateInvoiceInput = z.infer<typeof CreateInvoiceInput>;
 export const SendInvoiceInput = z.object({ date: isoDate });
 export type SendInvoiceInput = z.infer<typeof SendInvoiceInput>;
 
-export const PayInvoiceInput = z.discriminatedUnion('method', [
-	z.object({ date: isoDate, method: z.literal('BANK') }),
-	z.object({ date: isoDate, method: z.literal('ADVANCE_RECEIPT'), advanceReceiptId: requiredId('Uang muka') })
-]);
+export const PayInvoiceInput = z.object({ date: isoDate, method: z.literal('BANK') });
 export type PayInvoiceInput = z.infer<typeof PayInvoiceInput>;
