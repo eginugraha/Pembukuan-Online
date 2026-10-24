@@ -1,10 +1,10 @@
 import { beforeEach, expect, test } from 'bun:test';
 import { PDFParse } from 'pdf-parse';
 import { GET } from '../../src/routes/api/invoicing/invoices/[id]/pdf/+server';
-import { createInvoice, sendInvoice } from '../../src/lib/server/invoicing/invoices';
+import { createInvoice } from '../../src/lib/server/invoicing/invoices';
 import { db } from '../../src/lib/server/db';
 import { contacts } from '../../src/lib/server/db/schema';
-import { makeCompany, makeUser, accountIdByCode, addMember, contextFor } from './factory';
+import { makeCompany, makeUser, addMember, contextFor } from './factory';
 import { fakeEvent } from './event';
 import { resetDb } from './db';
 
@@ -20,10 +20,7 @@ test('PDF contains the contact name, invoice number, line description, and total
 	const u = await makeUser();
 	await addMember(u.id, companyId, 'viewer');
 	const [contact] = await db.insert(contacts).values({ companyId, kind: 'CUSTOMER', name: 'PT Pelanggan Uji' }).returning();
-	const receivable = await accountIdByCode(companyId, '1-1003');
-	const revenue = await accountIdByCode(companyId, '4-1001');
-	const { id } = await createInvoice(companyId, u.id, { contactId: contact.id, issueDate: '2026-10-01', receivableAccountId: receivable, lines: [{ description: 'Jasa konsultasi', quantity: '1', unitPrice: '1500000', revenueAccountId: revenue }] });
-	await sendInvoice(companyId, u.id, id, '2026-10-01');
+	const { id } = await createInvoice(companyId, u.id, { contactId: contact.id, issueDate: '2026-10-01', lines: [{ description: 'Jasa konsultasi', quantity: '1', unitPrice: '1500000' }] });
 
 	const res = await GET(fakeEvent({ ctx: await contextFor(u, companyId), path: `/api/invoicing/invoices/${id}/pdf`, params: { id } }) as never);
 	expect(res.status).toBe(200);
@@ -40,9 +37,7 @@ test('PDF Kepada block shows Attn line with attention and position under the com
 	const u = await makeUser();
 	await addMember(u.id, companyId, 'viewer');
 	const [contact] = await db.insert(contacts).values({ companyId, kind: 'CUSTOMER', name: 'PT Attn Uji', attention: 'Budi Santoso', position: 'Manajer Keuangan' }).returning();
-	const receivable = await accountIdByCode(companyId, '1-1003');
-	const revenue = await accountIdByCode(companyId, '4-1001');
-	const { id } = await createInvoice(companyId, u.id, { contactId: contact.id, issueDate: '2026-10-01', receivableAccountId: receivable, lines: [{ description: 'Jasa', quantity: '1', unitPrice: '1000', revenueAccountId: revenue }] });
+	const { id } = await createInvoice(companyId, u.id, { contactId: contact.id, issueDate: '2026-10-01', lines: [{ description: 'Jasa', quantity: '1', unitPrice: '1000' }] });
 
 	const res = await GET(fakeEvent({ ctx: await contextFor(u, companyId), path: `/api/invoicing/invoices/${id}/pdf`, params: { id } }) as never);
 	const text = await textOf(res);
@@ -55,16 +50,13 @@ test('a 60-line invoice breaks onto more than one page, keeping every line and t
 	const u = await makeUser();
 	await addMember(u.id, companyId, 'viewer');
 	const [contact] = await db.insert(contacts).values({ companyId, kind: 'CUSTOMER', name: 'PT Panjang' }).returning();
-	const receivable = await accountIdByCode(companyId, '1-1003');
-	const revenue = await accountIdByCode(companyId, '4-1001');
 	const N = 60;
 	const desc = (i: number) => `Baris ke-${String(i).padStart(2, '0')}`;
 	const { id } = await createInvoice(companyId, u.id, {
 		contactId: contact.id,
 		issueDate: '2026-10-01',
-		receivableAccountId: receivable,
-		notes: 'Catatan penutup invoice panjang',
-		lines: Array.from({ length: N }, (_, i) => ({ description: desc(i + 1), quantity: '1', unitPrice: '1000', revenueAccountId: revenue }))
+			notes: 'Catatan penutup invoice panjang',
+		lines: Array.from({ length: N }, (_, i) => ({ description: desc(i + 1), quantity: '1', unitPrice: '1000' }))
 	});
 
 	const res = await GET(fakeEvent({ ctx: await contextFor(u, companyId), path: `/api/invoicing/invoices/${id}/pdf`, params: { id } }) as never);
@@ -80,11 +72,11 @@ test('a 60-line invoice breaks onto more than one page, keeping every line and t
 	expect(result.pages[0].text).not.toContain(desc(N));
 	// The continuation page repeats the column header.
 	expect(result.pages[1].text).toContain('Harga Satuan');
-	// Totals, notes, and status all land on the final page.
+	// Totals and notes land on the final page.
 	const lastPage = result.pages[result.pages.length - 1].text;
 	expect(lastPage).toContain('60.000,00');
 	expect(lastPage).toContain('Catatan penutup invoice panjang');
-	expect(lastPage).toContain('Status: Draft');
+	expect(lastPage).not.toContain('Status:');
 });
 
 test('no company context is a 401', async () => {

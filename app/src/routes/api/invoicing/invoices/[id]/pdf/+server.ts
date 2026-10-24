@@ -9,8 +9,6 @@ import { drawLetterhead, getCompanyLetterheadData } from '$lib/server/reports/pd
 import { parseId } from '$lib/server/validation';
 import type { RequestHandler } from './$types';
 
-const STATUS_LABELS = { DRAFT: 'Draft', SENT: 'Terkirim', PAID: 'Lunas', CANCELLED: 'Dibatalkan' } as const;
-
 export const GET: RequestHandler = (event) =>
 	apiHandler(async () => {
 		const ctx = requireRole(event, 'viewer');
@@ -18,7 +16,7 @@ export const GET: RequestHandler = (event) =>
 		const [contact, company] = await Promise.all([getContact(ctx.companyId, invoice.contactId), getCompanyLetterheadData(ctx.companyId)]);
 
 		const doc = createPdfDocument();
-		const y = drawLetterhead(doc, company, 'INVOICE', `${invoice.invoiceNo ?? 'DRAFT'} — ${formatDate(invoice.issueDate)}`);
+		const y = drawLetterhead(doc, company, 'INVOICE', `${invoice.invoiceNo} — ${formatDate(invoice.issueDate)}`);
 		drawDocumentPdf(doc, y, {
 			contact,
 			lines: invoice.lines,
@@ -26,10 +24,9 @@ export const GET: RequestHandler = (event) =>
 			taxRate: invoice.taxRate,
 			taxAmount: invoice.taxAmount,
 			total: invoice.total,
-			notes: invoice.notes,
-			statusLabel: STATUS_LABELS[invoice.status]
+			notes: invoice.notes
 		});
 
 		const buf = await finishPdf(doc);
-		return pdfResponse(buf, `invoice-${invoice.invoiceNo ?? invoice.id}.pdf`);
+		return pdfResponse(buf, `invoice-${invoice.invoiceNo}.pdf`);
 	});

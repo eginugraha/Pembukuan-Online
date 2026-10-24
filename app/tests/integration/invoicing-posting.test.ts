@@ -13,7 +13,7 @@ test('postJournal inserts a balanced entry and sets the requested back-link colu
 	const u = await makeUser();
 	const revenue = await accountIdByCode(companyId, '4-1001');
 	const [contact] = await db.insert(contacts).values({ companyId, kind: 'CUSTOMER', name: 'PT X' }).returning();
-	const [invoice] = await db.insert(invoices).values({ companyId, contactId: contact.id, issueDate: '2026-10-01', receivableAccountId: bankAccountId, subtotal: '0', total: '0' }).returning();
+	const [invoice] = await db.insert(invoices).values({ companyId, contactId: contact.id, invoiceNo: 'INV-2026-0001', issueDate: '2026-10-01', subtotal: '0', total: '0' }).returning();
 
 	const { id } = await db.transaction((tx) =>
 		postJournal(tx, {
@@ -40,7 +40,7 @@ test('reverseJournalEntries creates a swapped-sign entry per original, same refN
 	const u = await makeUser();
 	const revenue = await accountIdByCode(companyId, '4-1001');
 	const [contact] = await db.insert(contacts).values({ companyId, kind: 'CUSTOMER', name: 'PT X' }).returning();
-	const [invoice] = await db.insert(invoices).values({ companyId, contactId: contact.id, issueDate: '2026-10-01', receivableAccountId: bankAccountId, subtotal: '0', total: '0' }).returning();
+	const [invoice] = await db.insert(invoices).values({ companyId, contactId: contact.id, invoiceNo: 'INV-2026-0001', issueDate: '2026-10-01', subtotal: '0', total: '0' }).returning();
 	await db.transaction((tx) =>
 		postJournal(tx, { companyId, createdBy: u.id, entryDate: '2026-10-01', description: 'x', refNo: 'INV-2026-0001', lines: [{ accountId: bankAccountId, debit: '100000.00', credit: '0.00' }, { accountId: revenue, debit: '0.00', credit: '100000.00' }], invoiceId: invoice.id })
 	);
@@ -70,7 +70,7 @@ test('reverseJournalEntries is rejected when the current fiscal period is closed
 	const u = await makeUser();
 	const revenue = await accountIdByCode(companyId, '4-1001');
 	const [contact] = await db.insert(contacts).values({ companyId, kind: 'CUSTOMER', name: 'PT X' }).returning();
-	const [invoice] = await db.insert(invoices).values({ companyId, contactId: contact.id, issueDate: '2026-10-01', receivableAccountId: bankAccountId, subtotal: '0', total: '0' }).returning();
+	const [invoice] = await db.insert(invoices).values({ companyId, contactId: contact.id, invoiceNo: 'INV-2026-0001', issueDate: '2026-10-01', subtotal: '0', total: '0' }).returning();
 	await db.transaction((tx) =>
 		postJournal(tx, { companyId, createdBy: u.id, entryDate: '2026-10-01', description: 'x', refNo: 'INV-2026-0001', lines: [{ accountId: bankAccountId, debit: '100000.00', credit: '0.00' }, { accountId: revenue, debit: '0.00', credit: '100000.00' }], invoiceId: invoice.id })
 	);

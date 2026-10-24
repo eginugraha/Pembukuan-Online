@@ -1,88 +1,31 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { apiFetch, ClientApiError } from '$lib/api-client';
-	import DateField from '$lib/components/DateField.svelte';
-	import FormField from '$lib/components/FormField.svelte';
+	import DeleteDocumentDialog from '$lib/components/DeleteDocumentDialog.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
-	import SearchSelect from '$lib/components/SearchSelect.svelte';
-	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
-	import { formatDate, todayIso } from '$lib/dates';
+	import { formatDate } from '$lib/dates';
 	import { formatIdr } from '$lib/money';
 	import { roleAtLeast } from '$lib/roles';
 
 	let { data } = $props();
 
-	const STATUS_LABELS = { DRAFT: 'Draft', SENT: 'Terkirim', PAID: 'Lunas', CANCELLED: 'Dibatalkan' } as const;
-	const canSend = $derived(data.invoice.status === 'DRAFT' && roleAtLeast(data.ctx.role, 'accountant'));
-	const canPay = $derived(data.invoice.status === 'SENT' && roleAtLeast(data.ctx.role, 'accountant'));
-	const cancelRole = $derived(data.invoice.status === 'DRAFT' ? 'accountant' : 'admin');
-	const canCancel = $derived(data.invoice.status !== 'CANCELLED' && roleAtLeast(data.ctx.role, cancelRole));
-
-	let sendOpen = $state(false);
-	let sendDate = $state('');
-	let payOpen = $state(false);
-	let payDate = $state('');
-	let cancelOpen = $state(false);
+	const canManage = $derived(roleAtLeast(data.ctx.role, 'accountant'));
+	let deleteOpen = $state(false);
 	let error = $state<string | null>(null);
 	let busy = $state(false);
 
-	function askSend() {
-		sendDate = todayIso();
-		error = null;
-		sendOpen = true;
-	}
-
-	async function doSend() {
+	async function doDelete() {
 		error = null;
 		busy = true;
 		try {
-			await apiFetch(`/api/invoicing/invoices/${data.invoice.id}/send`, { method: 'POST', json: { date: sendDate } });
-			sendOpen = false;
-			await invalidateAll();
+			await apiFetch(`/api/invoicing/invoices/${data.invoice.id}`, { method: 'DELETE' });
+			deleteOpen = false;
+			await goto('/invoicing/invoices');
 		} catch (err) {
-			error = err instanceof ClientApiError ? err.message : 'Terjadi kesalahan';
-		} finally {
-			busy = false;
-		}
-	}
-
-	function askPay() {
-		payDate = todayIso();
-		error = null;
-		payOpen = true;
-	}
-
-	async function doPay() {
-		error = null;
-		busy = true;
-		try {
-			await apiFetch(`/api/invoicing/invoices/${data.invoice.id}/pay`, { method: 'POST', json: { date: payDate, method: 'BANK' } });
-			payOpen = false;
-			await invalidateAll();
-		} catch (err) {
-			error = err instanceof ClientApiError ? err.message : 'Terjadi kesalahan';
-		} finally {
-			busy = false;
-		}
-	}
-
-	function askCancel() {
-		error = null;
-		cancelOpen = true;
-	}
-
-	async function doCancel() {
-		error = null;
-		busy = true;
-		try {
-			await apiFetch(`/api/invoicing/invoices/${data.invoice.id}/cancel`, { method: 'POST', json: {} });
-			cancelOpen = false;
-			await invalidateAll();
-		} catch (err) {
+			deleteOpen = false;
 			error = err instanceof ClientApiError ? err.message : 'Terjadi kesalahan';
 		} finally {
 			busy = false;
@@ -90,21 +33,17 @@
 	}
 </script>
 
-<PageHeader title={data.invoice.invoiceNo ?? 'Draft'} description={data.contact.name}>
+<PageHeader title={data.invoice.invoiceNo} description={data.contact.name}>
 	{#snippet actions()}
 		<Button href="/api/invoicing/invoices/{data.invoice.id}/pdf">Unduh PDF</Button>
-		{#if canSend}<Button onclick={askSend}>Kirim</Button>{/if}
-		{#if canPay}<Button onclick={askPay}>Bayar dari Bank</Button>{/if}
-		{#if canCancel}<Button variant="outline" onclick={askCancel}>Batalkan</Button>{/if}
+		{#if canManage}<Button variant="outline" href="/invoicing/invoices/{data.invoice.id}/edit">Ubah</Button>{/if}
+		{#if canManage}<Button variant="outline" onclick={() => (deleteOpen = true)}>Hapus</Button>{/if}
 	{/snippet}
 </PageHeader>
+{#if error}<p role="alert" class="mb-4 rounded-xl bg-destructive/10 p-3 text-sm font-medium text-destructive">{error}</p>{/if}
 
 <Card.Root class="mb-6">
-	<Card.Content class="grid grid-cols-2 gap-4 pt-6 text-sm sm:grid-cols-4">
-		<div>
-			<p class="text-muted-foreground">Status</p>
-			<Badge variant={data.invoice.status === 'DRAFT' ? 'outline' : 'default'}>{STATUS_LABELS[data.invoice.status]}</Badge>
-		</div>
+	<Card.Content class="grid gap-4 pt-6 text-sm sm:grid-cols-3">
 		<div>
 			<p class="text-muted-foreground">Tanggal invoice</p>
 			<p class="font-medium">{formatDate(data.invoice.issueDate)}</p>
@@ -156,54 +95,4 @@
 	<p class="mt-4 text-sm text-muted-foreground">{data.invoice.notes}</p>
 {/if}
 
-<Dialog.Root bind:open={sendOpen}>
-	<Dialog.Content>
-		<Dialog.Header>
-			<Dialog.Title>Kirim invoice?</Dialog.Title>
-			<Dialog.Description>Invoice akan diberi nomor urut dan jurnalnya diposting (Dr piutang / Cr pendapatan).</Dialog.Description>
-		</Dialog.Header>
-		<FormField id="send-date" label="Tanggal kirim">
-			<DateField id="send-date" bind:value={sendDate} />
-		</FormField>
-		{#if error}<p role="alert" class="text-sm font-medium text-destructive">{error}</p>{/if}
-		<Dialog.Footer>
-			<Button type="button" variant="outline" onclick={() => (sendOpen = false)}>Batal</Button>
-			<Button type="button" disabled={busy || !sendDate} onclick={doSend}>{busy ? 'Mengirim…' : 'Kirim'}</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
-
-<Dialog.Root bind:open={payOpen}>
-	<Dialog.Content>
-		<Dialog.Header>
-			<Dialog.Title>Bayar dari bank?</Dialog.Title>
-			<Dialog.Description>Jurnal pelunasan akan diposting (Dr bank / Cr piutang) dan invoice ditandai Lunas.</Dialog.Description>
-		</Dialog.Header>
-		<FormField id="pay-date" label="Tanggal bayar">
-			<DateField id="pay-date" bind:value={payDate} />
-		</FormField>
-		{#if error}<p role="alert" class="text-sm font-medium text-destructive">{error}</p>{/if}
-		<Dialog.Footer>
-			<Button type="button" variant="outline" onclick={() => (payOpen = false)}>Batal</Button>
-			<Button type="button" disabled={busy || !payDate} onclick={doPay}>{busy ? 'Memproses…' : 'Bayar'}</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
-
-<Dialog.Root bind:open={cancelOpen}>
-	<Dialog.Content>
-		<Dialog.Header>
-			<Dialog.Title>Batalkan invoice?</Dialog.Title>
-			<Dialog.Description>
-				{data.invoice.status === 'DRAFT'
-					? 'Invoice Draft akan dibatalkan tanpa jurnal.'
-					: 'Jurnal yang sudah diposting akan dibalik (Pembalikan) dan invoice ditandai Dibatalkan.'}
-			</Dialog.Description>
-		</Dialog.Header>
-		{#if error}<p role="alert" class="text-sm font-medium text-destructive">{error}</p>{/if}
-		<Dialog.Footer>
-			<Button type="button" variant="outline" onclick={() => (cancelOpen = false)}>Batal</Button>
-			<Button type="button" variant="destructive" disabled={busy} onclick={doCancel}>{busy ? 'Memproses…' : 'Batalkan'}</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+<DeleteDocumentDialog bind:open={deleteOpen} title="Hapus invoice" name={data.invoice.invoiceNo} {busy} onconfirm={doDelete} />

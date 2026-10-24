@@ -2,7 +2,7 @@ import { beforeEach, expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { db } from '../../src/lib/server/db';
 import { accounts, contacts, fiscalClosings, invoices, journalEntries, purchaseOrders } from '../../src/lib/server/db/schema';
-import { createInvoice, listInvoices, sendInvoice } from '../../src/lib/server/invoicing/invoices';
+import { createInvoice, listInvoices } from '../../src/lib/server/invoicing/invoices';
 import { createPurchaseOrder, issuePurchaseOrder, listPurchaseOrders, receivePurchaseOrder } from '../../src/lib/server/invoicing/purchase-orders';
 import { assertAccountOfType } from '../../src/lib/server/invoicing/accounts';
 import { createContact, listContacts, updateContact } from '../../src/lib/server/invoicing/contacts';
@@ -18,12 +18,11 @@ async function contact(companyId: string, kind: 'CUSTOMER' | 'VENDOR' | 'BOTH', 
 	return row.id;
 }
 
-async function invoiceInput(companyId: string, contactId: string, extra: Partial<CreateInvoiceInput> = {}): Promise<CreateInvoiceInput> {
+async function invoiceInput(_companyId: string, contactId: string, extra: Partial<CreateInvoiceInput> = {}): Promise<CreateInvoiceInput> {
 	return {
 		contactId,
 		issueDate: '2026-10-01',
-		receivableAccountId: await accountIdByCode(companyId, '1-1003'),
-		lines: [{ description: 'Jasa', quantity: '1', unitPrice: '1000000', revenueAccountId: await accountIdByCode(companyId, '4-1001') }],
+		lines: [{ description: 'Jasa', quantity: '1', unitPrice: '1000000' }],
 		...extra
 	};
 }
@@ -48,14 +47,6 @@ test('assertAccountOfType accepts a list of allowed types', async () => {
 	await expect(assertAccountOfType(db, companyId, revenue, ['ASSET', 'LIABILITY'])).rejects.toMatchObject({ code: 'wrong_account_type' });
 });
 
-test('an invoice with a REVENUE account as its tax account is rejected', async () => {
-	const { companyId } = await makeCompany();
-	const u = await makeUser();
-	const c = await contact(companyId, 'CUSTOMER');
-	const revenue = await accountIdByCode(companyId, '4-1001');
-	await expect(createInvoice(companyId, u.id, await invoiceInput(companyId, c, { taxRate: '11', taxAccountId: revenue }))).rejects.toMatchObject({ code: 'wrong_account_type' });
-});
-
 test('a PO with an EXPENSE account as its tax account is rejected', async () => {
 	const { companyId } = await makeCompany();
 	const u = await makeUser();
@@ -64,11 +55,10 @@ test('a PO with an EXPENSE account as its tax account is rejected', async () => 
 	await expect(createPurchaseOrder(companyId, u.id, await poInput(companyId, c, { taxRate: '11', taxAccountId: expense }))).rejects.toMatchObject({ code: 'wrong_account_type' });
 });
 
-test('a LIABILITY tax account is still accepted on both documents', async () => {
+test('a LIABILITY tax account is still accepted on a PO', async () => {
 	const { companyId } = await makeCompany();
 	const u = await makeUser();
 	const tax = await accountIdByCode(companyId, '2-1005');
-	await createInvoice(companyId, u.id, await invoiceInput(companyId, await contact(companyId, 'CUSTOMER'), { taxRate: '11', taxAccountId: tax }));
 	await createPurchaseOrder(companyId, u.id, await poInput(companyId, await contact(companyId, 'VENDOR'), { taxRate: '11', taxAccountId: tax }));
 });
 
@@ -115,10 +105,9 @@ test("list views never join in another company's contact name, even for a pre-ex
 	const a = await makeCompany('PT A');
 	const b = await makeCompany('PT B');
 	const [foreign] = await db.insert(contacts).values({ companyId: b.companyId, kind: 'BOTH', name: 'Rahasia PT B' }).returning();
-	const receivable = await accountIdByCode(a.companyId, '1-1003');
 	const payable = await accountIdByCode(a.companyId, '2-1001');
 	// Bypass the service (simulate a row created before the creation-time check existed).
-	await db.insert(invoices).values({ companyId: a.companyId, contactId: foreign.id, issueDate: '2026-10-01', receivableAccountId: receivable, status: 'DRAFT', subtotal: '0', taxAmount: '0', total: '0' });
+	await db.insert(invoices).values({ companyId: a.companyId, contactId: foreign.id, invoiceNo: 'INV-2026-0001', issueDate: '2026-10-01', subtotal: '0', taxAmount: '0', total: '0' });
 	await db.insert(purchaseOrders).values({ companyId: a.companyId, contactId: foreign.id, issueDate: '2026-10-01', payableAccountId: payable, status: 'DRAFT', subtotal: '0', taxAmount: '0', total: '0' });
 	expect((await listInvoices(a.companyId)).map((r) => r.contactName)).not.toContain('Rahasia PT B');
 	expect((await listPurchaseOrders(a.companyId)).map((r) => r.contactName)).not.toContain('Rahasia PT B');
@@ -145,16 +134,6 @@ test('updateContact with an empty input is a no-op, and still 404s for an unknow
 
 // ---- Minor 2: accounts are re-validated at posting time ----
 
-test('sending an invoice whose revenue account was deactivated after the Draft was created is rejected', async () => {
-	const { companyId } = await makeCompany();
-	const u = await makeUser();
-	const { id } = await createInvoice(companyId, u.id, await invoiceInput(companyId, await contact(companyId, 'CUSTOMER')));
-	await db.update(accounts).set({ isActive: false }).where(eq(accounts.id, await accountIdByCode(companyId, '4-1001')));
-	await expect(sendInvoice(companyId, u.id, id, '2026-10-05')).rejects.toMatchObject({ code: 'invalid_account' });
-	expect((await db.query.invoices.findFirst({ where: eq(invoices.id, id) }))?.status).toBe('DRAFT');
-	expect(await db.select().from(journalEntries).where(eq(journalEntries.invoiceId, id))).toHaveLength(0);
-});
-
 test('receiving a PO whose payable account was deactivated after the Draft was created is rejected', async () => {
 	const { companyId } = await makeCompany();
 	const u = await makeUser();
@@ -169,7 +148,7 @@ test('receiving a PO whose payable account was deactivated after the Draft was c
 
 test('taxRate above 100 is rejected by both schemas; 100 and 11.5 are accepted', () => {
 	const base = { contactId: '00000000-0000-4000-8000-000000000000', issueDate: '2026-10-01', taxAccountId: '00000000-0000-4000-8000-000000000000' };
-	const inv = { ...base, receivableAccountId: base.contactId, lines: [{ description: 'x', quantity: '1', unitPrice: '1', revenueAccountId: base.contactId }] };
+	const inv = { contactId: base.contactId, issueDate: base.issueDate, lines: [{ description: 'x', quantity: '1', unitPrice: '1' }] };
 	const po = { ...base, payableAccountId: base.contactId, lines: [{ description: 'x', quantity: '1', unitPrice: '1', expenseAccountId: base.contactId }] };
 	for (const rate of ['100.01', '101', '999.99']) {
 		expect(CreateInvoiceInput.safeParse({ ...inv, taxRate: rate }).success).toBe(false);

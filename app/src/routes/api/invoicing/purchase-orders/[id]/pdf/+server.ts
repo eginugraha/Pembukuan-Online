@@ -9,8 +9,6 @@ import { drawLetterhead, getCompanyLetterheadData } from '$lib/server/reports/pd
 import { parseId } from '$lib/server/validation';
 import type { RequestHandler } from './$types';
 
-const STATUS_LABELS = { DRAFT: 'Draft', ISSUED: 'Diterbitkan', RECEIVED: 'Diterima', CANCELLED: 'Dibatalkan' } as const;
-
 export const GET: RequestHandler = (event) =>
 	apiHandler(async () => {
 		const ctx = requireRole(event, 'viewer');
@@ -26,8 +24,7 @@ export const GET: RequestHandler = (event) =>
 			taxRate: po.taxRate,
 			taxAmount: po.taxAmount,
 			total: po.total,
-			notes: po.notes,
-			statusLabel: STATUS_LABELS[po.status]
+			notes: po.notes
 		});
 
 		const buf = await finishPdf(doc);

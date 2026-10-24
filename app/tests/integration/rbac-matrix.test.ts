@@ -28,9 +28,6 @@ import * as contactsApi from '../../src/routes/api/invoicing/contacts/+server';
 import * as contactOne from '../../src/routes/api/invoicing/contacts/[id]/+server';
 import * as invoicesApi from '../../src/routes/api/invoicing/invoices/+server';
 import * as invoiceOne from '../../src/routes/api/invoicing/invoices/[id]/+server';
-import * as invoiceSend from '../../src/routes/api/invoicing/invoices/[id]/send/+server';
-import * as invoicePay from '../../src/routes/api/invoicing/invoices/[id]/pay/+server';
-import * as invoiceCancel from '../../src/routes/api/invoicing/invoices/[id]/cancel/+server';
 import * as invoicePdf from '../../src/routes/api/invoicing/invoices/[id]/pdf/+server';
 import * as purchaseOrdersApi from '../../src/routes/api/invoicing/purchase-orders/+server';
 import * as purchaseOrderOne from '../../src/routes/api/invoicing/purchase-orders/[id]/+server';
@@ -40,7 +37,6 @@ import * as purchaseOrderCancel from '../../src/routes/api/invoicing/purchase-or
 import * as purchaseOrderPdf from '../../src/routes/api/invoicing/purchase-orders/[id]/pdf/+server';
 import { db } from '../../src/lib/server/db';
 import { contacts as contactsTable } from '../../src/lib/server/db/schema';
-import { createInvoice, sendInvoice } from '../../src/lib/server/invoicing/invoices';
 import { createPurchaseOrder, issuePurchaseOrder, receivePurchaseOrder } from '../../src/lib/server/invoicing/purchase-orders';
 import type { AppContext } from '../../src/lib/server/rbac';
 import { accountIdByCode, addMember, contextFor, makeCompany, makeUser } from './factory';
@@ -57,7 +53,7 @@ const RID = '00000000-0000-4000-8000-000000000000';
  * menolak 404 sebelum sempat memutuskan role, jadi matrix-nya butuh dokumen sungguhan per status.
  * Diisi di beforeAll; `params` berupa fungsi supaya dibaca saat test berjalan.
  */
-const docs = { draftInvoice: '', sentInvoice: '', issuedPO: '', receivedPO: '' };
+const docs = { issuedPO: '', receivedPO: '' };
 
 const ENDPOINTS: Array<{ name: string; handler: H; method: string; min: Level; body?: unknown; form?: boolean; params?: Record<string, string> | (() => Record<string, string>) }> = [
 	{ name: 'GET /uploads', handler: uploads.GET, method: 'GET', min: 'viewer' },
@@ -102,10 +98,8 @@ const ENDPOINTS: Array<{ name: string; handler: H; method: string; min: Level; b
 	{ name: 'POST /invoicing/invoices', handler: invoicesApi.POST, method: 'POST', min: 'accountant', body: {} },
 	{ name: 'GET /invoicing/invoices/:id', handler: invoiceOne.GET, method: 'GET', min: 'viewer', params: { id: RID } },
 	{ name: 'GET /invoicing/invoices/:id/pdf', handler: invoicePdf.GET, method: 'GET', min: 'viewer', params: { id: RID } },
-	{ name: 'POST /invoicing/invoices/:id/send', handler: invoiceSend.POST, method: 'POST', min: 'accountant', params: { id: RID }, body: { date: '2026-10-05' } },
-	{ name: 'POST /invoicing/invoices/:id/pay', handler: invoicePay.POST, method: 'POST', min: 'accountant', params: { id: RID }, body: { date: '2026-10-05', method: 'BANK' } },
-	{ name: 'POST /invoicing/invoices/:id/cancel (Draft)', handler: invoiceCancel.POST, method: 'POST', min: 'accountant', params: () => ({ id: docs.draftInvoice }) },
-	{ name: 'POST /invoicing/invoices/:id/cancel (Terkirim)', handler: invoiceCancel.POST, method: 'POST', min: 'admin', params: () => ({ id: docs.sentInvoice }) },
+	{ name: 'PUT /invoicing/invoices/:id', handler: invoiceOne.PUT, method: 'PUT', min: 'accountant', params: { id: RID }, body: {} },
+	{ name: 'DELETE /invoicing/invoices/:id', handler: invoiceOne.DELETE, method: 'DELETE', min: 'accountant', params: { id: RID } },
 	// Invoicing: Purchase Order
 	{ name: 'GET /invoicing/purchase-orders', handler: purchaseOrdersApi.GET, method: 'GET', min: 'viewer' },
 	{ name: 'POST /invoicing/purchase-orders', handler: purchaseOrdersApi.POST, method: 'POST', min: 'accountant', body: {} },
@@ -132,15 +126,6 @@ beforeAll(async () => {
 
 	const userId = ctxs.admin.user.id;
 	const [contact] = await db.insert(contactsTable).values({ companyId, kind: 'BOTH', name: 'PT Matrix' }).returning();
-	const invoiceInput = {
-		contactId: contact.id,
-		issueDate: '2026-10-01',
-		receivableAccountId: await accountIdByCode(companyId, '1-1003'),
-		lines: [{ description: 'Jasa', quantity: '1', unitPrice: '1000', revenueAccountId: await accountIdByCode(companyId, '4-1001') }]
-	};
-	docs.draftInvoice = (await createInvoice(companyId, userId, invoiceInput)).id;
-	docs.sentInvoice = (await createInvoice(companyId, userId, invoiceInput)).id;
-	await sendInvoice(companyId, userId, docs.sentInvoice, '2026-10-05');
 	const poInput = {
 		contactId: contact.id,
 		issueDate: '2026-10-01',

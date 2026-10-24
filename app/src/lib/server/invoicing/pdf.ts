@@ -38,7 +38,6 @@ export function drawDocumentPdf(
 		taxAmount?: string | null;
 		total: string;
 		notes?: string | null;
-		statusLabel: string;
 	}
 ): void {
 	doc.font('Helvetica-Bold').fontSize(10).text(opts.contact.name, LEFT_X, y, { lineBreak: false });
@@ -116,7 +115,4 @@ export function drawDocumentPdf(
 		doc.text(opts.notes, LEFT_X, y, { width: RIGHT_X - LEFT_X });
 		y = doc.y + 10;
 	}
-
-	ensureSpace(14);
-	doc.font('Helvetica-Bold').fontSize(10).text(`Status: ${opts.statusLabel}`, LEFT_X, y, { lineBreak: false });
 }

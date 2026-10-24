@@ -309,7 +309,6 @@ export const journalLines = pgTable(
 
 // ── Invoicing ─────────────────────────────────────────────────
 export const contactKind = pgEnum('contact_kind', ['CUSTOMER', 'VENDOR', 'BOTH']);
-export const invoiceStatus = pgEnum('invoice_status', ['DRAFT', 'SENT', 'PAID', 'CANCELLED']);
 export const poStatus = pgEnum('po_status', ['DRAFT', 'ISSUED', 'RECEIVED', 'CANCELLED']);
 
 export const contacts = pgTable('contacts', {
@@ -334,16 +333,14 @@ export const invoices = pgTable(
 		id: uuid('id').primaryKey().defaultRandom(),
 		companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
 		contactId: uuid('contact_id').notNull().references(() => contacts.id),
-		invoiceNo: varchar('invoice_no', { length: 30 }),
+		invoiceNo: varchar('invoice_no', { length: 30 }).notNull(),
 		issueDate: day('issue_date').notNull(),
-		receivableAccountId: uuid('receivable_account_id').notNull().references(() => accounts.id),
-		status: invoiceStatus('status').notNull().default('DRAFT'),
 		subtotal: money('subtotal').notNull(),
 		taxRate: numeric('tax_rate', { precision: 5, scale: 2 }),
-		taxAccountId: uuid('tax_account_id').references(() => accounts.id),
 		taxAmount: money('tax_amount').notNull().default('0'),
 		total: money('total').notNull(),
 		notes: text('notes'),
+		deletedAt: timestamp('deleted_at', { withTimezone: true }),
 		createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
 		createdAt: createdAt()
 	},
@@ -357,8 +354,7 @@ export const invoiceLines = pgTable('invoice_lines', {
 	description: text('description').notNull(),
 	quantity: numeric('quantity', { precision: 12, scale: 2 }).notNull(),
 	unitPrice: money('unit_price').notNull(),
-	amount: money('amount').notNull(),
-	revenueAccountId: uuid('revenue_account_id').notNull().references(() => accounts.id)
+	amount: money('amount').notNull()
 });
 
 export const purchaseOrders = pgTable(
