@@ -1,4 +1,4 @@
-import { and, asc, eq, or } from 'drizzle-orm';
+import { and, asc, eq, isNull, or } from 'drizzle-orm';
 import { ApiError, notFound } from '../api';
 import { db, type Executor } from '../db';
 import { contacts } from '../db/schema';
@@ -12,10 +12,13 @@ export interface ContactRow {
 	kind: 'CUSTOMER' | 'VENDOR' | 'BOTH';
 	name: string;
 	npwp: string | null;
+	attention: string | null;
+	position: string | null;
 	address: string | null;
 	email: string | null;
 	phone: string | null;
 	isActive: boolean;
+	deletedAt: Date | null;
 	createdAt: Date;
 }
 
@@ -27,6 +30,8 @@ export async function createContact(companyId: string, input: CreateContactInput
 			kind: input.kind,
 			name: input.name,
 			npwp: input.npwp || null,
+			attention: input.attention || null,
+			position: input.position || null,
 			address: input.address || null,
 			email: input.email || null,
 			phone: input.phone || null
@@ -42,17 +47,35 @@ export async function updateContact(companyId: string, contactId: string, input:
 		await getContact(companyId, contactId);
 		return;
 	}
+	const { npwp, attention, position, address, email, phone, ...rest } = input;
+	const blankToNull = (v: string | null | undefined) => (v === undefined ? undefined : v || null);
 	const updated = await db
 		.update(contacts)
-		.set(input)
-		.where(and(eq(contacts.id, contactId), eq(contacts.companyId, companyId)))
+		.set({
+			...rest,
+			npwp: blankToNull(npwp),
+			attention: blankToNull(attention),
+			position: blankToNull(position),
+			address: blankToNull(address),
+			email: blankToNull(email),
+			phone: blankToNull(phone)
+		})
+		.where(and(eq(contacts.id, contactId), eq(contacts.companyId, companyId), isNull(contacts.deletedAt)))
 		.returning({ id: contacts.id });
 	if (updated.length === 0) throw notFound('Kontak');
 }
 
-/** Kontak boleh dinonaktifkan meski sudah dirujuk invoice/PO lama (tidak seperti akun, tidak ada pengecekan in-use). */
-export async function deactivateContact(companyId: string, contactId: string): Promise<void> {
-	await updateContact(companyId, contactId, { isActive: false });
+/**
+ * Soft delete: kontak disembunyikan dari daftar dan pemilih dokumen baru, tapi barisnya tetap ada
+ * supaya invoice/PO lama masih bisa menampilkan datanya (`getContact` tidak menyaring `deletedAt`).
+ */
+export async function deleteContact(companyId: string, contactId: string): Promise<void> {
+	const deleted = await db
+		.update(contacts)
+		.set({ deletedAt: new Date() })
+		.where(and(eq(contacts.id, contactId), eq(contacts.companyId, companyId), isNull(contacts.deletedAt)))
+		.returning({ id: contacts.id });
+	if (deleted.length === 0) throw notFound('Kontak');
 }
 
 /** `activeOnly`: hanya kontak aktif -- dipakai pemilih kontak di form dokumen baru. */
@@ -62,12 +85,14 @@ export async function listContacts(
 ): Promise<ContactRow[]> {
 	const where = and(
 		eq(contacts.companyId, companyId),
+		isNull(contacts.deletedAt),
 		opts.kind ? or(eq(contacts.kind, opts.kind), eq(contacts.kind, 'BOTH')) : undefined,
 		opts.activeOnly ? eq(contacts.isActive, true) : undefined
 	);
 	return db.select().from(contacts).where(where).orderBy(asc(contacts.name));
 }
 
+/** Tidak menyaring `deletedAt`: dokumen lama tetap harus bisa membaca kontaknya yang sudah dihapus. */
 export async function getContact(companyId: string, contactId: string): Promise<ContactRow> {
 	const row = await db.query.contacts.findFirst({ where: and(eq(contacts.id, contactId), eq(contacts.companyId, companyId)) });
 	if (!row) throw notFound('Kontak');
@@ -90,7 +115,7 @@ export async function assertContact(
 		.from(contacts)
 		.where(and(eq(contacts.id, contactId), eq(contacts.companyId, companyId)))
 		.limit(1);
-	if (!row) throw notFound('Kontak');
+	if (!row || row.deletedAt) throw notFound('Kontak');
 	if (row.kind !== kind && row.kind !== 'BOTH') {
 		const label = kind === 'CUSTOMER' ? 'pelanggan' : 'pemasok';
 		throw new ApiError(422, 'wrong_contact_kind', `Kontak ini bukan ${label}`, undefined, { field: 'contactId' });

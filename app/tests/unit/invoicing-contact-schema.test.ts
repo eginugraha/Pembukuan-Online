@@ -11,3 +11,8 @@ test('name and kind are required, in Indonesian', () => {
 test('valid minimal input passes', () => {
 	expect(fieldErrors(CreateContactInput, { kind: 'CUSTOMER', name: 'PT Mitra' })).toEqual({});
 });
+
+test('attention and position are optional but length-limited', () => {
+	expect(fieldErrors(CreateContactInput, { kind: 'CUSTOMER', name: 'PT', attention: 'Budi', position: 'Manajer' })).toEqual({});
+	expect(fieldErrors(CreateContactInput, { kind: 'CUSTOMER', name: 'PT', attention: 'x'.repeat(201) }).attention).toBe('Attention maksimal 200 karakter');
+});

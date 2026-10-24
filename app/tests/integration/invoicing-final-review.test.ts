@@ -6,7 +6,7 @@ import { createInvoice, listInvoices, payInvoiceByAdvanceReceipt, sendInvoice } 
 import { createPurchaseOrder, issuePurchaseOrder, listPurchaseOrders, receivePurchaseOrder } from '../../src/lib/server/invoicing/purchase-orders';
 import { createAdvanceReceipt, listAdvanceReceipts } from '../../src/lib/server/invoicing/advance-receipts';
 import { assertAccountOfType } from '../../src/lib/server/invoicing/accounts';
-import { createContact, deactivateContact, listContacts, updateContact } from '../../src/lib/server/invoicing/contacts';
+import { createContact, listContacts, updateContact } from '../../src/lib/server/invoicing/contacts';
 import { CreateInvoiceInput } from '../../src/lib/schemas/invoice';
 import { CreatePurchaseOrderInput } from '../../src/lib/schemas/purchase-order';
 import { makeCompany, makeUser, accountIdByCode } from './factory';
@@ -108,7 +108,7 @@ test('invoicing a deactivated contact is rejected with contact_inactive', async 
 	const { companyId } = await makeCompany();
 	const u = await makeUser();
 	const c = await contact(companyId, 'CUSTOMER');
-	await deactivateContact(companyId, c);
+	await updateContact(companyId, c, { isActive: false });
 	await expect(createInvoice(companyId, u.id, await invoiceInput(companyId, c))).rejects.toMatchObject({ code: 'contact_inactive' });
 });
 
@@ -143,7 +143,7 @@ test('listContacts activeOnly hides deactivated contacts', async () => {
 	const { companyId } = await makeCompany();
 	const { id } = await createContact(companyId, { kind: 'CUSTOMER', name: 'PT Lama' });
 	await createContact(companyId, { kind: 'CUSTOMER', name: 'PT Baru' });
-	await deactivateContact(companyId, id);
+	await updateContact(companyId, id, { isActive: false });
 	expect((await listContacts(companyId, { kind: 'CUSTOMER', activeOnly: true })).map((c) => c.name)).toEqual(['PT Baru']);
 	expect(await listContacts(companyId, { kind: 'CUSTOMER' })).toHaveLength(2);
 });

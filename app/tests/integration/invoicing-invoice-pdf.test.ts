@@ -35,6 +35,21 @@ test('PDF contains the contact name, invoice number, line description, and total
 	expect(text).toContain('1.500.000,00');
 });
 
+test('PDF Kepada block shows Attn line with attention and position under the company name', async () => {
+	const { companyId } = await makeCompany();
+	const u = await makeUser();
+	await addMember(u.id, companyId, 'viewer');
+	const [contact] = await db.insert(contacts).values({ companyId, kind: 'CUSTOMER', name: 'PT Attn Uji', attention: 'Budi Santoso', position: 'Manajer Keuangan' }).returning();
+	const receivable = await accountIdByCode(companyId, '1-1003');
+	const revenue = await accountIdByCode(companyId, '4-1001');
+	const { id } = await createInvoice(companyId, u.id, { contactId: contact.id, issueDate: '2026-10-01', receivableAccountId: receivable, lines: [{ description: 'Jasa', quantity: '1', unitPrice: '1000', revenueAccountId: revenue }] });
+
+	const res = await GET(fakeEvent({ ctx: await contextFor(u, companyId), path: `/api/invoicing/invoices/${id}/pdf`, params: { id } }) as never);
+	const text = await textOf(res);
+	expect(text).toContain('Attn: Budi Santoso, Manajer Keuangan');
+	expect(text.indexOf('PT Attn Uji')).toBeLessThan(text.indexOf('Attn: Budi Santoso'));
+});
+
 test('a 60-line invoice breaks onto more than one page, keeping every line and the totals on real pages', async () => {
 	const { companyId } = await makeCompany();
 	const u = await makeUser();

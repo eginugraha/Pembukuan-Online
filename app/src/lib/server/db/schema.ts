@@ -320,10 +320,13 @@ export const contacts = pgTable('contacts', {
 	kind: contactKind('kind').notNull(),
 	name: text('name').notNull(),
 	npwp: varchar('npwp', { length: 20 }),
+	attention: text('attention'),
+	position: text('position'),
 	address: text('address'),
 	email: text('email'),
 	phone: varchar('phone', { length: 30 }),
 	isActive: boolean('is_active').notNull().default(true),
+	deletedAt: timestamp('deleted_at', { withTimezone: true }),
 	createdAt: createdAt()
 });
 

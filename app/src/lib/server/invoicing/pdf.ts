@@ -31,7 +31,7 @@ export function drawDocumentPdf(
 	doc: PDFKit.PDFDocument,
 	y: number,
 	opts: {
-		contact: { name: string; address?: string | null; npwp?: string | null };
+		contact: { name: string; attention?: string | null; position?: string | null; address?: string | null; npwp?: string | null };
 		lines: { description: string; quantity: string; unitPrice: string; amount: string }[];
 		subtotal: string;
 		taxRate?: string | null;
@@ -44,6 +44,11 @@ export function drawDocumentPdf(
 	doc.font('Helvetica-Bold').fontSize(10).text(opts.contact.name, LEFT_X, y, { lineBreak: false });
 	y += 14;
 	doc.font('Helvetica').fontSize(9);
+	if (opts.contact.attention) {
+		const attn = [opts.contact.attention, opts.contact.position].filter(Boolean).join(', ');
+		doc.text(`Attn: ${attn}`, LEFT_X, y);
+		y = doc.y;
+	}
 	if (opts.contact.address) {
 		doc.text(opts.contact.address, LEFT_X, y);
 		y = doc.y;

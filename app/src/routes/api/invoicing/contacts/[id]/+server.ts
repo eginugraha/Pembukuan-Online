@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { deactivateContact, updateContact, UpdateContactInput } from '$lib/server/invoicing/contacts';
+import { deleteContact, updateContact, UpdateContactInput } from '$lib/server/invoicing/contacts';
 import { apiHandler, parseJson } from '$lib/server/api';
 import { requireRole } from '$lib/server/rbac';
 import { parseId } from '$lib/server/validation';
@@ -15,6 +15,6 @@ export const PUT: RequestHandler = (event) =>
 export const DELETE: RequestHandler = (event) =>
 	apiHandler(async () => {
 		const ctx = requireRole(event, 'accountant');
-		await deactivateContact(ctx.companyId, parseId(event.params.id, 'Kontak'));
+		await deleteContact(ctx.companyId, parseId(event.params.id, 'Kontak'));
 		return json({ ok: true });
 	});

@@ -158,6 +158,9 @@
 		<div>
 			<p class="text-muted-foreground">Pelanggan</p>
 			<p class="font-medium">{data.contact.name}</p>
+			{#if data.contact.attention}
+				<p class="text-xs text-muted-foreground">Attn: {[data.contact.attention, data.contact.position].filter(Boolean).join(', ')}</p>
+			{/if}
 		</div>
 		<div>
 			<p class="text-muted-foreground">Total</p>
