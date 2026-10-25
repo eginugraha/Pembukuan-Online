@@ -16,7 +16,8 @@ export const GET: RequestHandler = (event) =>
 		const [contact, company] = await Promise.all([getContact(ctx.companyId, invoice.contactId), getCompanyLetterheadData(ctx.companyId)]);
 
 		const doc = createPdfDocument();
-		const y = drawLetterhead(doc, company, 'INVOICE', `${invoice.invoiceNo} — ${formatDate(invoice.issueDate)}`);
+		const due = invoice.dueDate ? ` — Jatuh tempo ${formatDate(invoice.dueDate)}` : '';
+		const y = drawLetterhead(doc, company, 'INVOICE', `${invoice.invoiceNo} — ${formatDate(invoice.issueDate)}${due}`);
 		drawDocumentPdf(doc, y, {
 			contact,
 			lines: invoice.lines,

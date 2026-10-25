@@ -332,6 +332,7 @@ export const invoices = pgTable(
 		contactId: uuid('contact_id').notNull().references(() => contacts.id),
 		invoiceNo: varchar('invoice_no', { length: 30 }).notNull(),
 		issueDate: day('issue_date').notNull(),
+		dueDate: day('due_date'),
 		subtotal: money('subtotal').notNull(),
 		taxRate: numeric('tax_rate', { precision: 5, scale: 2 }),
 		taxAmount: money('tax_amount').notNull().default('0'),

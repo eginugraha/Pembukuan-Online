@@ -14,6 +14,7 @@
 	initial={{
 		contactId: inv.contactId,
 		issueDate: inv.issueDate,
+		dueDate: inv.dueDate ?? '',
 		taxRate: inv.taxRate ?? '',
 		notes: inv.notes ?? '',
 		lines: inv.lines.map((l) => ({ description: l.description, quantity: l.quantity, unitPrice: l.unitPrice }))

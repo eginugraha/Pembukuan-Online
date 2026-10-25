@@ -1,6 +1,7 @@
 import { beforeEach, expect, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { createContact, deleteContact } from '../../src/lib/server/invoicing/contacts';
+import { CreateInvoiceInput } from '../../src/lib/schemas/invoice';
 import { createInvoice, deleteInvoice, getInvoice, listInvoices, updateInvoice } from '../../src/lib/server/invoicing/invoices';
 import { db } from '../../src/lib/server/db';
 import { invoiceLines, journalEntries } from '../../src/lib/server/db/schema';
@@ -82,4 +83,15 @@ test('tax rate empty/0 gives 0.00 tax, 100 gives tax equal to subtotal', async (
 	expect((await make()).taxAmount).toBe('0.00');
 	expect((await make('0')).taxAmount).toBe('0.00');
 	expect(await make('100')).toMatchObject({ taxAmount: '250.00', total: '500.00' });
+});
+
+test('due date is stored, can be changed or cleared, and may not precede the issue date', async () => {
+	const { companyId, userId, contactId } = await setup();
+	const { id } = await createInvoice(companyId, userId, { contactId, issueDate: '2026-10-01', dueDate: '2026-10-31', lines: [line('A')] });
+	expect((await getInvoice(companyId, id)).dueDate).toBe('2026-10-31');
+	await updateInvoice(companyId, id, { contactId, issueDate: '2026-10-01', dueDate: '2026-11-15', lines: [line('A')] });
+	expect((await getInvoice(companyId, id)).dueDate).toBe('2026-11-15');
+	await updateInvoice(companyId, id, { contactId, issueDate: '2026-10-01', lines: [line('A')] });
+	expect((await getInvoice(companyId, id)).dueDate).toBeNull();
+	expect(CreateInvoiceInput.safeParse({ contactId, issueDate: '2026-10-10', dueDate: '2026-10-09', lines: [line('A')] }).success).toBe(false);
 });

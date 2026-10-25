@@ -18,7 +18,7 @@
 	import { inputClass } from '$lib/ui';
 
 	type Line = { description: string; quantity: string; unitPrice: string };
-	type Initial = { contactId: string; issueDate: string; expectedDate?: string; taxRate: string; notes: string; lines: Line[] };
+	type Initial = { contactId: string; issueDate: string; expectedDate?: string; dueDate?: string; taxRate: string; notes: string; lines: Line[] };
 
 	let {
 		kind,
@@ -38,17 +38,17 @@
 	const contactOptions = $derived(contacts.map((c) => ({ value: c.id, label: c.name })));
 
 	// --- Field header ---
-	const EMPTY = { contactId: '', issueDate: '', expectedDate: '', taxRate: '', notes: '' };
+	const EMPTY = { contactId: '', issueDate: '', expectedDate: '', dueDate: '', taxRate: '', notes: '' };
 	const toInput = (v: typeof EMPTY) => ({
 		contactId: v.contactId,
 		issueDate: v.issueDate,
-		...(isPo ? { expectedDate: v.expectedDate || undefined } : {}),
+		...(isPo ? { expectedDate: v.expectedDate || undefined } : { dueDate: v.dueDate || undefined }),
 		taxRate: v.taxRate || undefined,
 		notes: v.notes || undefined,
 		lines: lines.map(({ description, quantity, unitPrice }) => ({ description, quantity, unitPrice }))
 	});
 	// svelte-ignore state_referenced_locally
-	const form = new FormState(schema, { ...EMPTY, ...(initial ? { ...initial, expectedDate: initial.expectedDate ?? '' } : {}) }, toInput);
+	const form = new FormState(schema, { ...EMPTY, ...(initial ? { ...initial, expectedDate: initial.expectedDate ?? '', dueDate: initial.dueDate ?? '' } : {}) }, toInput);
 	let errorMessage = $state<string | null>(null);
 	let busy = $state(false);
 
@@ -121,6 +121,10 @@
 				{#if isPo}
 					<FormField id="doc-expected-date" label="Perkiraan tiba (opsional)" error={form.error('expectedDate')}>
 						<DateField bind:value={form.values.expectedDate} {...form.attrs('expectedDate', 'doc-expected-date')} />
+					</FormField>
+				{:else}
+					<FormField id="doc-due-date" label="Jatuh tempo (opsional)" error={form.error('dueDate')}>
+						<DateField bind:value={form.values.dueDate} {...form.attrs('dueDate', 'doc-due-date')} />
 					</FormField>
 				{/if}
 				<FormField id="doc-tax-rate" label="Tarif PPN % (opsional)" error={form.error('taxRate')}>

@@ -71,6 +71,13 @@
       "when": 1792854496109,
       "tag": "0009_old_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792908689250,
+      "tag": "0010_concerned_the_fallen",
+      "breakpoints": true
     }
   ]
 }

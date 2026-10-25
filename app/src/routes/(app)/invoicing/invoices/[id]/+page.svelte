@@ -43,11 +43,17 @@
 {#if error}<p role="alert" class="mb-4 rounded-xl bg-destructive/10 p-3 text-sm font-medium text-destructive">{error}</p>{/if}
 
 <Card.Root class="mb-6">
-	<Card.Content class="grid gap-4 pt-6 text-sm sm:grid-cols-3">
+	<Card.Content class="grid gap-4 pt-6 text-sm sm:grid-cols-4">
 		<div>
 			<p class="text-muted-foreground">Tanggal invoice</p>
 			<p class="font-medium">{formatDate(data.invoice.issueDate)}</p>
 		</div>
+		{#if data.invoice.dueDate}
+			<div>
+				<p class="text-muted-foreground">Jatuh tempo</p>
+				<p class="font-medium">{formatDate(data.invoice.dueDate)}</p>
+			</div>
+		{/if}
 		<div>
 			<p class="text-muted-foreground">Pelanggan</p>
 			<p class="font-medium">{data.contact.name}</p>

@@ -33,6 +33,7 @@ export interface InvoiceDetail {
 	contactId: string;
 	invoiceNo: string;
 	issueDate: string;
+	dueDate: string | null;
 	subtotal: string;
 	taxRate: string | null;
 	taxAmount: string;
@@ -79,6 +80,7 @@ export async function createInvoice(companyId: string, userId: string, input: Cr
 				contactId: input.contactId,
 				invoiceNo,
 				issueDate: input.issueDate,
+				dueDate: input.dueDate ?? null,
 				subtotal: totals.subtotal,
 				taxRate: input.taxRate ?? null,
 				taxAmount: totals.taxAmount,
@@ -107,6 +109,7 @@ export async function updateInvoice(companyId: string, invoiceId: string, input:
 			.set({
 				contactId: input.contactId,
 				issueDate: input.issueDate,
+				dueDate: input.dueDate ?? null,
 				subtotal: totals.subtotal,
 				taxRate: input.taxRate ?? null,
 				taxAmount: totals.taxAmount,
