@@ -4,7 +4,7 @@ import { db } from '../../src/lib/server/db';
 import { authAccount, journalEntries, session, statementUploads, user, userCompanies } from '../../src/lib/server/db/schema';
 import { verifyPassword } from '../../src/lib/server/password';
 import { findUserByEmail } from '../../src/lib/server/users/create';
-import { removeMember } from '../../src/lib/server/users/service';
+import { removeMember, setSuperAdmin } from '../../src/lib/server/users/service';
 import { createUser, deleteUser, listAllUsers, setMembership, updateUser } from '../../src/lib/server/users/admin';
 import { addMember, makeCompany, makeUpload, makeUser } from './factory';
 import { resetDb } from './db';
@@ -116,4 +116,51 @@ test('setMembership adds then changes a role; removeMember on the last admin is 
 	expect(await code(removeMember(c.companyId, u.id))).toBe('last_admin');
 	expect(await code(setMembership(u.id, '00000000-0000-0000-0000-000000000000', 'admin'))).toBe('not_found');
 	expect(await code(setMembership('00000000-0000-0000-0000-000000000000', c.companyId, 'admin'))).toBe('not_found');
+});
+
+test('setSuperAdmin refuses to revoke the only super admin, allows it when another remains', async () => {
+	const s1 = await makeUser({ isSuperAdmin: true });
+	const regular = await makeUser();
+	expect(await code(setSuperAdmin(regular.id, s1.id, false))).toBe('last_super_admin');
+	const s2 = await makeUser({ isSuperAdmin: true });
+	await setSuperAdmin(s2.id, s1.id, false);
+	const [row] = await db.select().from(user).where(eq(user.id, s1.id));
+	expect(row.isSuperAdmin).toBe(false);
+	expect(await code(setSuperAdmin(regular.id, crypto.randomUUID(), false))).toBe('not_found');
+});
+
+test('deleteUser of one of two super admins succeeds', async () => {
+	const s1 = await makeUser({ isSuperAdmin: true });
+	const s2 = await makeUser({ isSuperAdmin: true });
+	await deleteUser(s1.id, s2.id);
+	expect(await db.select().from(user).where(eq(user.id, s2.id))).toHaveLength(0);
+});
+
+test('concurrent mutual deletes of two super admins leave exactly one', async () => {
+	for (let i = 0; i < 10; i++) {
+		await resetDb();
+		const a = await makeUser({ isSuperAdmin: true });
+		const b = await makeUser({ isSuperAdmin: true });
+		const results = await Promise.allSettled([deleteUser(a.id, b.id), deleteUser(b.id, a.id)]);
+		expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+		const rejected = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+		expect(rejected).toHaveLength(1);
+		expect((rejected[0].reason as { code?: string }).code).toBe('last_super_admin');
+		const left = await db.select().from(user).where(eq(user.isSuperAdmin, true));
+		expect(left).toHaveLength(1);
+	}
+});
+
+test('concurrent mutual revokes of two super admins leave exactly one', async () => {
+	for (let i = 0; i < 10; i++) {
+		await resetDb();
+		const a = await makeUser({ isSuperAdmin: true });
+		const b = await makeUser({ isSuperAdmin: true });
+		const results = await Promise.allSettled([setSuperAdmin(a.id, b.id, false), setSuperAdmin(b.id, a.id, false)]);
+		expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+		const rejected = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+		expect((rejected[0].reason as { code?: string }).code).toBe('last_super_admin');
+		const left = await db.select().from(user).where(eq(user.isSuperAdmin, true));
+		expect(left).toHaveLength(1);
+	}
 });

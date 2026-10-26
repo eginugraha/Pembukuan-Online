@@ -81,6 +81,15 @@ export async function removeMember(companyId: string, userId: string): Promise<v
 
 export async function setSuperAdmin(actorId: string, userId: string, value: boolean): Promise<void> {
 	if (actorId === userId) throw new ApiError(409, 'cannot_change_self', 'Anda tidak dapat mengubah status super admin diri sendiri');
-	const updated = await db.update(user).set({ isSuperAdmin: value }).where(eq(user.id, userId)).returning({ id: user.id });
-	if (updated.length === 0) throw notFound('Pengguna');
+	await db.transaction(async (tx) => {
+		if (!value) {
+			// Kunci semua baris super admin supaya dua pencabutan bersamaan tidak sama-sama lolos (READ COMMITTED).
+			const supers = await tx.select({ id: user.id }).from(user).where(eq(user.isSuperAdmin, true)).for('update');
+			if (supers.some((s) => s.id === userId) && supers.length <= 1) {
+				throw new ApiError(409, 'last_super_admin', 'Super admin terakhir tidak dapat dicabut');
+			}
+		}
+		const updated = await tx.update(user).set({ isSuperAdmin: value }).where(eq(user.id, userId)).returning({ id: user.id });
+		if (updated.length === 0) throw notFound('Pengguna');
+	});
 }

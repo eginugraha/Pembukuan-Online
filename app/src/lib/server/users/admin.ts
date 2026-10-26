@@ -1,4 +1,4 @@
-import { and, asc, count, eq, ne } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import type { Role } from '../../roles';
 import { CreateUserInput, SetMembershipInput, UpdateUserInput } from '../../schemas/user-admin';
 import { ApiError, notFound } from '../api';
@@ -78,12 +78,13 @@ export async function updateUser(userId: string, input: UpdateUserInput): Promis
 export async function deleteUser(actorId: string, userId: string): Promise<void> {
 	if (actorId === userId) throw new ApiError(409, 'cannot_delete_self', 'Anda tidak dapat menghapus akun sendiri');
 	await db.transaction(async (tx) => {
-		const [target] = await tx.select({ id: user.id, isSuperAdmin: user.isSuperAdmin }).from(user).where(eq(user.id, userId));
-		if (!target) throw notFound('Pengguna');
-		if (target.isSuperAdmin) {
-			const [{ others }] = await tx.select({ others: count() }).from(user).where(and(eq(user.isSuperAdmin, true), ne(user.id, userId)));
-			if (others === 0) throw new ApiError(409, 'last_super_admin', 'Super admin terakhir tidak dapat dihapus');
+		// Kunci semua baris super admin supaya dua hapus bersamaan tidak sama-sama lolos (READ COMMITTED).
+		const supers = await tx.select({ id: user.id }).from(user).where(eq(user.isSuperAdmin, true)).for('update');
+		if (supers.some((s) => s.id === userId) && supers.length <= 1) {
+			throw new ApiError(409, 'last_super_admin', 'Super admin terakhir tidak dapat dihapus');
 		}
+		const [target] = await tx.select({ id: user.id }).from(user).where(eq(user.id, userId));
+		if (!target) throw notFound('Pengguna');
 		await tx.delete(user).where(eq(user.id, userId));
 	});
 }
