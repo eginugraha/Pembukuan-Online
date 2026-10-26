@@ -254,3 +254,12 @@ test('a very long invoice number is wrapped instead of overflowing the margin', 
 	const { text } = await parse(await fetchPdf());
 	expect(text.replace(/\s+/g, '')).toContain(no);
 });
+
+test('invoice PDF carries no receipt markings', async () => {
+	const { fetchPdf } = await setup({ company: FULL_COMPANY, contact: FULL_CONTACT, invoice: { subject: 'Perihal Uji' } });
+	const { text } = await parse(await fetchPdf());
+	expect(text.replace(/\s+/g, '')).not.toContain('LUNAS');
+	expect(text).not.toContain('PAYMENT RECEIPT');
+	expect(text).not.toContain('Acknowledged by');
+	expect(text).toContain('Approved by,');
+});

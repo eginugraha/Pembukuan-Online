@@ -12,9 +12,13 @@ const MARGINS = { top: 50, bottom: 50, left: 50, right: 50 };
 /** Satu tempat untuk membuat `PDFDocument` dengan ukuran halaman & margin yang selalu konsisten
  * di semua rute ekspor PDF, supaya ambang page-break pdfkit tidak pernah drift dari math
  * `ensureSpace` masing-masing rute. */
-export function createPdfDocument(opts: { layout?: 'portrait' | 'landscape'; margin?: number } = {}): PDFKit.PDFDocument {
+export function createPdfDocument(
+	opts: { layout?: 'portrait' | 'landscape'; margin?: number; bufferPages?: boolean } = {}
+): PDFKit.PDFDocument {
 	const margins = opts.margin === undefined ? MARGINS : { top: opts.margin, bottom: opts.margin, left: opts.margin, right: opts.margin };
-	return new PDFDocument({ size: 'A4', layout: opts.layout ?? 'portrait', margins });
+	// `bufferPages`: semua halaman ditahan sampai `doc.end()`, supaya halaman sebelumnya masih bisa
+	// digambari lewat `doc.switchToPage(i)` (mis. stempel LUNAS di atas konten setiap halaman).
+	return new PDFDocument({ size: 'A4', layout: opts.layout ?? 'portrait', margins, ...(opts.bufferPages ? { bufferPages: true } : {}) });
 }
 
 /** Mengumpulkan seluruh chunk dari `doc` lalu menyelesaikannya menjadi satu `Uint8Array`, setelah

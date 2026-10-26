@@ -4,11 +4,16 @@ import { formatUsd } from '$lib/currency';
 import type { InvoiceCompanyData } from '$lib/server/reports/company';
 import type { ContactRow } from './contacts';
 import type { InvoiceDetail } from './invoices';
+import type { PaymentReceiptDetail } from './payment-receipts';
 
 /*
  * PDF invoice sesuai mockup revisi 9 (docs/superpowers/specs/assets/2026-10-26-invoice-mockup.html).
  * Mockup memakai kertas 640px dengan padding 30px; margin A4 di sini (`INVOICE_MARGIN`) diambil
  * dengan perbandingan yang sama, dan ukuran huruf di mockup dikali ±0,85 untuk mendapat pt.
+ *
+ * Invoice dan payment receipt memakai satu renderer (`drawDocumentPdf`); keduanya hanya membentuk
+ * `DocumentModel`. Receipt menambah paragraf bukti pembayaran dan stempel LUNAS
+ * (docs/superpowers/specs/assets/2026-10-26-advance-receipt-lunas-stamp-mockup.html).
  */
 
 /** Margin halaman invoice (pt), sebanding dengan padding 30px pada kertas 640px di mockup. */
@@ -35,6 +40,10 @@ const CELL_PAD = 5;
 /** Kotak maksimum logo; logo tidak harus persegi, jadi digambar `fit` di dalam kotak ini. */
 const LOGO_BOX = { w: 150, h: 40 };
 const SIGNATURE_BOX = { w: 130, h: 46 };
+
+/** Stempel LUNAS dari `.paid` di mockup stempel: huruf 64px, jarak huruf 8px, bingkai 5px, sudut 10px,
+ * padding 6px/26px, rgba(22,138,74,.45), rotate(-20deg). Ukuran dikali ±0,85 seperti huruf lainnya. */
+const STAMP = { text: 'LUNAS', color: '#168a4a', opacity: 0.45, size: 54, spacing: 7, border: 4.5, radius: 9, padX: 22, padY: 14, angle: -20 };
 
 const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
@@ -92,13 +101,102 @@ interface Block {
 	draw: (y: number) => void;
 }
 
+/** Data pelanggan yang dicetak di kolom "BILL TO". */
+type DocumentContact = Pick<ContactRow, 'name' | 'attention' | 'position' | 'address' | 'email' | 'phone' | 'npwp'>;
+
+/** Model dokumen ternormalisasi yang digambar `drawDocumentPdf`. */
+interface DocumentModel {
+	title: string;
+	subtitle: string;
+	/** Baris label/nilai di kanan atas, berurutan. */
+	meta: Array<{ id: string; en: string; value: string }>;
+	subject: string | null;
+	contact: DocumentContact;
+	lines: Array<{ description: string; quantity: MoneyValue; unitPrice: MoneyValue; amount: MoneyValue }>;
+	currency: string;
+	subtotal: string;
+	discount: string;
+	taxRate: string | null;
+	taxAmount: string;
+	total: string;
+	notes: string | null;
+	/** Cetak kartu "INFORMASI PEMBAYARAN" (bila rekening perusahaan diisi). */
+	paymentCard: boolean;
+	signatureLabel: string;
+	/** Paragraf setelah terbilang, sebelum catatan. */
+	paragraph: string | null;
+	/** Stempel LUNAS di atas konten setiap halaman; `doc` wajib dibuat dengan `bufferPages`. */
+	stamp: boolean;
+}
+
 export function drawInvoicePdf(
 	doc: PDFKit.PDFDocument,
 	d: { company: InvoiceCompanyData; contact: ContactRow; invoice: InvoiceDetail }
 ): void {
-	const { company, contact, invoice } = d;
-	const money = (v: MoneyValue) => formatPdfAmount(v, invoice.currency);
-	const unit = invoice.currency === 'USD' ? 'USD' : 'Rp';
+	const { invoice } = d;
+	const meta = [
+		{ id: 'Nomor Invoice', en: 'Invoice Number', value: invoice.invoiceNo },
+		{ id: 'Tanggal', en: 'Issue Date', value: formatLongDate(invoice.issueDate) }
+	];
+	if (invoice.dueDate) meta.push({ id: 'Jatuh Tempo', en: 'Due Date', value: formatLongDate(invoice.dueDate) });
+	drawDocumentPdf(doc, d.company, {
+		title: 'INVOICE',
+		subtitle: 'Tagihan',
+		meta,
+		subject: invoice.subject,
+		contact: d.contact,
+		lines: invoice.lines,
+		currency: invoice.currency,
+		subtotal: invoice.subtotal,
+		discount: invoice.discount,
+		taxRate: invoice.taxRate,
+		taxAmount: invoice.taxAmount,
+		total: invoice.total,
+		notes: invoice.notes,
+		paymentCard: true,
+		signatureLabel: 'Approved by,',
+		paragraph: null,
+		stamp: false
+	});
+}
+
+/** PDF payment receipt: tata letak invoice dari salinan tetap receipt, dengan stempel LUNAS.
+ * `doc` wajib dibuat dengan `createPdfDocument({ bufferPages: true })`. */
+export function drawReceiptPdf(doc: PDFKit.PDFDocument, d: { company: InvoiceCompanyData; receipt: PaymentReceiptDetail }): void {
+	const { receipt } = d;
+	const what = receipt.subject || `pada Invoice ${receipt.invoiceNo}`;
+	drawDocumentPdf(doc, d.company, {
+		title: 'PAYMENT RECEIPT',
+		subtitle: 'Kuitansi Pembayaran',
+		meta: [
+			{ id: 'Nomor Kuitansi', en: 'Receipt Number', value: receipt.receiptNo },
+			{ id: 'Tanggal Pembayaran', en: 'Payment Date', value: formatLongDate(receipt.paymentDate) },
+			{ id: 'Nomor Invoice', en: 'Invoice Number', value: receipt.invoiceNo }
+		],
+		subject: receipt.subject,
+		contact: receipt.contact,
+		lines: receipt.lines,
+		currency: receipt.currency,
+		subtotal: receipt.subtotal,
+		discount: receipt.discount,
+		taxRate: receipt.taxRate,
+		taxAmount: receipt.taxAmount,
+		total: receipt.total,
+		notes: receipt.notes,
+		paymentCard: false,
+		signatureLabel: 'Acknowledged by,',
+		paragraph: `Dokumen ini merupakan bukti pembayaran atas pembelian ${what}. Kuitansi ini diterbitkan sebagai bukti penerimaan pembayaran atas transaksi tersebut.`,
+		stamp: true
+	});
+}
+
+function drawDocumentPdf(doc: PDFKit.PDFDocument, company: InvoiceCompanyData, m: DocumentModel): void {
+	if (m.stamp && !(doc.options as { bufferPages?: boolean }).bufferPages) {
+		throw new Error('Stempel butuh PDFDocument dengan bufferPages');
+	}
+	const { contact } = m;
+	const money = (v: MoneyValue) => formatPdfAmount(v, m.currency);
+	const unit = m.currency === 'USD' ? 'USD' : 'Rp';
 	const L = doc.page.margins.left;
 	const R = doc.page.width - doc.page.margins.right;
 	const W = R - L;
@@ -232,12 +330,12 @@ export function drawInvoicePdf(
 		if (company.phone) contactRow('phone', company.phone, telHref(company.phone));
 	}
 
-	// ── Kanan atas: INVOICE / Tagihan + nomor, tanggal, jatuh tempo ─────────────────────────────
+	// ── Kanan atas: judul / subjudul + nomor, tanggal (invoice: jatuh tempo; receipt: nomor invoice) ──
 	let ry = TOP;
 	{
-		line('INVOICE', RX, ry, { font: BOLD, size: 13, spacing: 0.3 });
+		line(m.title, RX, ry, { font: BOLD, size: 13, spacing: 0.3 });
 		ry += lineH(BOLD, 13);
-		line('Tagihan', RX, ry, { font: ITALIC, size: 8.5, color: EN });
+		line(m.subtitle, RX, ry, { font: ITALIC, size: 8.5, color: EN });
 		ry += lineH(ITALIC, 8.5) + 6;
 		const kv = (id: string, en: string, value: string) => {
 			ry += biLabel(id, en, RX, ry, { size: 9, enSize: 8.5 });
@@ -250,9 +348,7 @@ export function drawInvoicePdf(
 			line(value, RX, ry + 1, { font: BOLD, size });
 			ry += lineH(BOLD, 11) + 6;
 		};
-		kv('Nomor Invoice', 'Invoice Number', invoice.invoiceNo);
-		kv('Tanggal', 'Issue Date', formatLongDate(invoice.issueDate));
-		if (invoice.dueDate) kv('Jatuh Tempo', 'Due Date', formatLongDate(invoice.dueDate));
+		for (const r of m.meta) kv(r.id, r.en, r.value);
 	}
 
 	let y = Math.max(ly, ry) + 10;
@@ -264,9 +360,9 @@ export function drawInvoicePdf(
 			return lineH(BOLD, 7.5) + 2;
 		};
 		let sy = y;
-		if (invoice.subject) {
+		if (m.subject) {
 			sy += tag('PERIHAL / SUBJECT', L, sy);
-			sy += para(invoice.subject, L, sy, W * 0.52, { font: BOLD, size: 9 });
+			sy += para(m.subject, L, sy, W * 0.52, { font: BOLD, size: 9 });
 		}
 		let by = y;
 		by += tag('DITAGIHKAN KEPADA / BILL TO', RX, by);
@@ -321,11 +417,11 @@ export function drawInvoicePdf(
 
 	// Judul + header tabel + baris pertama harus muat bersama; bila tidak, pindah halaman SEBELUM judul.
 	const headingH = lineH(BOLD, 10) + 5;
-	if (y + headingH + headerH + rowH(invoice.lines[0]?.description ?? '') > BOTTOM) newPage();
+	if (y + headingH + headerH + rowH(m.lines[0]?.description ?? '') > BOTTOM) newPage();
 	y += biLabel('RINCIAN TAGIHAN', 'Billing Summary', L, y, { size: 10, enSize: 8.5 }) + 5;
 	drawTableHeader();
 
-	for (const l of invoice.lines) {
+	for (const l of m.lines) {
 		const h = rowH(l.description);
 		if (y + h > BOTTOM) {
 			newPage();
@@ -342,14 +438,14 @@ export function drawInvoicePdf(
 
 	// Baris ringkasan: Subtotal/Diskon/PPN hanya bila ada diskon atau PPN, lalu Total (tebal).
 	const summary: Array<{ label: string; value: string; bold?: boolean }> = [];
-	const hasDiscount = D(invoice.discount || 0).gt(0);
-	const hasTax = D(invoice.taxRate || 0).gt(0);
+	const hasDiscount = D(m.discount || 0).gt(0);
+	const hasTax = D(m.taxRate || 0).gt(0);
 	if (hasDiscount || hasTax) {
-		summary.push({ label: 'Subtotal', value: money(invoice.subtotal) });
-		if (hasDiscount) summary.push({ label: 'Diskon / Discount', value: money(D(invoice.discount).neg().toString()) });
-		if (hasTax) summary.push({ label: `PPN / VAT (${formatPlain(invoice.taxRate!)}%)`, value: money(invoice.taxAmount) });
+		summary.push({ label: 'Subtotal', value: money(m.subtotal) });
+		if (hasDiscount) summary.push({ label: 'Diskon / Discount', value: money(D(m.discount).neg().toString()) });
+		if (hasTax) summary.push({ label: `PPN / VAT (${formatPlain(m.taxRate!)}%)`, value: money(m.taxAmount) });
 	}
-	summary.push({ label: 'Total', value: money(invoice.total), bold: true });
+	summary.push({ label: 'Total', value: money(m.total), bold: true });
 	const sumRowH = CELL_PAD * 2 + lineH(BOLD, 9);
 	if (y + sumRowH * summary.length > BOTTOM) {
 		newPage();
@@ -365,11 +461,11 @@ export function drawInvoicePdf(
 		rule(y, last ? RULE_TOTAL : RULE_ROW, last ? 1.6 : 0.75);
 	});
 
-	// ── Blok penutup: terbilang, kartu pembayaran, catatan, tanda tangan ────────────────────────
+	// ── Blok penutup: terbilang, kartu pembayaran / paragraf, catatan, tanda tangan ─────────────
 	const blocks: Block[] = [];
 
 	{
-		const words = terbilang(invoice.total, invoice.currency);
+		const words = terbilang(m.total, m.currency);
 		const headH = lineH(BOLD, 10) + 3;
 		const wordsH = heightOf(words, REG, 11, W);
 		blocks.push({
@@ -382,7 +478,7 @@ export function drawInvoicePdf(
 		});
 	}
 
-	if (company.bankName || company.bankAccountNo) {
+	if (m.paymentCard && (company.bankName || company.bankAccountNo)) {
 		const PAD_X = 9;
 		const PAD_Y = 7;
 		const bank = [company.bankName, company.bankAccountNo].filter(Boolean).join(' ');
@@ -413,8 +509,17 @@ export function drawInvoicePdf(
 		});
 	}
 
-	if (invoice.notes) {
-		const notes = invoice.notes;
+	if (m.paragraph) {
+		const text = m.paragraph;
+		blocks.push({
+			gap: 12,
+			height: heightOf(text, REG, 9, W),
+			draw: (by) => para(text, L, by, W, { size: 9 })
+		});
+	}
+
+	if (m.notes) {
+		const notes = m.notes;
 		blocks.push({
 			gap: 12,
 			height: heightOf(notes, REG, 8.5, W),
@@ -433,7 +538,7 @@ export function drawInvoicePdf(
 			gap: 18,
 			height,
 			draw: (by) => {
-				line('Approved by,', L, by, { font: BOLD, size: 9, width: W, align: 'right' });
+				line(m.signatureLabel, L, by, { font: BOLD, size: 9, width: W, align: 'right' });
 				let sy = by + headH;
 				// Tanpa gambar tanda tangan: ruang kosong setinggi tanda tangan untuk tanda tangan basah.
 				if (signature) {
@@ -469,5 +574,30 @@ export function drawInvoicePdf(
 		y += b.height;
 	});
 
+	if (m.stamp) {
+		const range = doc.bufferedPageRange();
+		for (let i = range.start; i < range.start + range.count; i++) {
+			doc.switchToPage(i);
+			drawStamp(doc);
+		}
+	}
+
 	doc.fillColor(TEXT);
+}
+
+/** Stempel LUNAS di tengah halaman, miring, di atas konten. Bingkai dan huruf memakai opacity yang sama. */
+function drawStamp(doc: PDFKit.PDFDocument): void {
+	doc.font(BOLD).fontSize(STAMP.size);
+	// Lebar tanpa jarak setelah huruf terakhir, supaya teks benar-benar di tengah bingkai.
+	const textW = doc.widthOfString(STAMP.text, { characterSpacing: STAMP.spacing });
+	// Tinggi huruf kapital Helvetica-Bold (718/1000); pdfkit menaruh puncaknya tepat di `y`.
+	const capH = (STAMP.size * 718) / 1000;
+	const boxW = textW + STAMP.padX * 2;
+	const boxH = capH + STAMP.padY * 2;
+	doc.save();
+	doc.translate(doc.page.width / 2, doc.page.height / 2).rotate(STAMP.angle);
+	doc.opacity(STAMP.opacity);
+	doc.roundedRect(-boxW / 2, -boxH / 2, boxW, boxH, STAMP.radius).lineWidth(STAMP.border).strokeColor(STAMP.color).stroke();
+	doc.fillColor(STAMP.color).text(STAMP.text, -textW / 2, -capH / 2, { lineBreak: false, characterSpacing: STAMP.spacing });
+	doc.restore();
 }
