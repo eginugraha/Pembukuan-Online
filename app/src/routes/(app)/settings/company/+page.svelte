@@ -8,21 +8,22 @@
 	import { apiFetch } from '$lib/api-client';
 	import FormField from '$lib/components/FormField.svelte';
 	import { FormState } from '$lib/forms/form-state.svelte';
-	import { CreateCompanyInput, UpdateCompanyInput } from '$lib/schemas/company';
+	import { CreateCompanyInput, DeleteCompanyInput, UpdateCompanyInput } from '$lib/schemas/company';
 	import SearchSelect from '$lib/components/SearchSelect.svelte';
 	import SimpleSelect from '$lib/components/SimpleSelect.svelte';
 	import { accountOptions as toAccountOptions } from '$lib/account-options';
 	import { COA_TEMPLATES, type CoaTemplateId } from '$lib/coa-templates';
+	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import LogoCropDialog from '$lib/components/LogoCropDialog.svelte';
 	import { AVATAR_ACCEPT, AVATAR_MAX_INPUT_BYTES } from '$lib/image';
 
 	let { data } = $props();
 	// Nilai awal form diambil sekali dari data (snapshot), lalu diedit lokal.
 	const initialForm = () => ({
-		name: data.company.name,
-		npwp: data.company.npwp ?? '',
-		address: data.company.address ?? '',
-		bankAccountId: data.company.bankAccountId ?? ''
+		name: data.company?.name ?? '',
+		npwp: data.company?.npwp ?? '',
+		address: data.company?.address ?? '',
+		bankAccountId: data.company?.bankAccountId ?? ''
 	});
 	type CompanyForm = ReturnType<typeof initialForm>;
 	const toUpdate = (v: CompanyForm) => ({ name: v.name, npwp: v.npwp || null, address: v.address || null, bankAccountId: v.bankAccountId || null });
@@ -56,7 +57,7 @@
 		try {
 			const form = new FormData();
 			form.append('file', blob, 'logo.webp');
-			const res = await fetch(`/api/companies/${data.company.id}/logo`, { method: 'PUT', body: form });
+			const res = await fetch(`/api/companies/${data.company?.id}/logo`, { method: 'PUT', body: form });
 			if (!res.ok) throw new Error((await res.json().catch(() => null))?.error?.message ?? 'Gagal mengunggah logo');
 			message = 'Logo perusahaan diperbarui.';
 			pickedLogoFile = null;
@@ -74,7 +75,7 @@
 		logoBusy = true;
 		message = errorMessage = null;
 		try {
-			await apiFetch(`/api/companies/${data.company.id}/logo`, { method: 'DELETE' });
+			await apiFetch(`/api/companies/${data.company?.id}/logo`, { method: 'DELETE' });
 			message = 'Logo perusahaan dihapus.';
 			await invalidateAll();
 		} catch (err) {
@@ -84,12 +85,43 @@
 		}
 	}
 
+	const deleteForm = new FormState(DeleteCompanyInput, { confirmName: '' });
+	let deleteOpen = $state(false);
+	let deleteBusy = $state(false);
+	let deleteError = $state<string | null>(null);
+	const canDelete = $derived(!!data.company && deleteForm.values.confirmName === data.company.name);
+
+	function onDeleteOpenChange(o: boolean) {
+		deleteOpen = o;
+		if (!o) {
+			deleteForm.values.confirmName = '';
+			deleteError = null;
+		}
+	}
+
+	async function removeCompany(e: SubmitEvent) {
+		e.preventDefault();
+		if (!canDelete) return;
+		deleteBusy = true;
+		deleteError = null;
+		try {
+			await apiFetch(`/api/companies/${data.company?.id}`, { method: 'DELETE', json: { confirmName: deleteForm.values.confirmName } });
+			deleteOpen = false;
+			await invalidateAll();
+			await goto('/dashboard');
+		} catch (err) {
+			deleteError = deleteForm.handleServerError(err);
+		} finally {
+			deleteBusy = false;
+		}
+	}
+
 	async function save(e: SubmitEvent) {
 		e.preventDefault();
 		message = errorMessage = null;
 		if (!form.validateAll()) return;
 		try {
-			await apiFetch(`/api/companies/${data.company.id}`, { method: 'PATCH', json: toUpdate(form.values) });
+			await apiFetch(`/api/companies/${data.company?.id}`, { method: 'PATCH', json: toUpdate(form.values) });
 			message = 'Data perusahaan disimpan.';
 			await invalidateAll();
 		} catch (err) {
@@ -133,6 +165,7 @@
 	</Card.Root>
 {/if}
 
+{#if data.company}
 <Card.Root class="mb-6 max-w-xl">
 	<Card.Header><Card.Title>Logo Perusahaan</Card.Title></Card.Header>
 	<Card.Content class="flex flex-wrap items-center gap-5">
@@ -179,3 +212,38 @@
 		</form>
 	</Card.Content>
 </Card.Root>
+
+{#if data.isSuperAdmin}
+	<Card.Root class="mt-6 max-w-xl border-destructive/25">
+		<Card.Header>
+			<Card.Title class="text-destructive">Hapus perusahaan</Card.Title>
+			<Card.Description>Menghapus perusahaan beserta seluruh datanya secara permanen. Tindakan ini tidak dapat dibatalkan.</Card.Description>
+		</Card.Header>
+		<Card.Content>
+			<Button variant="destructive" onclick={() => onDeleteOpenChange(true)}>Hapus perusahaan</Button>
+		</Card.Content>
+	</Card.Root>
+
+	<Dialog.Root open={deleteOpen} onOpenChange={onDeleteOpenChange}>
+		<Dialog.Content>
+			<form class="space-y-4" onsubmit={removeCompany} novalidate>
+				<Dialog.Header>
+					<Dialog.Title>Hapus perusahaan</Dialog.Title>
+					<Dialog.Description>
+						Semua data perusahaan ini (akun, transaksi, jurnal, invoice, PO, kontak, upload, logo, dan keanggotaan) akan terhapus permanen.
+						Ketik nama perusahaan <strong>{data.company.name}</strong> untuk melanjutkan.
+					</Dialog.Description>
+				</Dialog.Header>
+				{#if deleteError}<Alert.Root variant="destructive"><Alert.Description>{deleteError}</Alert.Description></Alert.Root>{/if}
+				<FormField id="delete-confirm" label="Nama perusahaan" error={deleteForm.error('confirmName')}>
+					<Input bind:value={deleteForm.values.confirmName} autocomplete="off" {...deleteForm.attrs('confirmName', 'delete-confirm')} />
+				</FormField>
+				<Dialog.Footer>
+					<Button type="button" variant="ghost" onclick={() => onDeleteOpenChange(false)}>Batal</Button>
+					<Button type="submit" variant="destructive" disabled={!canDelete || deleteBusy}>Hapus permanen</Button>
+				</Dialog.Footer>
+			</form>
+		</Dialog.Content>
+	</Dialog.Root>
+{/if}
+{/if}

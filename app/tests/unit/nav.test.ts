@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { minRoleForPath, NAV, visibleNav } from '$lib/nav';
+import { allowsWithoutCompany, minRoleForPath, NAV, visibleNav } from '$lib/nav';
 
 test('viewer does not see write menus', () => {
 	const hrefs = visibleNav('viewer').flatMap((g) => g.items.map((i) => i.href));
@@ -28,4 +28,13 @@ test('minRoleForPath uses longest prefix', () => {
 
 test('every nav item has an icon', () => {
 	expect(NAV.flatMap((g) => g.items).every((i) => typeof i.icon === 'string' && i.icon.length > 0)).toBe(true);
+});
+
+test('allowsWithoutCompany lets a company-less super admin reach company and system-user pages', () => {
+	expect(allowsWithoutCompany('/settings/company', true)).toBe(true);
+	expect(allowsWithoutCompany('/settings/system-users', true)).toBe(true);
+	expect(allowsWithoutCompany('/settings/system-users/x', true)).toBe(true);
+	expect(allowsWithoutCompany('/profile', false)).toBe(true);
+	expect(allowsWithoutCompany('/settings/company', false)).toBe(false);
+	expect(allowsWithoutCompany('/ledger', true)).toBe(false);
 });

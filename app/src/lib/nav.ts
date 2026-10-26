@@ -75,3 +75,12 @@ export function minRoleForPath(pathname: string): Role | null {
 	}
 	return best?.min ?? null;
 }
+
+const SUPER_ADMIN_NO_COMPANY_PATHS = ['/settings/company', '/settings/system-users'];
+
+/** Halaman yang tetap dapat dibuka tanpa perusahaan aktif: /profile untuk siapa pun, sisanya khusus Super Admin. */
+export function allowsWithoutCompany(pathname: string, isSuperAdmin: boolean): boolean {
+	const under = (base: string) => pathname === base || pathname.startsWith(`${base}/`);
+	if (under('/profile')) return true;
+	return isSuperAdmin && SUPER_ADMIN_NO_COMPANY_PATHS.some(under);
+}

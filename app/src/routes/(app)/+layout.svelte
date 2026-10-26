@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { allowsWithoutCompany } from '$lib/nav';
 	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
 	import { onMount, tick } from 'svelte';
 	import { page } from '$app/state';
@@ -147,7 +148,7 @@
 			</header>
 
 			<main class="min-w-0 flex-1 px-4 pt-4 pb-10 sm:px-6 lg:px-8">
-				{#if ctx.companyId || page.url.pathname === '/profile'}
+				{#if ctx.companyId || allowsWithoutCompany(page.url.pathname, ctx.user.isSuperAdmin)}
 					<!-- Animasi masuk per halaman dengan CSS biasa: tidak menutupi sidebar seperti View Transition
 					     (yang memutus :hover dan membuat menu berkedip). -->
 					{#key page.url.pathname}
@@ -157,6 +158,12 @@
 					<div class="panel mx-auto mt-20 max-w-md p-8 text-center">
 						<h1 class="text-xl font-bold">Belum terhubung ke perusahaan</h1>
 						<p class="mt-2 text-muted-foreground">Hubungi admin agar akun Anda ditambahkan ke perusahaan.</p>
+						{#if ctx.user.isSuperAdmin}
+							<div class="mt-5 flex flex-wrap justify-center gap-2">
+								<Button href="/settings/company?new=1">Buat perusahaan baru</Button>
+								<Button href="/settings/system-users" variant="outline">Kelola pengguna</Button>
+							</div>
+						{/if}
 					</div>
 				{/if}
 			</main>
