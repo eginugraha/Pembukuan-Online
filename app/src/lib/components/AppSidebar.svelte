@@ -118,9 +118,9 @@
 								aria-label={item.label}
 								aria-describedby={undefined}
 								aria-current={active ? 'page' : undefined}
-								class="group relative flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm transition-colors duration-200 rail-collapsed:justify-center rail-collapsed:px-0 {active
+								class="group relative flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm transition-colors duration-200 hover:bg-pale/50 rail-collapsed:justify-center rail-collapsed:px-0 {active
 									? 'font-semibold text-deep'
-									: 'text-ink/65 hover:bg-pale/50 hover:text-deep'}"
+									: 'text-ink/65 hover:text-deep'}"
 							>
 								<span class="relative flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors duration-200 {active ? 'icon-tile icon-tile-solid' : 'bg-muted text-ink/55 group-hover:text-deep'}">
 									<Icon class="size-4" />

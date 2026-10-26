@@ -308,8 +308,9 @@
 	}
 }
 
+/* Mulai dari konten yang sudah tampil sebagian: konten lama hilang seketika, jadi opacity 0 = frame kosong. */
 @keyframes jk-slide-in {
-	from { opacity: 0; transform: translateY(8px); }
+	from { opacity: 0.6; transform: translateY(6px); }
 }
 @keyframes jk-fade-in {
 	from { opacity: 0; }
