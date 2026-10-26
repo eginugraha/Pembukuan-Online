@@ -93,7 +93,6 @@ test('full data: every block of the mockup is printed, with clickable email/phon
 		'NPWP 01.234.567.8-901.000',
 		'RINCIAN TAGIHAN',
 		'Jasa konsultasi',
-		'x1',
 		'1.500.000',
 		'TERBILANG / Amount in Words',
 		'Satu Juta Lima Ratus Ribu Rupiah',
@@ -110,6 +109,9 @@ test('full data: every block of the mockup is printed, with clickable email/phon
 	]) {
 		expect(text).toContain(s);
 	}
+	// Kuantitas tanpa awalan "x".
+	expect(text).not.toMatch(/\bx1\b/);
+	expect(text).toMatch(/Jasa konsultasi\s+1\s/);
 	expect(raw).toContain('mailto:finance@uji.test');
 	expect(raw).toContain('mailto:budi@pelanggan.test');
 	expect(raw).toContain('tel:+6287811112222');

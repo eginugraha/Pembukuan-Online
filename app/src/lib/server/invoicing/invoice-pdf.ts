@@ -333,7 +333,7 @@ export function drawInvoicePdf(
 		}
 		const ty = y + CELL_PAD;
 		para(l.description, cols.desc.x, ty, cols.desc.w, { size: CELL });
-		line(`x${formatPlain(l.quantity)}`, cols.qty.x, ty, { size: CELL, width: cols.qty.w });
+		line(formatPlain(l.quantity), cols.qty.x, ty, { size: CELL, width: cols.qty.w });
 		line(money(l.unitPrice), cols.price.x, ty, { size: CELL, width: cols.price.w, align: 'right' });
 		line(money(l.amount), cols.total.x, ty, { size: CELL, width: cols.total.w, align: 'right' });
 		y += h;
