@@ -6,7 +6,7 @@ import { GET } from '../../src/routes/api/invoicing/invoices/[id]/pdf/+server';
 import { createInvoice, type CreateInvoiceInput } from '../../src/lib/server/invoicing/invoices';
 import { setCompanyAsset } from '../../src/lib/server/company/assets';
 import { db } from '../../src/lib/server/db';
-import { companies, contacts } from '../../src/lib/server/db/schema';
+import { companies, contacts, invoices } from '../../src/lib/server/db/schema';
 import { makeCompany, makeUser, addMember, contextFor } from './factory';
 import { fakeEvent } from './event';
 import { resetDb } from './db';
@@ -188,8 +188,9 @@ test('a transparent WebP watermark still yields a PDF', async () => {
 	const res = await fetchPdf();
 	expect(res.status).toBe(200);
 	expect(res.headers.get('content-type')).toBe('application/pdf');
-	const { text } = await parse(res);
+	const { text, raw } = await parse(res);
 	expect(text).toContain('Approved by,');
+	expect(raw).toContain('/SMask');
 });
 
 test('corrupted watermark/signature bytes are ignored instead of failing the PDF', async () => {
@@ -208,4 +209,25 @@ test('corrupted watermark/signature bytes are ignored instead of failing the PDF
 test('no company context is a 401', async () => {
 	const res = await GET(fakeEvent({ ctx: null, path: '/api/invoicing/invoices/x/pdf', params: { id: 'x' } }) as never);
 	expect(res.status).toBe(401);
+});
+
+test('billing summary heading is never orphaned from the table header, even with a very tall header area', async () => {
+	// Sweep header heights so one of them lands the heading right at the page bottom.
+	for (let n = 14; n <= 40; n += 2) {
+		const address = Array.from({ length: n }, (_, i) => `Jalan Panjang Nomor ${i + 1} Kelurahan Uji`).join('\n');
+		await resetDb();
+		const { fetchPdf } = await setup({ company: { ...FULL_COMPANY, address }, contact: { ...FULL_CONTACT, address } });
+		const { result } = await parse(await fetchPdf());
+		const page = result.pages.find((p) => p.text.includes('RINCIAN TAGIHAN'));
+		expect(page, `n=${n}`).toBeDefined();
+		expect(page!.text.includes('Keterangan'), `n=${n}`).toBe(true);
+	}
+}, 60_000);
+
+test('a very long invoice number is wrapped instead of overflowing the margin', async () => {
+	const { fetchPdf } = await setup();
+	const no = `001/${'W'.repeat(15)}-${'W'.repeat(15)}/INV/X/2026`;
+	await db.update(invoices).set({ invoiceNo: no });
+	const { text } = await parse(await fetchPdf());
+	expect(text.replace(/\s+/g, '')).toContain(no);
 });

@@ -6,4 +6,4 @@
 </script>
 
 <PageHeader title="Buat Invoice" description="Nomor invoice dibuat otomatis saat disimpan." />
-<DocumentForm kind="invoice" contacts={data.contacts} companyCode={data.companyCode} />
+<DocumentForm kind="invoice" contacts={data.contacts} companyCode={data.companyCode} canEditCompany={data.canEditCompany} />

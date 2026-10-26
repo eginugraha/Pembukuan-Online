@@ -14,7 +14,7 @@ export const CreateCompanyInput = CompanyFields.extend({
 export const UpdateCompanyInput = CompanyFields.extend({
 	bankAccountId: z.uuid('Akun bank tidak valid').nullable().optional(),
 	code: documentCode,
-	email: z.string().trim().max(200).email('Format email tidak valid').optional().or(z.literal('')),
+	email: z.string().trim().max(200).email('Format email tidak valid').nullable().optional().or(z.literal('')),
 	phone: optionalText('Telepon', 30),
 	bankName: optionalText('Nama bank', 100),
 	bankAccountNo: optionalText('Nomor rekening', 50),

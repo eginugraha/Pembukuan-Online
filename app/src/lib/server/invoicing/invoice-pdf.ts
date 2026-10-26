@@ -234,6 +234,11 @@ export function drawInvoicePdf(
 		const kv = (id: string, en: string, value: string) => {
 			ry += biLabel(id, en, RX, ry, { size: 9, enSize: 8.5 });
 			const size = fitSize(value, BOLD, 11, RIGHT_COL_W);
+			if (doc.font(BOLD).fontSize(size).widthOfString(value) > RIGHT_COL_W) {
+				// Tetap tidak muat pada ukuran minimum: bungkus di dalam lebar kolom.
+				ry += para(value, RX, ry + 1, RIGHT_COL_W, { font: BOLD, size }) + 7;
+				return;
+			}
 			line(value, RX, ry + 1, { font: BOLD, size });
 			ry += lineH(BOLD, 11) + 6;
 		};
@@ -277,8 +282,6 @@ export function drawInvoicePdf(
 	};
 
 	// ── RINCIAN TAGIHAN / Billing Summary ───────────────────────────────────────────────────────
-	y += biLabel('RINCIAN TAGIHAN', 'Billing Summary', L, y, { size: 10, enSize: 8.5 }) + 5;
-
 	const QTY_W = 55;
 	const PRICE_W = 100;
 	const TOTAL_W = 105;
@@ -308,7 +311,10 @@ export function drawInvoicePdf(
 	const CELL = 8.5;
 	const rowH = (desc: string) => CELL_PAD + Math.max(heightOf(desc, REG, CELL, cols.desc.w), lineH(REG, CELL)) + CELL_PAD;
 
-	if (y + headerH + rowH(invoice.lines[0]?.description ?? '') > BOTTOM) newPage();
+	// Judul + header tabel + baris pertama harus muat bersama; bila tidak, pindah halaman SEBELUM judul.
+	const headingH = lineH(BOLD, 10) + 5;
+	if (y + headingH + headerH + rowH(invoice.lines[0]?.description ?? '') > BOTTOM) newPage();
+	y += biLabel('RINCIAN TAGIHAN', 'Billing Summary', L, y, { size: 10, enSize: 8.5 }) + 5;
 	drawTableHeader();
 
 	for (const l of invoice.lines) {

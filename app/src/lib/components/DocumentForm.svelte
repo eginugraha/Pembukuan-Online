@@ -24,12 +24,14 @@
 		kind,
 		contacts,
 		companyCode = null,
+		canEditCompany = false,
 		docId,
 		initial
 	}: {
 		kind: 'invoice' | 'po';
 		contacts: { id: string; name: string; code?: string | null }[];
 		companyCode?: string | null;
+		canEditCompany?: boolean;
 		docId?: string;
 		initial?: Initial;
 	} = $props();
@@ -256,7 +258,13 @@
 
 			{#if missingCompanyCode}
 				<Alert.Root variant="destructive">
-					<Alert.Description>Kode perusahaan belum diisi. <a href="/settings/company" class="underline">Isi di Pengaturan Perusahaan</a></Alert.Description>
+					<Alert.Description>
+						{#if canEditCompany}
+							Kode perusahaan belum diisi. <a href="/settings/company" class="underline">Isi di Pengaturan Perusahaan</a>
+						{:else}
+							Kode perusahaan belum diisi. Minta admin mengisinya di Pengaturan Perusahaan.
+						{/if}
+					</Alert.Description>
 				</Alert.Root>
 			{/if}
 			{#if missingContactCode}
