@@ -90,6 +90,33 @@ test('create a contact, then create, edit, and delete an invoice without touchin
 	await expect(page.getByText('$1,000,000.00').first()).toBeVisible();
 	await expect(page.getByRole('heading', { name: /^001\/E2E-PLG\/INV\/[IVX]+\/\d{4}$/ })).toBeVisible();
 
+	// --- Payment Receipt: terbitkan dari halaman detail ---
+	const invoiceUrl = page.url();
+	const invoiceId = invoiceUrl.split('/').pop();
+	await page.getByRole('button', { name: 'Terbitkan Receipt' }).click();
+	const receiptDialog = page.getByRole('dialog');
+	// Tanggal pembayaran default = hari ini (segmen pertama = hari).
+	await expect(receiptDialog.locator('[role="spinbutton"]').first()).toHaveAttribute('aria-valuenow', String(new Date().getDate()));
+	await receiptDialog.getByRole('button', { name: 'Simpan' }).click();
+	// Nomor tampil di kartu hanya bila POST berhasil (dialog menutup diam-diam saat gagal).
+	await expect(page.getByText(/^001\/E2E-PLG\/RCP\/[IVX]+\/\d{4}$/)).toBeVisible();
+	await expect(page.getByRole('link', { name: 'Unduh PDF Receipt' })).toHaveAttribute('href', `/api/invoicing/invoices/${invoiceId}/receipt/pdf`);
+	await expect(page.getByText('Receipt sudah terbit.')).toBeVisible();
+
+	// Invoice yang punya receipt tidak bisa dihapus.
+	await page.goto('/invoicing/invoices');
+	await expect(page.getByText('Terbit', { exact: true })).toBeVisible();
+	await page.getByRole('button', { name: 'Hapus' }).first().click();
+	await page.getByRole('dialog').getByRole('button', { name: 'Hapus' }).click();
+	await expect(page.getByText('Hapus receipt terlebih dahulu')).toBeVisible();
+
+	// Hapus receipt lewat dialog di halaman detail.
+	await page.goto(invoiceUrl);
+	await page.getByRole('button', { name: 'Hapus Receipt' }).click();
+	await page.getByRole('dialog').getByRole('button', { name: 'Hapus' }).click();
+	await expect(page.getByRole('button', { name: 'Terbitkan Receipt' })).toBeVisible();
+	await expect(page.getByText('Receipt sudah terbit.')).toHaveCount(0);
+
 	// --- Invoice tidak masuk Jurnal Umum ---
 	await page.goto('/journal');
 	await expect(page.getByText(/001\/E2E-PLG\/INV\//)).toHaveCount(0);
