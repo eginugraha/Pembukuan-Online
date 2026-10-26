@@ -10,12 +10,15 @@ import {
 	contacts,
 	invoices,
 	journalEntries,
+	fiscalClosings,
 	journalLines,
+	purchaseOrders,
 	statementUploads,
 	transactions,
 	userCompanies
 } from '../../src/lib/server/db/schema';
 import { createContact } from '../../src/lib/server/invoicing/contacts';
+import { createPurchaseOrder } from '../../src/lib/server/invoicing/purchase-orders';
 import { createInvoice } from '../../src/lib/server/invoicing/invoices';
 import { accountIdByCode, addMember, contextFor, makeCompany, makeUpload, makeUser } from './factory';
 import { call, fakeEvent } from './event';
@@ -25,7 +28,10 @@ beforeEach(resetDb);
 
 async function populate(name: string, userId: string) {
 	const c = await makeCompany(name);
-	await makeUpload(c.companyId, userId, [{ description: 'Setoran', credit: '1000' }]);
+	const { txnIds } = await makeUpload(c.companyId, userId, [{ description: 'Setoran', credit: '1000' }]);
+	const modal = await accountIdByCode(c.companyId, '3-1001');
+	// transactions.account_id dan ai_suggested_account_id menunjuk ke accounts tanpa ON DELETE
+	await db.update(transactions).set({ accountId: modal, aiSuggestedAccountId: c.bankAccountId }).where(eq(transactions.id, txnIds[0]));
 	const [je] = await db
 		.insert(journalEntries)
 		.values({ companyId: c.companyId, type: 'TRANSACTION', entryDate: '2026-08-02', description: 'Uji' })
@@ -36,6 +42,9 @@ async function populate(name: string, userId: string) {
 	]);
 	const { id: contactId } = await createContact(c.companyId, { kind: 'CUSTOMER', name: 'PT Pelanggan' });
 	await createInvoice(c.companyId, userId, { contactId, issueDate: '2026-10-01', lines: [{ description: 'Jasa', quantity: '1', unitPrice: '1000' }] });
+	const { id: vendorId } = await createContact(c.companyId, { kind: 'VENDOR', name: 'PT Vendor' });
+	await createPurchaseOrder(c.companyId, userId, { contactId: vendorId, issueDate: '2026-10-01', lines: [{ description: 'Barang', quantity: '1', unitPrice: '500' }] });
+	await db.insert(fiscalClosings).values({ companyId: c.companyId, periodStart: '2026-01-01', periodEnd: '2026-12-31', retainedEarningsAccountId: modal });
 	await db.insert(companyLogos).values({ companyId: c.companyId, content: Buffer.from('x'), mime: 'image/png' });
 	await addMember(userId, c.companyId, 'admin');
 	return c;
@@ -43,18 +52,20 @@ async function populate(name: string, userId: string) {
 
 async function counts(companyId: string) {
 	const n = async (t: any, col: any) => (await db.select().from(t).where(eq(col, companyId))).length;
-	return [
-		await n(companies, companies.id),
-		await n(accounts, accounts.companyId),
-		await n(categoryRules, categoryRules.companyId),
-		await n(statementUploads, statementUploads.companyId),
-		await n(journalEntries, journalEntries.companyId),
-		await n(contacts, contacts.companyId),
-		await n(invoices, invoices.companyId),
-		await n(companyLogos, companyLogos.companyId),
-		await n(userCompanies, userCompanies.companyId),
-		(await db.select().from(transactions)).length
-	];
+	return {
+		companies: await n(companies, companies.id),
+		accounts: await n(accounts, accounts.companyId),
+		categoryRules: await n(categoryRules, categoryRules.companyId),
+		statementUploads: await n(statementUploads, statementUploads.companyId),
+		transactions: await n(transactions, transactions.companyId),
+		journalEntries: await n(journalEntries, journalEntries.companyId),
+		fiscalClosings: await n(fiscalClosings, fiscalClosings.companyId),
+		contacts: await n(contacts, contacts.companyId),
+		invoices: await n(invoices, invoices.companyId),
+		purchaseOrders: await n(purchaseOrders, purchaseOrders.companyId),
+		companyLogos: await n(companyLogos, companyLogos.companyId),
+		userCompanies: await n(userCompanies, userCompanies.companyId)
+	};
 }
 
 const del = (ctx: Awaited<ReturnType<typeof contextFor>> | null, id: string, confirmName: string) =>
@@ -64,18 +75,17 @@ test('super admin deletes a company and everything in it', async () => {
 	const admin = await makeUser({ isSuperAdmin: true });
 	const a = await populate('PT A', admin.id);
 	const b = await populate('PT B', admin.id);
+	const aBefore = await counts(a.companyId);
 	const bBefore = await counts(b.companyId);
-	const txnsAll = bBefore[9];
+	expect(Object.values(aBefore).every((x) => x > 0)).toBe(true);
+	expect(bBefore).toEqual(aBefore);
 
 	const res = await del(await contextFor(admin), a.companyId, 'PT A');
 	expect(res.status).toBe(200);
 	expect(res.body).toEqual({ ok: true });
 
-	const after = await counts(a.companyId);
-	expect(after.slice(0, 9)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0]);
-	expect(after[9]).toBe(txnsAll / 2);
-	expect(await counts(b.companyId)).toEqual([...bBefore.slice(0, 9), txnsAll / 2]);
-	expect(bBefore.slice(0, 9).every((x) => x > 0)).toBe(true);
+	expect(Object.values(await counts(a.companyId)).every((x) => x === 0)).toBe(true);
+	expect(await counts(b.companyId)).toEqual(bBefore);
 });
 
 test('wrong confirmation name is 422 and deletes nothing', async () => {
@@ -86,7 +96,7 @@ test('wrong confirmation name is 422 and deletes nothing', async () => {
 	expect(res.status).toBe(422);
 	expect(res.body.error.code).toBe('confirm_mismatch');
 	expect(res.body.error.fields.confirmName).toBeTruthy();
-	expect((await counts(a.companyId))[0]).toBe(1);
+	expect((await counts(a.companyId)).companies).toBe(1);
 	expect((await del(ctx, a.companyId, '  PT A  ')).status).toBe(200);
 });
 
@@ -98,7 +108,7 @@ test('non super admin gets 403; anonymous gets 401; unknown id gets 404', async 
 	expect((await del(await contextFor(u), a.companyId, 'PT A')).status).toBe(403);
 	expect((await del(null, a.companyId, 'PT A')).status).toBe(401);
 	expect((await del(await contextFor(admin), crypto.randomUUID(), 'PT A')).status).toBe(404);
-	expect((await counts(a.companyId))[0]).toBe(1);
+	expect((await counts(a.companyId)).companies).toBe(1);
 });
 
 test("a member's context falls back to another company after deletion", async () => {

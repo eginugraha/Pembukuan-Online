@@ -42,16 +42,15 @@ export async function updateCompany(companyId: string, input: UpdateCompanyInput
 	});
 }
 
-/** Hapus perusahaan beserta seluruh datanya (semua tabel anak ON DELETE CASCADE). */
+/** Hapus perusahaan beserta seluruh datanya: jurnal dihapus lebih dulu, sisanya lewat cascade dari baris perusahaan. */
 export async function deleteCompany(companyId: string, confirmName: string): Promise<void> {
 	const company = await getCompany(companyId);
 	if (confirmName.trim() !== company.name) {
 		throw new ApiError(422, 'confirm_mismatch', 'Nama perusahaan tidak cocok', undefined, { field: 'confirmName' });
 	}
 	await db.transaction(async (tx) => {
-		// Putus referensi melingkar companies.bank_account_id <-> accounts sebelum cascade.
-		await tx.update(companies).set({ bankAccountId: null }).where(eq(companies.id, companyId));
-		// journal_lines.account_id tidak cascade; hapus jurnal dulu agar penghapusan akun tidak terblokir.
+		// FK journal_lines_account_id_accounts_id_fk (journal_lines.account_id -> accounts) tanpa ON DELETE
+		// memblokir cascade akun; hapus jurnal (dan barisnya) lebih dulu.
 		await tx.delete(journalEntries).where(eq(journalEntries.companyId, companyId));
 		await tx.delete(companies).where(eq(companies.id, companyId));
 	});
