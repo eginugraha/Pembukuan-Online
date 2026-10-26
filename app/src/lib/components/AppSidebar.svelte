@@ -12,6 +12,7 @@
 	import Lock from '@lucide/svelte/icons/lock';
 	import Receipt from '@lucide/svelte/icons/receipt';
 	import Scale from '@lucide/svelte/icons/scale';
+	import ShieldUser from '@lucide/svelte/icons/shield-user';
 	import ShoppingCart from '@lucide/svelte/icons/shopping-cart';
 	import TrendingUp from '@lucide/svelte/icons/trending-up';
 	import Upload from '@lucide/svelte/icons/upload';
@@ -69,6 +70,7 @@
 		income: TrendingUp,
 		company: Building2,
 		users: Users,
+		systemUsers: ShieldUser,
 		accounts: ListTree,
 		rules: WandSparkles,
 		wallet: Wallet,

@@ -38,3 +38,12 @@ test('allowsWithoutCompany lets a company-less super admin reach company and sys
 	expect(allowsWithoutCompany('/settings/company', false)).toBe(false);
 	expect(allowsWithoutCompany('/ledger', true)).toBe(false);
 });
+
+test('system users page is only for super admins, with or without a company', () => {
+	const hrefs = (role: Parameters<typeof visibleNav>[0], sa?: boolean) =>
+		visibleNav(role, sa).flatMap((g) => g.items.map((i) => i.href));
+	expect(hrefs('admin', false)).not.toContain('/settings/system-users');
+	expect(hrefs('admin')).not.toContain('/settings/system-users');
+	expect(hrefs('admin', true)).toContain('/settings/system-users');
+	expect(hrefs(null, true)).toContain('/settings/system-users');
+});

@@ -14,5 +14,5 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 	// Dihitung sekali di sini; dashboard memakai ulang lewat parent() agar tidak menjalankan query yang sama dua kali.
 	const shell = ctx.companyId ? await getShellStats(ctx.companyId) : null;
 	const nextStep = ctx.companyId && shell ? await getNextStep(ctx.companyId, ctx.role, shell) : null;
-	return { ctx, nav: visibleNav(ctx.role), nextStep, shell };
+	return { ctx, nav: visibleNav(ctx.role, ctx.user.isSuperAdmin), nextStep, shell };
 };

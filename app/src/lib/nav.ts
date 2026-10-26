@@ -6,6 +6,8 @@ export interface NavItem {
 	min: Role;
 	/** Key ikon lucide; dipetakan ke komponen di AppSidebar.svelte. */
 	icon: string;
+	/** Hanya tampil untuk Super Admin, termasuk yang belum punya perusahaan aktif. */
+	superAdminOnly?: boolean;
 }
 export interface NavGroup {
 	label: string | null;
@@ -50,6 +52,7 @@ export const NAV: NavGroup[] = [
 		label: 'Pengaturan',
 		items: [
 			{ label: 'Perusahaan', href: '/settings/company', min: 'admin', icon: 'company' },
+			{ label: 'Semua Pengguna', href: '/settings/system-users', min: 'viewer', icon: 'systemUsers', superAdminOnly: true },
 			{ label: 'Pengguna & Role', href: '/settings/users', min: 'admin', icon: 'users' },
 			{ label: 'Chart of Accounts', href: '/settings/accounts', min: 'admin', icon: 'accounts' },
 			{ label: 'Category Rules', href: '/settings/rules', min: 'accountant', icon: 'rules' },
@@ -59,8 +62,9 @@ export const NAV: NavGroup[] = [
 	}
 ];
 
-export function visibleNav(role: Role | null): NavGroup[] {
-	return NAV.map((g) => ({ ...g, items: g.items.filter((i) => roleAtLeast(role, i.min)) })).filter(
+export function visibleNav(role: Role | null, isSuperAdmin = false): NavGroup[] {
+	const show = (i: NavItem) => (i.superAdminOnly ? isSuperAdmin : roleAtLeast(role, i.min));
+	return NAV.map((g) => ({ ...g, items: g.items.filter(show) })).filter(
 		(g) => g.items.length > 0
 	);
 }
