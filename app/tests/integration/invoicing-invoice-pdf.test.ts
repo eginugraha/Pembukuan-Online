@@ -1,83 +1,208 @@
 import { beforeEach, expect, test } from 'bun:test';
+import { eq } from 'drizzle-orm';
 import { PDFParse } from 'pdf-parse';
+import encodeWebp from '@jsquash/webp/encode';
 import { GET } from '../../src/routes/api/invoicing/invoices/[id]/pdf/+server';
-import { createInvoice } from '../../src/lib/server/invoicing/invoices';
+import { createInvoice, type CreateInvoiceInput } from '../../src/lib/server/invoicing/invoices';
+import { setCompanyAsset } from '../../src/lib/server/company/assets';
 import { db } from '../../src/lib/server/db';
-import { contacts } from '../../src/lib/server/db/schema';
+import { companies, contacts } from '../../src/lib/server/db/schema';
 import { makeCompany, makeUser, addMember, contextFor } from './factory';
 import { fakeEvent } from './event';
 import { resetDb } from './db';
 
 beforeEach(resetDb);
 
-async function textOf(res: Response): Promise<string> {
-	const parser = new PDFParse({ data: new Uint8Array(await res.arrayBuffer()) });
-	return (await parser.getText()).text;
+async function parse(res: Response) {
+	const bytes = new Uint8Array(await res.arrayBuffer());
+	// pdf-parse detaches the buffer it is given, so read the raw bytes first.
+	const raw = Buffer.from(bytes).toString('latin1');
+	const result = await new PDFParse({ data: bytes }).getText();
+	return { result, text: result.text, raw };
 }
 
-test('PDF contains the contact name, invoice number, line description, and total', async () => {
+const FULL_COMPANY = {
+	address: 'Jl. Uji No. 1, Bandung',
+	email: 'finance@uji.test',
+	phone: '+62 878-1111-2222',
+	bankName: 'BCA',
+	bankAccountNo: '233-0636800',
+	bankAccountHolder: 'PT Uji',
+	swiftCode: 'CENAIDJA',
+	signerName: 'Sari Penanda',
+	signerTitle: 'Direktur Utama'
+};
+
+const FULL_CONTACT = {
+	attention: 'Budi Santoso',
+	position: 'Manajer Keuangan',
+	address: 'Denpasar, Indonesia',
+	email: 'budi@pelanggan.test',
+	phone: '+62 812-3456-7890',
+	npwp: '01.234.567.8-901.000'
+};
+
+async function setup(opts: { company?: Partial<typeof FULL_COMPANY>; contact?: Partial<typeof FULL_CONTACT>; invoice?: Partial<CreateInvoiceInput> } = {}) {
 	const { companyId } = await makeCompany();
+	if (opts.company) await db.update(companies).set(opts.company).where(eq(companies.id, companyId));
 	const u = await makeUser();
 	await addMember(u.id, companyId, 'viewer');
-	const [contact] = await db.insert(contacts).values({ companyId, kind: 'CUSTOMER', name: 'PT Pelanggan Uji', code: 'PLG' }).returning();
-	const { id } = await createInvoice(companyId, u.id, { contactId: contact.id, issueDate: '2026-10-01', lines: [{ description: 'Jasa konsultasi', quantity: '1', unitPrice: '1500000' }] });
-
-	const res = await GET(fakeEvent({ ctx: await contextFor(u, companyId), path: `/api/invoicing/invoices/${id}/pdf`, params: { id } }) as never);
-	expect(res.status).toBe(200);
-	expect(res.headers.get('content-type')).toBe('application/pdf');
-	const text = await textOf(res);
-	expect(text).toContain('PT Pelanggan Uji');
-	expect(text).toContain('001/UJI-PLG/INV/X/2026');
-	expect(res.headers.get('content-disposition')).toBe('attachment; filename="invoice-001-UJI-PLG-INV-X-2026.pdf"');
-	expect(text).toContain('Jasa konsultasi');
-	expect(text).toContain('1.500.000,00');
-});
-
-test('PDF Kepada block shows Attn line with attention and position under the company name', async () => {
-	const { companyId } = await makeCompany();
-	const u = await makeUser();
-	await addMember(u.id, companyId, 'viewer');
-	const [contact] = await db.insert(contacts).values({ companyId, kind: 'CUSTOMER', name: 'PT Attn Uji', code: 'PLG', attention: 'Budi Santoso', position: 'Manajer Keuangan' }).returning();
-	const { id } = await createInvoice(companyId, u.id, { contactId: contact.id, issueDate: '2026-10-01', lines: [{ description: 'Jasa', quantity: '1', unitPrice: '1000' }] });
-
-	const res = await GET(fakeEvent({ ctx: await contextFor(u, companyId), path: `/api/invoicing/invoices/${id}/pdf`, params: { id } }) as never);
-	const text = await textOf(res);
-	expect(text).toContain('Attn: Budi Santoso, Manajer Keuangan');
-	expect(text.indexOf('PT Attn Uji')).toBeLessThan(text.indexOf('Attn: Budi Santoso'));
-});
-
-test('a 60-line invoice breaks onto more than one page, keeping every line and the totals on real pages', async () => {
-	const { companyId } = await makeCompany();
-	const u = await makeUser();
-	await addMember(u.id, companyId, 'viewer');
-	const [contact] = await db.insert(contacts).values({ companyId, kind: 'CUSTOMER', name: 'PT Panjang', code: 'PLG' }).returning();
-	const N = 60;
-	const desc = (i: number) => `Baris ke-${String(i).padStart(2, '0')}`;
+	const [contact] = await db
+		.insert(contacts)
+		.values({ companyId, kind: 'CUSTOMER', name: 'PT Pelanggan Uji', code: 'PLG', ...opts.contact })
+		.returning();
 	const { id } = await createInvoice(companyId, u.id, {
 		contactId: contact.id,
 		issueDate: '2026-10-01',
-			notes: 'Catatan penutup invoice panjang',
-		lines: Array.from({ length: N }, (_, i) => ({ description: desc(i + 1), quantity: '1', unitPrice: '1000' }))
+		lines: [{ description: 'Jasa konsultasi', quantity: '1', unitPrice: '1500000' }],
+		...opts.invoice
 	});
+	const fetchPdf = async () =>
+		GET(fakeEvent({ ctx: await contextFor(u, companyId), path: `/api/invoicing/invoices/${id}/pdf`, params: { id } }) as never);
+	return { companyId, fetchPdf };
+}
 
-	const res = await GET(fakeEvent({ ctx: await contextFor(u, companyId), path: `/api/invoicing/invoices/${id}/pdf`, params: { id } }) as never);
+test('full data: every block of the mockup is printed, with clickable email/phone', async () => {
+	const { fetchPdf } = await setup({
+		company: FULL_COMPANY,
+		contact: FULL_CONTACT,
+		invoice: { dueDate: '2026-10-08', subject: 'Pengembangan Website Portal', notes: 'Hubungi kami untuk pertanyaan invoice.' }
+	});
+	const res = await fetchPdf();
 	expect(res.status).toBe(200);
-	const result = await new PDFParse({ data: new Uint8Array(await res.arrayBuffer()) }).getText();
-	expect(result.total).toBeGreaterThan(1);
+	expect(res.headers.get('content-type')).toBe('application/pdf');
+	expect(res.headers.get('content-disposition')).toBe('attachment; filename="invoice-001-UJI-PLG-INV-X-2026.pdf"');
+	const { text, raw } = await parse(res);
+	for (const s of [
+		'INVOICE',
+		'Tagihan',
+		'Nomor Invoice / Invoice Number',
+		'001/UJI-PLG/INV/X/2026',
+		'Tanggal / Issue Date',
+		'1 Oktober 2026',
+		'Jatuh Tempo / Due Date',
+		'8 Oktober 2026',
+		'PERIHAL / SUBJECT',
+		'Pengembangan Website Portal',
+		'DITAGIHKAN KEPADA / BILL TO',
+		'PT Pelanggan Uji',
+		'Attn: Budi Santoso, Manajer Keuangan',
+		'Denpasar, Indonesia',
+		'budi@pelanggan.test',
+		'+62 812-3456-7890',
+		'NPWP 01.234.567.8-901.000',
+		'RINCIAN TAGIHAN',
+		'Jasa konsultasi',
+		'x1',
+		'1.500.000',
+		'TERBILANG / Amount in Words',
+		'Satu Juta Lima Ratus Ribu Rupiah',
+		'INFORMASI PEMBAYARAN / Payment Information',
+		'BCA 233-0636800',
+		'a.n. PT Uji',
+		'SWIFT CENAIDJA',
+		'Hubungi kami untuk pertanyaan invoice.',
+		'Approved by,',
+		'Sari Penanda',
+		'Direktur Utama',
+		'finance@uji.test',
+		'+62 878-1111-2222'
+	]) {
+		expect(text).toContain(s);
+	}
+	expect(raw).toContain('mailto:finance@uji.test');
+	expect(raw).toContain('mailto:budi@pelanggan.test');
+	expect(raw).toContain('tel:+6287811112222');
+	expect(raw).toContain('tel:+6281234567890');
+	// No discount and no PPN: only the Total row, like the mockup.
+	expect(text).not.toContain('Subtotal');
+});
 
-	// Every line lands on exactly one page (none lost off the bottom edge, none duplicated).
+test('minimal data: optional blocks are skipped, total still printed', async () => {
+	const { fetchPdf } = await setup();
+	const res = await fetchPdf();
+	expect(res.status).toBe(200);
+	const { text, raw } = await parse(res);
+	expect(text).not.toContain('PERIHAL');
+	expect(text).not.toContain('INFORMASI PEMBAYARAN');
+	expect(text).not.toContain('Approved by');
+	expect(text).not.toContain('Jatuh Tempo');
+	expect(text).not.toContain('Attn:');
+	expect(text).not.toContain('NPWP');
+	expect(raw).not.toContain('mailto:');
+	expect(raw).not.toContain('tel:');
+	expect(text).toContain('DITAGIHKAN KEPADA / BILL TO');
+	expect(text).toContain('Total');
+	expect(text).toContain('1.500.000');
+	expect(text).toContain('Satu Juta Lima Ratus Ribu Rupiah');
+});
+
+test('discount and PPN add Subtotal, Diskon and PPN rows before Total', async () => {
+	const { fetchPdf } = await setup({ invoice: { discount: '100000', taxRate: '11' } });
+	const { text } = await parse(await fetchPdf());
+	expect(text).toContain('Subtotal');
+	expect(text).toContain('Diskon / Discount');
+	expect(text).toContain('-Rp 100.000');
+	expect(text).toContain('PPN / VAT (11%)');
+	expect(text).toContain('154.000'); // 11% x 1.400.000
+	expect(text).toContain('1.554.000');
+	expect(text.indexOf('Subtotal')).toBeLessThan(text.indexOf('Diskon / Discount'));
+	expect(text.indexOf('PPN / VAT (11%)')).toBeLessThan(text.lastIndexOf('Total'));
+});
+
+test('a 60-line invoice paginates: each line once, header repeated, closing blocks on the last page', async () => {
+	const N = 60;
+	const desc = (i: number) => `Baris ke-${String(i).padStart(2, '0')}`;
+	const { fetchPdf } = await setup({
+		company: FULL_COMPANY,
+		invoice: {
+			notes: 'Catatan penutup invoice panjang',
+			lines: Array.from({ length: N }, (_, i) => ({ description: desc(i + 1), quantity: '1', unitPrice: '1000' }))
+		}
+	});
+	const res = await fetchPdf();
+	expect(res.status).toBe(200);
+	const { result } = await parse(res);
+	expect(result.total).toBeGreaterThan(1);
 	for (let i = 1; i <= N; i++) {
 		expect(result.pages.filter((p) => p.text.includes(desc(i)))).toHaveLength(1);
 	}
-	// The first page can't hold all 60 rows, so the last one must be on a later page.
 	expect(result.pages[0].text).not.toContain(desc(N));
-	// The continuation page repeats the column header.
-	expect(result.pages[1].text).toContain('Harga Satuan');
-	// Totals and notes land on the final page.
+	expect(result.pages[1].text).toContain('Keterangan');
+	expect(result.pages[1].text).toContain('Description');
+	const approved = result.pages.filter((p) => p.text.includes('Approved by,'));
+	expect(approved).toHaveLength(1);
 	const lastPage = result.pages[result.pages.length - 1].text;
-	expect(lastPage).toContain('60.000,00');
+	expect(lastPage).toContain('Approved by,');
+	expect(lastPage).toContain('TERBILANG');
 	expect(lastPage).toContain('Catatan penutup invoice panjang');
-	expect(lastPage).not.toContain('Status:');
+});
+
+test('a transparent WebP watermark still yields a PDF', async () => {
+	const { companyId, fetchPdf } = await setup({ company: FULL_COMPANY });
+	const rgba = new Uint8ClampedArray(4 * 4 * 4);
+	for (let i = 0; i < rgba.length; i += 4) rgba.set(i % 8 === 0 ? [200, 30, 30, 255] : [0, 0, 0, 0], i);
+	const webp = new Uint8Array(await encodeWebp({ data: rgba, width: 4, height: 4, colorSpace: 'srgb' } as ImageData, { lossless: 1 }));
+	await setCompanyAsset(companyId, 'watermark', webp);
+	await setCompanyAsset(companyId, 'signature', webp);
+	const res = await fetchPdf();
+	expect(res.status).toBe(200);
+	expect(res.headers.get('content-type')).toBe('application/pdf');
+	const { text } = await parse(res);
+	expect(text).toContain('Approved by,');
+});
+
+test('corrupted watermark/signature bytes are ignored instead of failing the PDF', async () => {
+	const { companyId, fetchPdf } = await setup({ company: FULL_COMPANY });
+	const broken = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4, 5, 6, 7, 8]);
+	await setCompanyAsset(companyId, 'watermark', broken);
+	await setCompanyAsset(companyId, 'signature', broken);
+	const res = await fetchPdf();
+	expect(res.status).toBe(200);
+	expect(res.headers.get('content-type')).toBe('application/pdf');
+	const { text } = await parse(res);
+	expect(text).toContain('Approved by,');
+	expect(text).toContain('Sari Penanda');
 });
 
 test('no company context is a 401', async () => {
