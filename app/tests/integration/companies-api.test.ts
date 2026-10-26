@@ -52,3 +52,17 @@ test('super admin creates company from chosen CoA template; unknown template is 
 	const bad = await call(POST, fakeEvent({ ctx, method: 'POST', body: { name: 'PT X', coaTemplate: 'pabrik' } }));
 	expect(bad.status).toBe(400);
 });
+
+test('updateCompany menyimpan field baru dan tidak menghapusnya bila tidak dikirim', async () => {
+	const { updateCompany, getCompany } = await import('../../src/lib/server/company/service');
+	const { UpdateCompanyInput } = await import('../../src/lib/schemas/company');
+	const { companyId } = await makeCompany('PT A');
+	await updateCompany(companyId, UpdateCompanyInput.parse({ name: 'PT A', code: 'set', bankName: 'BCA' }));
+	const c = await getCompany(companyId);
+	expect(c.code).toBe('SET');
+	expect(c.bankName).toBe('BCA');
+	await updateCompany(companyId, UpdateCompanyInput.parse({ name: 'PT A2' }));
+	const c2 = await getCompany(companyId);
+	expect(c2.bankName).toBe('BCA');
+	expect(c2.code).toBe('SET');
+});

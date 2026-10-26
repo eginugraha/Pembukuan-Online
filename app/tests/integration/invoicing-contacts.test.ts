@@ -49,3 +49,10 @@ test('contacts are scoped per company', async () => {
 	await createContact(a.companyId, { kind: 'CUSTOMER', name: 'Only in A' });
 	expect(await listContacts(b.companyId)).toEqual([]);
 });
+
+test('contact code disimpan uppercase', async () => {
+	const { CreateContactInput } = await import('../../src/lib/schemas/contact');
+	const { companyId } = await makeCompany();
+	const { id } = await createContact(companyId, CreateContactInput.parse({ kind: 'CUSTOMER', name: 'PT RFS', code: 'rfs' }));
+	expect((await getContact(companyId, id)).code).toBe('RFS');
+});

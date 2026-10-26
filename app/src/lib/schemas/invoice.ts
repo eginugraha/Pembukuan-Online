@@ -22,6 +22,7 @@ export const CreateInvoiceInput = z
 			.regex(/^\d{1,3}(\.\d{1,2})?$/, 'Tarif PPN tidak valid')
 			.refine((v) => Number(v) <= 100, 'Tarif PPN maksimal 100%')
 			.optional(),
+		subject: optionalText('Perihal', 200),
 		notes: optionalText('Catatan', 500),
 		lines: z.array(InvoiceLineInput).min(1, 'Isi minimal satu baris')
 	})

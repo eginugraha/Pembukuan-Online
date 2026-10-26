@@ -15,6 +15,26 @@ export async function getCompany(companyId: string) {
 	return company;
 }
 
+const OPTIONAL_COMPANY_FIELDS = [
+	'code',
+	'email',
+	'phone',
+	'bankName',
+	'bankAccountNo',
+	'bankAccountHolder',
+	'swiftCode',
+	'signerName',
+	'signerTitle'
+] as const;
+
+function optionalFields(input: UpdateCompanyInput) {
+	const out: Partial<Record<(typeof OPTIONAL_COMPANY_FIELDS)[number], string | null>> = {};
+	for (const k of OPTIONAL_COMPANY_FIELDS) {
+		if (input[k] !== undefined) out[k] = input[k] || null;
+	}
+	return out;
+}
+
 export async function updateCompany(companyId: string, input: UpdateCompanyInput): Promise<void> {
 	await db.transaction(async (tx) => {
 		if (input.bankAccountId) {
@@ -34,7 +54,9 @@ export async function updateCompany(companyId: string, input: UpdateCompanyInput
 				name: input.name,
 				npwp: input.npwp ?? null,
 				address: input.address ?? null,
-				...(input.bankAccountId !== undefined ? { bankAccountId: input.bankAccountId } : {})
+				...(input.bankAccountId !== undefined ? { bankAccountId: input.bankAccountId } : {}),
+				// Field baru hanya ditulis bila dikirim, supaya pemanggil lama tidak menghapusnya; string kosong menjadi null.
+				...optionalFields(input)
 			})
 			.where(and(eq(companies.id, companyId)))
 			.returning({ id: companies.id });

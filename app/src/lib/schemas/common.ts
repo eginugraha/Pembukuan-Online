@@ -11,6 +11,18 @@ export const requiredText = (label: string, max: number) =>
 export const optionalText = (label: string, max: number) =>
 	z.string().trim().max(max, `${label} maksimal ${max} karakter`).nullable().optional();
 
+// Kode perusahaan/kontak untuk nomor dokumen. String kosong dianggap null (kode belum diisi).
+export const documentCode = z.preprocess(
+	(v) => (typeof v === 'string' && v.trim() === '' ? null : v),
+	z
+		.string()
+		.trim()
+		.toUpperCase()
+		.regex(/^[A-Z0-9]{1,15}$/, 'Kode hanya huruf A–Z dan angka, maksimal 15 karakter')
+		.nullable()
+		.optional()
+);
+
 export const requiredId = (label: string) => z.uuid({ error: `${label} wajib dipilih` });
 
 export const emailField = z

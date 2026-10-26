@@ -11,6 +11,7 @@ export interface ContactRow {
 	companyId: string;
 	kind: 'CUSTOMER' | 'VENDOR' | 'BOTH';
 	name: string;
+	code: string | null;
 	npwp: string | null;
 	attention: string | null;
 	position: string | null;
@@ -29,6 +30,7 @@ export async function createContact(companyId: string, input: CreateContactInput
 			companyId,
 			kind: input.kind,
 			name: input.name,
+			code: input.code || null,
 			npwp: input.npwp || null,
 			attention: input.attention || null,
 			position: input.position || null,
@@ -47,12 +49,13 @@ export async function updateContact(companyId: string, contactId: string, input:
 		await getContact(companyId, contactId);
 		return;
 	}
-	const { npwp, attention, position, address, email, phone, ...rest } = input;
+	const { code, npwp, attention, position, address, email, phone, ...rest } = input;
 	const blankToNull = (v: string | null | undefined) => (v === undefined ? undefined : v || null);
 	const updated = await db
 		.update(contacts)
 		.set({
 			...rest,
+			code: blankToNull(code),
 			npwp: blankToNull(npwp),
 			attention: blankToNull(attention),
 			position: blankToNull(position),

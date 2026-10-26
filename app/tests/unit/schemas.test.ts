@@ -81,3 +81,22 @@ test('manual entry: required fields, and a row amount of zero is rejected', () =
 	const zero = { ...valid, rows: [{ ...valid.rows[0], amount: '0' }] };
 	expect(fieldErrors(ManualEntryInput, zero).rows).toBe('Jumlah harus lebih dari 0');
 });
+
+test('documentCode: trim, uppercase, kosong menjadi null, tolak format salah', async () => {
+	const { documentCode } = await import('$lib/schemas/common');
+	expect(documentCode.parse(' set ')).toBe('SET');
+	expect(documentCode.parse('')).toBeNull();
+	expect(documentCode.parse(null)).toBeNull();
+	expect(documentCode.parse(undefined)).toBeUndefined();
+	expect(documentCode.safeParse('SET-A').success).toBe(false);
+	expect(documentCode.safeParse('A'.repeat(16)).success).toBe(false);
+	expect(documentCode.safeParse('A'.repeat(15)).success).toBe(true);
+});
+
+test('UpdateCompanyInput menerima field baru dan swiftCode di-uppercase', () => {
+	const r = UpdateCompanyInput.parse({ name: 'PT A', code: 'set', swiftCode: ' cenaidja ', email: '', bankName: 'BCA' });
+	expect(r.code).toBe('SET');
+	expect(r.swiftCode).toBe('CENAIDJA');
+	expect(UpdateCompanyInput.safeParse({ name: 'PT A', email: 'bukan-email' }).success).toBe(false);
+	expect(UpdateCompanyInput.safeParse({ name: 'PT A', swiftCode: 'A'.repeat(12) }).success).toBe(false);
+});
