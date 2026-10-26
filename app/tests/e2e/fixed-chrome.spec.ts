@@ -13,8 +13,8 @@ test('header, sidebar logo and full-width footer stay in place while content scr
 
 	const header = page.getByRole('banner');
 	const footer = page.getByRole('contentinfo');
-	const logo = page.locator('aside').first().getByRole('link', { name: /pena/ });
-	await expect(footer).toContainText('© 2026 pena');
+	const logo = page.locator('aside').first().getByRole('link', { name: /Pembukuan Online/ });
+	await expect(footer).toContainText('© 2026 Pembukuan Online');
 	await expect(footer).toContainText(/v\d+\.\d+\.\d+/);
 	await expect(footer).toContainText('Data tersimpan di server Anda');
 

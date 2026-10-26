@@ -22,7 +22,7 @@
 	});
 </script>
 
-<svelte:head><title>Masuk · pena — Pembukuan Keuangan Online Gratis</title></svelte:head>
+<svelte:head><title>Masuk · Pembukuan Online — Pembukuan Keuangan Online Gratis</title></svelte:head>
 
 <div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas p-4">
 	<!-- Aksen dekoratif lime di sudut, seperti referensi -->
@@ -33,7 +33,7 @@
 	<Card.Root class="relative w-full max-w-sm rounded-[28px] px-2 py-8 shadow-[0_30px_60px_-30px_rgb(30_50_30/0.45)]">
 		<Card.Header class="items-center text-center">
 			<span class="icon-tile icon-tile-deep mx-auto mb-3 size-14 rounded-2xl text-2xl font-black">P</span>
-			<Card.Title class="text-2xl font-extrabold tracking-tight text-green">pena.</Card.Title>
+			<Card.Title class="text-2xl font-extrabold tracking-tight text-green">Pembukuan Online</Card.Title>
 			<p class="text-sm font-medium text-muted-foreground">Pembukuan Keuangan Online Gratis</p>
 			<Card.Description>Masuk untuk melanjutkan</Card.Description>
 		</Card.Header>

@@ -8,7 +8,7 @@
 <Dialog.Root bind:open>
 	<Dialog.Content>
 		<Dialog.Header>
-			<Dialog.Title>Keluar dari pena?</Dialog.Title>
+			<Dialog.Title>Keluar dari Pembukuan Online?</Dialog.Title>
 			<Dialog.Description>Anda perlu masuk lagi untuk melanjutkan. Perubahan yang sudah disimpan tidak hilang.</Dialog.Description>
 		</Dialog.Header>
 		<form method="POST" action="/logout">

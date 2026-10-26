@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('profit & loss chart or empty state is shown, tab title is branded', async ({ page }) => {
-	await expect(page).toHaveTitle('Dashboard · pena');
+	await expect(page).toHaveTitle('Dashboard · Pembukuan Online');
 	await expect(page.getByRole('group', { name: /Laba Rugi/ })).toBeVisible();
 });
 

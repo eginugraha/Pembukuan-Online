@@ -78,7 +78,7 @@
 	}
 </script>
 
-<PageHeader title="Saldo Awal" description="Saldo per akun pada tanggal mulai pembukuan di pena. Total debit harus sama dengan total kredit.">
+<PageHeader title="Saldo Awal" description="Saldo per akun pada tanggal mulai pembukuan. Total debit harus sama dengan total kredit.">
 	{#snippet actions()}
 		<Badge variant={balanced ? 'default' : 'destructive'}>{balanced ? 'Balance' : 'Belum balance'}</Badge>
 		<Button onclick={save} disabled={!balanced || hasRowErrors || busy || locked}>Simpan</Button>

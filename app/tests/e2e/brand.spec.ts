@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { E2E_PASSWORD } from '../../playwright.config';
 
-test('login shows the pena brand, tagline and favicon', async ({ page, request }) => {
+test('login shows the Pembukuan Online brand, tagline and favicon', async ({ page, request }) => {
 	await page.goto('/login');
-	await expect(page.getByText('pena.', { exact: true })).toBeVisible();
+	await expect(page.getByText('Pembukuan Online', { exact: true })).toBeVisible();
 	await expect(page.getByText('Pembukuan Keuangan Online Gratis')).toBeVisible();
-	await expect(page).toHaveTitle('Masuk · pena — Pembukuan Keuangan Online Gratis');
+	await expect(page).toHaveTitle('Masuk · Pembukuan Online — Pembukuan Keuangan Online Gratis');
 	await expect(page.locator('link[rel="icon"][type="image/svg+xml"]')).toHaveAttribute('href', /(^|\/\/[^/]+)\/favicon\.svg$/);
 
 	const svg = await request.get('/favicon.svg');
@@ -18,7 +18,7 @@ test('login shows the pena brand, tagline and favicon', async ({ page, request }
 	}
 });
 
-test('app pages use "{title} · pena" and no visible Jurnalku remains', async ({ page }) => {
+test('app pages use "{title} · Pembukuan Online" and no visible Jurnalku remains', async ({ page }) => {
 	await page.goto('/login');
 	await page.getByLabel('Email').fill('admin@jurnalku.local');
 	await page.getByLabel('Password').fill(E2E_PASSWORD);
@@ -26,16 +26,16 @@ test('app pages use "{title} · pena" and no visible Jurnalku remains', async ({
 	await expect(page).toHaveURL(/\/dashboard$/);
 
 	await page.goto('/trial-balance');
-	await expect(page).toHaveTitle('Neraca Saldo · pena');
+	await expect(page).toHaveTitle('Neraca Saldo · Pembukuan Online');
 	await page.goto('/dashboard');
-	await expect(page).toHaveTitle('Dashboard · pena');
+	await expect(page).toHaveTitle('Dashboard · Pembukuan Online');
 
 	for (const p of ['/dashboard', '/settings/opening-balance', '/profile']) {
 		await page.goto(p);
 		await expect(page.locator('body')).not.toContainText(/Jurnalku/);
 	}
 
-	const logo = page.locator('aside').first().getByRole('link', { name: 'pena' });
+	const logo = page.locator('aside').first().getByRole('link', { name: 'Pembukuan Online' });
 	await expect(logo).toBeVisible();
 	await expect(logo.locator('.icon-tile')).toHaveText('P');
 });

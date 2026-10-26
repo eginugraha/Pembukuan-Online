@@ -16,7 +16,7 @@
 	const items = $derived(page.url.pathname === '/dashboard' ? [] : buildBreadcrumb(page.url.pathname, NAV, crumb));
 </script>
 
-<svelte:head><title>{title} · pena</title></svelte:head>
+<svelte:head><title>{title} · Pembukuan Online</title></svelte:head>
 
 <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
 	<div class="min-w-0">

@@ -6,7 +6,7 @@
 	const copy = $derived(errorCopy(status, message));
 </script>
 
-<svelte:head><title>{status === 404 ? '404' : copy.title} · pena</title></svelte:head>
+<svelte:head><title>{status === 404 ? '404' : copy.title} · Pembukuan Online</title></svelte:head>
 
 <div class="flex flex-col items-center gap-3 px-4 py-16 text-center">
 	<p aria-hidden="true" class="text-8xl font-black tracking-tight text-green sm:text-9xl">{status}</p>

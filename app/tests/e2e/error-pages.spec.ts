@@ -14,7 +14,7 @@ test('anonymous unknown URL shows branded 404 without stack traces', async ({ pa
 	expect(res?.status()).toBe(404);
 	await expect(page.getByRole('heading', { name: 'Halaman tidak ditemukan' })).toBeVisible();
 	await expect(page.getByRole('link', { name: 'Kembali ke Dashboard' })).toBeVisible();
-	await expect(page).toHaveTitle('404 · pena');
+	await expect(page).toHaveTitle('404 · Pembukuan Online');
 	await expect(page.getByText('Halaman yang Anda cari tidak ada atau sudah dipindahkan.')).toBeVisible();
 	expect(await page.locator('body').innerText()).not.toContain('Terjadi kesalahan di server');
 	const text = await page.locator('body').innerText();
@@ -34,7 +34,7 @@ test('logged-in unknown URL shows branded root 404', async ({ page }) => {
 	const res = await page.goto('/halaman-tidak-ada');
 	expect(res?.status()).toBe(404);
 	await expect(page.getByRole('heading', { name: 'Halaman tidak ditemukan' })).toBeVisible();
-	await expect(page.getByText('pena.', { exact: true })).toBeVisible();
+	await expect(page.getByText('Pembukuan Online', { exact: true })).toBeVisible();
 	await expect(page.getByText('Halaman yang Anda cari tidak ada atau sudah dipindahkan.')).toBeVisible();
 	expect(await page.locator('body').innerText()).not.toContain('Terjadi kesalahan di server');
 });
