@@ -29,6 +29,14 @@
 	const toUpdate = (v: CompanyForm) => ({ name: v.name, npwp: v.npwp || null, address: v.address || null, bankAccountId: v.bankAccountId || null });
 	const form = new FormState(UpdateCompanyInput, initialForm(), toUpdate);
 	const newForm = new FormState(CreateCompanyInput, { name: '', coaTemplate: 'general' as CoaTemplateId });
+	// Halaman tidak di-remount saat perusahaan aktif berganti (pathname sama), jadi isi ulang form per perusahaan.
+	let formCompanyId = data.company?.id;
+	$effect(() => {
+		const id = data.company?.id;
+		if (id === formCompanyId) return;
+		formCompanyId = id;
+		form.reset(initialForm());
+	});
 	let message = $state<string | null>(null);
 	let errorMessage = $state<string | null>(null);
 	let logoFileInput = $state<HTMLInputElement | null>(null);
