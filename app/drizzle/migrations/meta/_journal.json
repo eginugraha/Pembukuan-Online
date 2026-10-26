@@ -106,6 +106,13 @@
       "when": 1793039131868,
       "tag": "0014_reflective_slayback",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1793058596523,
+      "tag": "0015_warm_warlock",
+      "breakpoints": true
     }
   ]
 }

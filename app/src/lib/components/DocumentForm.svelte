@@ -54,14 +54,15 @@
 		contactId: v.contactId,
 		issueDate: v.issueDate,
 		...(isPo ? { expectedDate: v.expectedDate || undefined } : { dueDate: v.dueDate || undefined, discount: v.discount || undefined }),
-		...(isPo ? {} : { subject: v.subject || undefined, currency: v.currency as Currency }),
+		subject: v.subject || undefined,
+		currency: v.currency as Currency,
 		taxRate: v.taxRate || undefined,
 		notes: v.notes || undefined,
 		lines: lines.map(({ description, quantity, unitPrice }) => ({ description, quantity, unitPrice }))
 	});
 	// svelte-ignore state_referenced_locally
 	const form = new FormState(schema, { ...EMPTY, ...(initial ? { ...initial, expectedDate: initial.expectedDate ?? '', dueDate: initial.dueDate ?? '', discount: initial.discount ?? '', subject: initial.subject ?? '', currency: initial.currency ?? 'IDR' } : {}) }, toInput);
-	const money = (v: Parameters<typeof formatAmount>[0]) => formatAmount(v, isPo ? 'IDR' : form.values.currency);
+	const money = (v: Parameters<typeof formatAmount>[0]) => formatAmount(v, form.values.currency);
 	let errorMessage = $state<string | null>(null);
 	let busy = $state(false);
 
@@ -137,11 +138,9 @@
 				<FormField id="doc-issue-date" label={COPY.date} error={form.error('issueDate')}>
 					<DateField bind:value={form.values.issueDate} {...form.attrs('issueDate', 'doc-issue-date')} />
 				</FormField>
-				{#if !isPo}
-					<FormField id="doc-subject" label="Perihal (opsional)" error={form.error('subject')} class="sm:col-span-3">
-						<Input bind:value={form.values.subject} {...form.attrs('subject', 'doc-subject')} />
-					</FormField>
-				{/if}
+				<FormField id="doc-subject" label="Perihal (opsional)" error={form.error('subject')} class="sm:col-span-3">
+					<Input bind:value={form.values.subject} {...form.attrs('subject', 'doc-subject')} />
+				</FormField>
 				{#if isPo}
 					<FormField id="doc-expected-date" label="Perkiraan tiba (opsional)" error={form.error('expectedDate')}>
 						<DateField bind:value={form.values.expectedDate} {...form.attrs('expectedDate', 'doc-expected-date')} />
@@ -151,10 +150,10 @@
 						<DateField bind:value={form.values.dueDate} {...form.attrs('dueDate', 'doc-due-date')} />
 					</FormField>
 				{/if}
+				<FormField id="doc-currency" label="Mata uang" error={form.error('currency')}>
+					<SimpleSelect bind:value={form.values.currency} options={CURRENCIES.map((c) => ({ value: c, label: c }))} {...form.attrs('currency', 'doc-currency')} />
+				</FormField>
 				{#if !isPo}
-					<FormField id="doc-currency" label="Mata uang" error={form.error('currency')}>
-						<SimpleSelect bind:value={form.values.currency} options={CURRENCIES.map((c) => ({ value: c, label: c }))} {...form.attrs('currency', 'doc-currency')} />
-					</FormField>
 					<FormField id="doc-discount" label="Diskon {form.values.currency === 'USD' ? 'USD' : 'Rp'} (opsional)" error={form.error('discount')}>
 						<input
 							class="{inputClass} text-right"

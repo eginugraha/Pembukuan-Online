@@ -13,6 +13,7 @@ export interface POListRow {
 	id: string;
 	poNo: string;
 	issueDate: string;
+	currency: string;
 	total: string;
 	contactId: string;
 	contactName: string;
@@ -32,6 +33,8 @@ export interface PODetail {
 	companyId: string;
 	contactId: string;
 	poNo: string;
+	subject: string | null;
+	currency: string;
 	issueDate: string;
 	expectedDate: string | null;
 	subtotal: string;
@@ -81,6 +84,8 @@ export async function createPurchaseOrder(companyId: string, userId: string, inp
 				companyId,
 				contactId: input.contactId,
 				poNo,
+				subject: input.subject || null,
+				currency: input.currency ?? 'IDR',
 				issueDate: input.issueDate,
 				expectedDate: input.expectedDate ?? null,
 				subtotal: totals.subtotal,
@@ -110,6 +115,8 @@ export async function updatePurchaseOrder(companyId: string, poId: string, input
 			.update(purchaseOrders)
 			.set({
 				contactId: input.contactId,
+				subject: input.subject || null,
+				...(input.currency ? { currency: input.currency } : {}),
 				issueDate: input.issueDate,
 				expectedDate: input.expectedDate ?? null,
 				subtotal: totals.subtotal,
@@ -140,6 +147,7 @@ export async function listPurchaseOrders(companyId: string): Promise<POListRow[]
 			id: purchaseOrders.id,
 			poNo: purchaseOrders.poNo,
 			issueDate: purchaseOrders.issueDate,
+			currency: purchaseOrders.currency,
 			total: purchaseOrders.total,
 			contactId: purchaseOrders.contactId,
 			contactName: contacts.name

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CURRENCIES } from '../currency';
 import { isoDate, moneyString, optionalText, requiredId, requiredText } from './common';
 
 const positiveAmount = moneyString.refine((v) => Number(v) > 0, 'Jumlah harus lebih dari 0');
@@ -20,6 +21,8 @@ export const CreatePurchaseOrderInput = z.object({
 		.regex(/^\d{1,3}(\.\d{1,2})?$/, 'Tarif PPN tidak valid')
 		.refine((v) => Number(v) <= 100, 'Tarif PPN maksimal 100%')
 		.optional(),
+	subject: optionalText('Perihal', 200),
+	currency: z.enum(CURRENCIES, { error: 'Mata uang tidak valid' }).optional(),
 	notes: optionalText('Catatan', 500),
 	lines: z.array(POLineInput).min(1, 'Isi minimal satu baris')
 });

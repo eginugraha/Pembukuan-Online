@@ -441,6 +441,8 @@ export const purchaseOrders = pgTable(
 		companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
 		contactId: uuid('contact_id').notNull().references(() => contacts.id),
 		poNo: varchar('po_no', { length: 50 }).notNull(),
+		subject: text('subject'),
+		currency: varchar('currency', { length: 3 }).notNull().default('IDR'),
 		issueDate: day('issue_date').notNull(),
 		expectedDate: day('expected_date'),
 		subtotal: money('subtotal').notNull(),

@@ -5,14 +5,15 @@ import type { InvoiceCompanyData } from '$lib/server/reports/company';
 import type { ContactRow } from './contacts';
 import type { InvoiceDetail } from './invoices';
 import type { PaymentReceiptDetail } from './payment-receipts';
+import type { PODetail } from './purchase-orders';
 
 /*
  * PDF invoice sesuai mockup revisi 9 (docs/superpowers/specs/assets/2026-10-26-invoice-mockup.html).
  * Mockup memakai kertas 640px dengan padding 30px; margin A4 di sini (`INVOICE_MARGIN`) diambil
  * dengan perbandingan yang sama, dan ukuran huruf di mockup dikali ±0,85 untuk mendapat pt.
  *
- * Invoice dan payment receipt memakai satu renderer (`drawDocumentPdf`); keduanya hanya membentuk
- * `DocumentModel`. Receipt menambah paragraf bukti pembayaran dan stempel LUNAS
+ * Invoice, purchase order, dan payment receipt memakai satu renderer (`drawDocumentPdf`); ketiganya
+ * hanya membentuk `DocumentModel`. Receipt menambah paragraf bukti pembayaran dan stempel LUNAS
  * (docs/superpowers/specs/assets/2026-10-26-advance-receipt-lunas-stamp-mockup.html).
  */
 
@@ -111,6 +112,10 @@ interface DocumentModel {
 	/** Baris label/nilai di kanan atas, berurutan. */
 	meta: Array<{ id: string; en: string; value: string }>;
 	subject: string | null;
+	/** Judul kolom pihak lawan di kanan (mis. "DITAGIHKAN KEPADA / BILL TO"). */
+	partyLabel: { id: string; en: string };
+	/** Judul tabel rincian (mis. "RINCIAN TAGIHAN / Billing Summary"). */
+	tableTitle: { id: string; en: string };
 	contact: DocumentContact;
 	lines: Array<{ description: string; quantity: MoneyValue; unitPrice: MoneyValue; amount: MoneyValue }>;
 	currency: string;
@@ -129,6 +134,11 @@ interface DocumentModel {
 	stamp: boolean;
 }
 
+const BILLING_LABELS = {
+	partyLabel: { id: 'DITAGIHKAN KEPADA', en: 'BILL TO' },
+	tableTitle: { id: 'RINCIAN TAGIHAN', en: 'Billing Summary' }
+};
+
 export function drawInvoicePdf(
 	doc: PDFKit.PDFDocument,
 	d: { company: InvoiceCompanyData; contact: ContactRow; invoice: InvoiceDetail }
@@ -144,6 +154,7 @@ export function drawInvoicePdf(
 		subtitle: 'Tagihan',
 		meta,
 		subject: invoice.subject,
+		...BILLING_LABELS,
 		contact: d.contact,
 		lines: invoice.lines,
 		currency: invoice.currency,
@@ -155,6 +166,40 @@ export function drawInvoicePdf(
 		notes: invoice.notes,
 		paymentCard: true,
 		signatureLabel: 'Approved by,',
+		paragraph: null,
+		stamp: false
+	});
+}
+
+/** PDF purchase order: tata letak invoice tanpa kartu pembayaran dan tanpa diskon; kontaknya vendor. */
+export function drawPurchaseOrderPdf(
+	doc: PDFKit.PDFDocument,
+	d: { company: InvoiceCompanyData; contact: ContactRow; po: PODetail }
+): void {
+	const { po } = d;
+	const meta = [
+		{ id: 'Nomor PO', en: 'PO Number', value: po.poNo },
+		{ id: 'Tanggal', en: 'Issue Date', value: formatLongDate(po.issueDate) }
+	];
+	if (po.expectedDate) meta.push({ id: 'Perkiraan Tiba', en: 'Expected Date', value: formatLongDate(po.expectedDate) });
+	drawDocumentPdf(doc, d.company, {
+		title: 'PURCHASE ORDER',
+		subtitle: 'Pesanan Pembelian',
+		meta,
+		subject: po.subject,
+		partyLabel: { id: 'DIPESAN KEPADA', en: 'VENDOR' },
+		tableTitle: { id: 'RINCIAN PESANAN', en: 'Order Summary' },
+		contact: d.contact,
+		lines: po.lines,
+		currency: po.currency,
+		subtotal: po.subtotal,
+		discount: '0',
+		taxRate: po.taxRate,
+		taxAmount: po.taxAmount,
+		total: po.total,
+		notes: po.notes,
+		paymentCard: false,
+		signatureLabel: 'Authorized by,',
 		paragraph: null,
 		stamp: false
 	});
@@ -174,6 +219,7 @@ export function drawReceiptPdf(doc: PDFKit.PDFDocument, d: { company: InvoiceCom
 			{ id: 'Nomor Invoice', en: 'Invoice Number', value: receipt.invoiceNo }
 		],
 		subject: receipt.subject,
+		...BILLING_LABELS,
 		contact: receipt.contact,
 		lines: receipt.lines,
 		currency: receipt.currency,
@@ -365,7 +411,7 @@ function drawDocumentPdf(doc: PDFKit.PDFDocument, company: InvoiceCompanyData, m
 			sy += para(m.subject, L, sy, W * 0.52, { font: BOLD, size: 9 });
 		}
 		let by = y;
-		by += tag('DITAGIHKAN KEPADA / BILL TO', RX, by);
+		by += tag(`${m.partyLabel.id} / ${m.partyLabel.en}`, RX, by);
 		by += para(contact.name, RX, by, RIGHT_COL_W, { font: BOLD, size: 9 });
 		if (contact.attention) {
 			const attn = [contact.attention, contact.position].filter(Boolean).join(', ');
@@ -418,7 +464,7 @@ function drawDocumentPdf(doc: PDFKit.PDFDocument, company: InvoiceCompanyData, m
 	// Judul + header tabel + baris pertama harus muat bersama; bila tidak, pindah halaman SEBELUM judul.
 	const headingH = lineH(BOLD, 10) + 5;
 	if (y + headingH + headerH + rowH(m.lines[0]?.description ?? '') > BOTTOM) newPage();
-	y += biLabel('RINCIAN TAGIHAN', 'Billing Summary', L, y, { size: 10, enSize: 8.5 }) + 5;
+	y += biLabel(m.tableTitle.id, m.tableTitle.en, L, y, { size: 10, enSize: 8.5 }) + 5;
 	drawTableHeader();
 
 	for (const l of m.lines) {

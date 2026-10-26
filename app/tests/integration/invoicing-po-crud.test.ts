@@ -37,6 +37,18 @@ test('update replaces header, expected date and all lines and keeps the number',
 	expect(await db.select().from(purchaseOrderLines).where(eq(purchaseOrderLines.poId, id))).toHaveLength(1);
 });
 
+test('currency defaults to IDR; subject and currency are saved, and an update without currency keeps it', async () => {
+	const { companyId, userId, contactId } = await setup();
+	const plain = await createPurchaseOrder(companyId, userId, { contactId, issueDate: '2026-10-01', lines: [line('A')] });
+	expect(await getPurchaseOrder(companyId, plain.id)).toMatchObject({ currency: 'IDR', subject: null });
+
+	const { id } = await createPurchaseOrder(companyId, userId, { contactId, issueDate: '2026-10-01', subject: 'Server', currency: 'USD', lines: [line('A')] });
+	expect(await getPurchaseOrder(companyId, id)).toMatchObject({ currency: 'USD', subject: 'Server' });
+	await updatePurchaseOrder(companyId, id, { contactId, issueDate: '2026-10-01', lines: [line('A')] });
+	expect(await getPurchaseOrder(companyId, id)).toMatchObject({ currency: 'USD', subject: null });
+	expect((await listPurchaseOrders(companyId)).find((r) => r.id === id)?.currency).toBe('USD');
+});
+
 test('delete soft-deletes: gone from list/get, repeat delete and update give 404, number is not reused', async () => {
 	const { companyId, userId, contactId } = await setup();
 	const { id } = await createPurchaseOrder(companyId, userId, { contactId, issueDate: '2026-10-01', lines: [line('A')] });

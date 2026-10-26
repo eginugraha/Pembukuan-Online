@@ -155,12 +155,18 @@ test('create, edit, and delete a purchase order', async ({ page }) => {
 	await page.keyboard.press('Enter');
 	await page.locator('[role="spinbutton"]').first().click();
 	await page.keyboard.type(todayDdmmyyyy());
+	await page.getByLabel('Perihal').fill('Perihal PO E2E');
+	await page.getByLabel('Mata uang').click();
+	await page.getByRole('option', { name: 'USD' }).click();
 	await page.getByLabel('Keterangan baris 1').fill('Sewa server E2E');
 	await page.getByLabel('Kuantitas baris 1').fill('2');
-	await page.getByLabel('Harga satuan baris 1').fill('500000');
+	await page.getByLabel('Harga satuan baris 1').fill('500');
 	await page.getByRole('button', { name: 'Simpan' }).click();
 	await expect(page).toHaveURL(/\/invoicing\/purchase-orders\/[0-9a-f-]{36}$/);
 	await expect(page.getByRole('heading', { name: /^001\/E2E-[A-Z0-9]+\/PO\// })).toBeVisible();
+	await expect(page.getByText('Perihal PO E2E')).toBeVisible();
+	// Mata uang USD: 2 × 500 → $1,000.00.
+	await expect(page.getByText('$1,000.00').first()).toBeVisible();
 
 	await page.getByRole('link', { name: 'Ubah' }).click();
 	await page.getByLabel('Keterangan baris 1').fill('Sewa server E2E (revisi)');

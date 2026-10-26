@@ -13,6 +13,8 @@
 	docId={po.id}
 	initial={{
 		contactId: po.contactId,
+		subject: po.subject ?? '',
+		currency: po.currency,
 		issueDate: po.issueDate,
 		expectedDate: po.expectedDate ?? '',
 		taxRate: po.taxRate ?? '',

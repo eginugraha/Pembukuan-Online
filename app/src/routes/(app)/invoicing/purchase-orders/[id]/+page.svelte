@@ -7,7 +7,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { formatDate } from '$lib/dates';
-	import { formatIdr } from '$lib/money';
+	import { formatAmount } from '$lib/currency';
 	import { roleAtLeast } from '$lib/roles';
 
 	let { data } = $props();
@@ -48,6 +48,12 @@
 			<p class="text-muted-foreground">Tanggal PO</p>
 			<p class="font-medium">{formatDate(data.po.issueDate)}</p>
 		</div>
+		{#if data.po.subject}
+			<div class="sm:col-span-3">
+				<p class="text-muted-foreground">Perihal</p>
+				<p class="font-medium">{data.po.subject}</p>
+			</div>
+		{/if}
 		<div>
 			<p class="text-muted-foreground">Pemasok</p>
 			<p class="font-medium">{data.contact.name}</p>
@@ -63,7 +69,7 @@
 		{/if}
 		<div>
 			<p class="text-muted-foreground">Total</p>
-			<p class="font-medium tabular-nums">{formatIdr(data.po.total)}</p>
+			<p class="font-medium tabular-nums">{formatAmount(data.po.total, data.po.currency)}</p>
 		</div>
 	</Card.Content>
 </Card.Root>
@@ -83,8 +89,8 @@
 				<Table.Row>
 					<Table.Cell>{line.description}</Table.Cell>
 					<Table.Cell class="text-right tabular-nums">{line.quantity}</Table.Cell>
-					<Table.Cell class="text-right tabular-nums">{formatIdr(line.unitPrice)}</Table.Cell>
-					<Table.Cell class="text-right tabular-nums">{formatIdr(line.amount)}</Table.Cell>
+					<Table.Cell class="text-right tabular-nums">{formatAmount(line.unitPrice, data.po.currency)}</Table.Cell>
+					<Table.Cell class="text-right tabular-nums">{formatAmount(line.amount, data.po.currency)}</Table.Cell>
 				</Table.Row>
 			{/each}
 		</Table.Body>
@@ -92,9 +98,9 @@
 </div>
 
 <div class="mt-4 flex flex-col items-end gap-1 text-sm">
-	<div class="flex w-64 justify-between"><span class="text-muted-foreground">Subtotal</span><span class="tabular-nums">{formatIdr(data.po.subtotal)}</span></div>
-	<div class="flex w-64 justify-between"><span class="text-muted-foreground">PPN</span><span class="tabular-nums">{formatIdr(data.po.taxAmount)}</span></div>
-	<div class="flex w-64 justify-between font-semibold"><span>Total</span><span class="tabular-nums">{formatIdr(data.po.total)}</span></div>
+	<div class="flex w-64 justify-between"><span class="text-muted-foreground">Subtotal</span><span class="tabular-nums">{formatAmount(data.po.subtotal, data.po.currency)}</span></div>
+	<div class="flex w-64 justify-between"><span class="text-muted-foreground">PPN</span><span class="tabular-nums">{formatAmount(data.po.taxAmount, data.po.currency)}</span></div>
+	<div class="flex w-64 justify-between font-semibold"><span>Total</span><span class="tabular-nums">{formatAmount(data.po.total, data.po.currency)}</span></div>
 </div>
 
 {#if data.po.notes}
