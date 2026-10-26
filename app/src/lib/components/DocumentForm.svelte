@@ -18,14 +18,21 @@
 	import { inputClass } from '$lib/ui';
 
 	type Line = { description: string; quantity: string; unitPrice: string };
-	type Initial = { contactId: string; issueDate: string; expectedDate?: string; dueDate?: string; discount?: string; taxRate: string; notes: string; lines: Line[] };
+	type Initial = { contactId: string; subject?: string; issueDate: string; expectedDate?: string; dueDate?: string; discount?: string; taxRate: string; notes: string; lines: Line[] };
 
 	let {
 		kind,
 		contacts,
+		companyCode = null,
 		docId,
 		initial
-	}: { kind: 'invoice' | 'po'; contacts: { id: string; name: string }[]; docId?: string; initial?: Initial } = $props();
+	}: {
+		kind: 'invoice' | 'po';
+		contacts: { id: string; name: string; code?: string | null }[];
+		companyCode?: string | null;
+		docId?: string;
+		initial?: Initial;
+	} = $props();
 
 	// Jenis dokumen dan nilai awal bersifat tetap selama komponen hidup (rute berganti = komponen baru).
 	// svelte-ignore state_referenced_locally
@@ -38,19 +45,25 @@
 	const contactOptions = $derived(contacts.map((c) => ({ value: c.id, label: c.name })));
 
 	// --- Field header ---
-	const EMPTY = { contactId: '', issueDate: '', expectedDate: '', dueDate: '', discount: '', taxRate: '', notes: '' };
+	const EMPTY = { contactId: '', subject: '', issueDate: '', expectedDate: '', dueDate: '', discount: '', taxRate: '', notes: '' };
 	const toInput = (v: typeof EMPTY) => ({
 		contactId: v.contactId,
 		issueDate: v.issueDate,
 		...(isPo ? { expectedDate: v.expectedDate || undefined } : { dueDate: v.dueDate || undefined, discount: v.discount || undefined }),
+		...(isPo ? {} : { subject: v.subject || undefined }),
 		taxRate: v.taxRate || undefined,
 		notes: v.notes || undefined,
 		lines: lines.map(({ description, quantity, unitPrice }) => ({ description, quantity, unitPrice }))
 	});
 	// svelte-ignore state_referenced_locally
-	const form = new FormState(schema, { ...EMPTY, ...(initial ? { ...initial, expectedDate: initial.expectedDate ?? '', dueDate: initial.dueDate ?? '', discount: initial.discount ?? '' } : {}) }, toInput);
+	const form = new FormState(schema, { ...EMPTY, ...(initial ? { ...initial, expectedDate: initial.expectedDate ?? '', dueDate: initial.dueDate ?? '', discount: initial.discount ?? '', subject: initial.subject ?? '' } : {}) }, toInput);
 	let errorMessage = $state<string | null>(null);
 	let busy = $state(false);
+
+	// Peringatan kode hanya saat membuat; mengubah dokumen tidak memeriksa kode.
+	const missingCompanyCode = $derived(!docId && !companyCode);
+	const selectedContact = $derived(contacts.find((c) => c.id === form.values.contactId));
+	const missingContactCode = $derived(!docId && !!selectedContact && !selectedContact.code);
 
 	// --- Baris: error per baris dihitung terhadap skema satu baris, bukan seluruh array ---
 	// svelte-ignore state_referenced_locally
@@ -119,6 +132,11 @@
 				<FormField id="doc-issue-date" label={COPY.date} error={form.error('issueDate')}>
 					<DateField bind:value={form.values.issueDate} {...form.attrs('issueDate', 'doc-issue-date')} />
 				</FormField>
+				{#if !isPo}
+					<FormField id="doc-subject" label="Perihal (opsional)" error={form.error('subject')} class="sm:col-span-3">
+						<Input bind:value={form.values.subject} {...form.attrs('subject', 'doc-subject')} />
+					</FormField>
+				{/if}
 				{#if isPo}
 					<FormField id="doc-expected-date" label="Perkiraan tiba (opsional)" error={form.error('expectedDate')}>
 						<DateField bind:value={form.values.expectedDate} {...form.attrs('expectedDate', 'doc-expected-date')} />
@@ -236,7 +254,18 @@
 				</Alert.Root>
 			{/if}
 
-			<Button type="submit" disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan'}</Button>
+			{#if missingCompanyCode}
+				<Alert.Root variant="destructive">
+					<Alert.Description>Kode perusahaan belum diisi. <a href="/settings/company" class="underline">Isi di Pengaturan Perusahaan</a></Alert.Description>
+				</Alert.Root>
+			{/if}
+			{#if missingContactCode}
+				<Alert.Root variant="destructive">
+					<Alert.Description>Kontak ini belum punya kode. <a href="/invoicing/contacts" class="underline">Isi kode di halaman Kontak</a></Alert.Description>
+				</Alert.Root>
+			{/if}
+
+			<Button type="submit" disabled={busy || missingCompanyCode || missingContactCode}>{busy ? 'Menyimpan…' : 'Simpan'}</Button>
 		</form>
 	</Card.Content>
 </Card.Root>

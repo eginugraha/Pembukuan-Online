@@ -68,6 +68,10 @@
 	</Card.Content>
 </Card.Root>
 
+{#if data.invoice.subject}
+	<p class="mb-4 text-sm"><span class="text-muted-foreground">Perihal:</span> <span class="font-medium">{data.invoice.subject}</span></p>
+{/if}
+
 <div class="panel px-2 py-1">
 	<Table.Root>
 		<Table.Header>

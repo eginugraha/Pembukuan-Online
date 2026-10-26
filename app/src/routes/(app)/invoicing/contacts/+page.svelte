@@ -16,6 +16,7 @@
 	type Contact = (typeof data.contacts)[number];
 	const CONTACT_COLUMNS: Column<Contact>[] = [
 		{ key: 'name', label: 'Nama', sortable: true, searchable: true, text: (c) => c.name },
+		{ key: 'code', label: 'Kode', sortable: true, searchable: true, text: (c) => c.code ?? '' },
 		{ key: 'kind', label: 'Jenis', sortable: true, text: (c) => KIND_LABELS[c.kind] },
 		{ key: 'attention', label: 'Attention', searchable: true, text: (c) => [c.attention, c.position].filter(Boolean).join(' ') },
 		{ key: 'email', label: 'Email', searchable: true, text: (c) => c.email ?? '' },
@@ -87,6 +88,8 @@
 		{#if col.key === 'name'}
 			{c.name}
 			{#if !c.isActive}<Badge variant="outline" class="ml-2">Nonaktif</Badge>{/if}
+		{:else if col.key === 'code'}
+			{c.code ?? '—'}
 		{:else if col.key === 'kind'}
 			{KIND_LABELS[c.kind]}
 		{:else if col.key === 'attention'}

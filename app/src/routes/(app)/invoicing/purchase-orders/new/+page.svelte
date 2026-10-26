@@ -6,4 +6,4 @@
 </script>
 
 <PageHeader title="Buat Purchase Order" description="Nomor PO dibuat otomatis saat disimpan." />
-<DocumentForm kind="po" contacts={data.contacts} />
+<DocumentForm kind="po" contacts={data.contacts} companyCode={data.companyCode} />

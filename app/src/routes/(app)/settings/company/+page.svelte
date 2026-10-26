@@ -23,10 +23,34 @@
 		name: data.company?.name ?? '',
 		npwp: data.company?.npwp ?? '',
 		address: data.company?.address ?? '',
-		bankAccountId: data.company?.bankAccountId ?? ''
+		bankAccountId: data.company?.bankAccountId ?? '',
+		code: data.company?.code ?? '',
+		email: data.company?.email ?? '',
+		phone: data.company?.phone ?? '',
+		bankName: data.company?.bankName ?? '',
+		bankAccountNo: data.company?.bankAccountNo ?? '',
+		bankAccountHolder: data.company?.bankAccountHolder ?? '',
+		swiftCode: data.company?.swiftCode ?? '',
+		signerName: data.company?.signerName ?? '',
+		signerTitle: data.company?.signerTitle ?? ''
 	});
 	type CompanyForm = ReturnType<typeof initialForm>;
-	const toUpdate = (v: CompanyForm) => ({ name: v.name, npwp: v.npwp || null, address: v.address || null, bankAccountId: v.bankAccountId || null });
+	// Field baru dikirim sebagai string (kosong = hapus), sesuai kontrak updateCompany.
+	const toUpdate = (v: CompanyForm) => ({
+		name: v.name,
+		npwp: v.npwp || null,
+		address: v.address || null,
+		bankAccountId: v.bankAccountId || null,
+		code: v.code,
+		email: v.email,
+		phone: v.phone,
+		bankName: v.bankName,
+		bankAccountNo: v.bankAccountNo,
+		bankAccountHolder: v.bankAccountHolder,
+		swiftCode: v.swiftCode,
+		signerName: v.signerName,
+		signerTitle: v.signerTitle
+	});
 	const form = new FormState(UpdateCompanyInput, initialForm(), toUpdate);
 	const newForm = new FormState(CreateCompanyInput, { name: '', coaTemplate: 'general' as CoaTemplateId });
 	// Halaman tidak di-remount saat perusahaan aktif berganti (pathname sama), jadi isi ulang form per perusahaan.
@@ -90,6 +114,58 @@
 			errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan';
 		} finally {
 			logoBusy = false;
+		}
+	}
+
+	// Tanda tangan / watermark: file mentah, tanpa crop.
+	type AssetKind = 'signature' | 'watermark';
+	const ASSETS: { kind: AssetKind; title: string; label: string; urlKey: 'signatureUrl' | 'watermarkUrl' }[] = [
+		{ kind: 'signature', title: 'Tanda tangan', label: 'tanda tangan', urlKey: 'signatureUrl' },
+		{ kind: 'watermark', title: 'Watermark', label: 'watermark', urlKey: 'watermarkUrl' }
+	];
+	const ASSET_MAX_BYTES = 512 * 1024;
+	let assetBusy = $state(false);
+	let assetInputs = $state<Record<AssetKind, HTMLInputElement | null>>({ signature: null, watermark: null });
+
+	async function onPickAsset(kind: AssetKind, label: string, e: Event & { currentTarget: HTMLInputElement }) {
+		const file = e.currentTarget.files?.[0];
+		e.currentTarget.value = '';
+		if (!file) return;
+		message = errorMessage = null;
+		if (!AVATAR_ACCEPT.includes(file.type)) {
+			errorMessage = `Gambar ${label} harus berformat JPG, PNG, atau WebP`;
+			return;
+		}
+		if (file.size > ASSET_MAX_BYTES) {
+			errorMessage = `Ukuran gambar ${label} maksimal 512 KB`;
+			return;
+		}
+		assetBusy = true;
+		try {
+			const body = new FormData();
+			body.append('file', file);
+			const res = await fetch(`/api/companies/${data.company?.id}/assets/${kind}`, { method: 'PUT', body });
+			if (!res.ok) throw new Error((await res.json().catch(() => null))?.error?.message ?? `Gagal mengunggah ${label}`);
+			message = `Gambar ${label} diperbarui.`;
+			await invalidateAll();
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan';
+		} finally {
+			assetBusy = false;
+		}
+	}
+
+	async function removeAsset(kind: AssetKind, label: string) {
+		assetBusy = true;
+		message = errorMessage = null;
+		try {
+			await apiFetch(`/api/companies/${data.company?.id}/assets/${kind}`, { method: 'DELETE' });
+			message = `Gambar ${label} dihapus.`;
+			await invalidateAll();
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan';
+		} finally {
+			assetBusy = false;
 		}
 	}
 
@@ -194,6 +270,25 @@
 	<LogoCropDialog file={pickedLogoFile} onconfirm={onConfirmLogo} oncancel={onCancelLogo} />
 {/if}
 
+{#each ASSETS as a (a.kind)}
+	{@const url = data.company[a.urlKey]}
+	<Card.Root class="mb-6 max-w-xl">
+		<Card.Header><Card.Title>{a.title}</Card.Title><Card.Description>PNG, JPG, atau WebP, maksimal 512 KB. Dipakai di PDF invoice.</Card.Description></Card.Header>
+		<Card.Content class="flex flex-wrap items-center gap-5">
+			{#if url}
+				<img src={url} alt="Pratinjau {a.label}" class="h-16 max-w-40 rounded-lg bg-chip-fixed object-contain" />
+			{/if}
+			<div class="flex flex-wrap gap-2">
+				<input bind:this={assetInputs[a.kind]} type="file" accept={AVATAR_ACCEPT.join(',')} class="sr-only" aria-label="Pilih gambar {a.label}" onchange={(e) => onPickAsset(a.kind, a.label, e)} />
+				<Button onclick={() => assetInputs[a.kind]?.click()} disabled={assetBusy}>{url ? `Ganti ${a.title}` : `Unggah ${a.title}`}</Button>
+				{#if url}
+					<Button variant="ghost" onclick={() => removeAsset(a.kind, a.label)} disabled={assetBusy}>Hapus {a.title}</Button>
+				{/if}
+			</div>
+		</Card.Content>
+	</Card.Root>
+{/each}
+
 <Card.Root class="max-w-xl">
 	<Card.Content class="pt-6">
 		<form class="space-y-4" onsubmit={save} novalidate>
@@ -215,6 +310,33 @@
 					emptyText="Tidak ada akun yang cocok"
 					{...form.attrs('bankAccountId', 'c-bank')}
 				/>
+			</FormField>
+			<FormField id="c-code" label="Kode perusahaan" error={form.error('code')}>
+				<Input bind:value={form.values.code} placeholder="mis. UJI" autocapitalize="characters" {...form.attrs('code', 'c-code')} />
+			</FormField>
+			<FormField id="c-email" label="Email" error={form.error('email')}>
+				<Input type="email" bind:value={form.values.email} {...form.attrs('email', 'c-email')} />
+			</FormField>
+			<FormField id="c-phone" label="Telepon" error={form.error('phone')}>
+				<Input type="tel" bind:value={form.values.phone} {...form.attrs('phone', 'c-phone')} />
+			</FormField>
+			<FormField id="c-bank-name" label="Nama bank" error={form.error('bankName')}>
+				<Input bind:value={form.values.bankName} {...form.attrs('bankName', 'c-bank-name')} />
+			</FormField>
+			<FormField id="c-bank-no" label="Nomor rekening" error={form.error('bankAccountNo')}>
+				<Input bind:value={form.values.bankAccountNo} {...form.attrs('bankAccountNo', 'c-bank-no')} />
+			</FormField>
+			<FormField id="c-bank-holder" label="Atas nama rekening" error={form.error('bankAccountHolder')}>
+				<Input bind:value={form.values.bankAccountHolder} {...form.attrs('bankAccountHolder', 'c-bank-holder')} />
+			</FormField>
+			<FormField id="c-swift" label="Kode SWIFT" error={form.error('swiftCode')}>
+				<Input bind:value={form.values.swiftCode} {...form.attrs('swiftCode', 'c-swift')} />
+			</FormField>
+			<FormField id="c-signer" label="Nama penanda tangan" error={form.error('signerName')}>
+				<Input bind:value={form.values.signerName} {...form.attrs('signerName', 'c-signer')} />
+			</FormField>
+			<FormField id="c-signer-title" label="Jabatan penanda tangan" error={form.error('signerTitle')}>
+				<Input bind:value={form.values.signerTitle} {...form.attrs('signerTitle', 'c-signer-title')} />
 			</FormField>
 			<Button type="submit">Simpan</Button>
 		</form>

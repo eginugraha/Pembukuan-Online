@@ -18,6 +18,7 @@
 		address: string | null;
 		email: string | null;
 		phone: string | null;
+		code: string | null;
 	};
 
 	let {
@@ -31,7 +32,7 @@
 		{ value: 'VENDOR', label: 'Vendor' },
 		{ value: 'BOTH', label: 'Keduanya' }
 	];
-	const EMPTY = { kind: '', name: '', npwp: '', attention: '', position: '', address: '', email: '', phone: '' };
+	const EMPTY = { kind: '', name: '', npwp: '', attention: '', position: '', address: '', email: '', phone: '', code: '' };
 	// Kolom kosong dikirim sebagai string kosong (bukan undefined) supaya edit bisa mengosongkan isian.
 	const toInput = (v: typeof EMPTY) => ({
 		kind: v.kind || undefined,
@@ -41,7 +42,8 @@
 		position: v.position,
 		address: v.address,
 		email: v.email,
-		phone: v.phone
+		phone: v.phone,
+		code: v.code
 	});
 	const form = new FormState(CreateContactInput, { ...EMPTY }, toInput);
 	let errorMessage = $state<string | null>(null);
@@ -60,7 +62,8 @@
 						position: contact.position ?? '',
 						address: contact.address ?? '',
 						email: contact.email ?? '',
-						phone: contact.phone ?? ''
+						phone: contact.phone ?? '',
+						code: contact.code ?? ''
 					}
 				: { ...EMPTY }
 		);
@@ -96,6 +99,9 @@
 			</FormField>
 			<FormField id="contact-name" label="Nama" error={form.error('name')}>
 				<Input placeholder="mis. PT Mitra Jaya" bind:value={form.values.name} {...form.attrs('name', 'contact-name')} />
+			</FormField>
+			<FormField id="contact-code" label="Kode" error={form.error('code')}>
+				<Input placeholder="mis. PLG" autocapitalize="characters" bind:value={form.values.code} {...form.attrs('code', 'contact-code')} />
 			</FormField>
 			<FormField id="contact-attention" label="Attention (untuk siapa)" error={form.error('attention')}>
 				<Input bind:value={form.values.attention} {...form.attrs('attention', 'contact-attention')} />

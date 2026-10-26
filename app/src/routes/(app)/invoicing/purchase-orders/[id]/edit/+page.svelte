@@ -9,7 +9,7 @@
 <PageHeader title="Ubah Purchase Order" description={po.poNo} crumb={po.poNo} />
 <DocumentForm
 	kind="po"
-	contacts={data.contacts}
+	contacts={data.contacts.map((c) => ({ id: c.id, name: c.name, code: c.code }))}
 	docId={po.id}
 	initial={{
 		contactId: po.contactId,

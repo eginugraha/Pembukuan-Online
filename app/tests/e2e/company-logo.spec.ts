@@ -47,3 +47,11 @@ test('an unreadable file shows a friendly error in the dialog', async ({ page })
 	await page.getByLabel('Pilih logo perusahaan').setInputFiles({ name: 'rusak.png', mimeType: 'image/png', buffer: Buffer.from('bukan gambar') });
 	await expect(page.getByText('Logo tidak bisa dibaca. Coba file lain.')).toBeVisible();
 });
+
+test('upload and remove a signature image without cropping', async ({ page }) => {
+	await page.getByLabel('Pilih gambar tanda tangan').setInputFiles({ name: 'ttd.png', mimeType: 'image/png', buffer: PNG_SMALL });
+	await expect(page.getByText('Gambar tanda tangan diperbarui.')).toBeVisible();
+	await expect(page.getByRole('img', { name: 'Pratinjau tanda tangan' })).toBeVisible();
+	await page.getByRole('button', { name: 'Hapus Tanda tangan' }).click();
+	await expect(page.getByText('Gambar tanda tangan dihapus.')).toBeVisible();
+});
