@@ -9,7 +9,7 @@ export const MAX_LOGO_BYTES = 512 * 1024;
 const startsWith = (b: Uint8Array, sig: number[], offset = 0) => sig.every((v, i) => b[offset + i] === v);
 
 /** Jenis gambar dari magic bytes, bukan dari nama file/Content-Type kiriman klien. */
-function sniffImage(b: Uint8Array): 'image/png' | 'image/jpeg' | 'image/webp' | null {
+export function sniffImage(b: Uint8Array): 'image/png' | 'image/jpeg' | 'image/webp' | null {
 	if (startsWith(b, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return 'image/png';
 	if (startsWith(b, [0xff, 0xd8, 0xff])) return 'image/jpeg';
 	if (startsWith(b, [0x52, 0x49, 0x46, 0x46]) && startsWith(b, [0x57, 0x45, 0x42, 0x50], 8)) return 'image/webp';
