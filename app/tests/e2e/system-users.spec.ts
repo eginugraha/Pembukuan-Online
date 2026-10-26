@@ -11,6 +11,19 @@ test.beforeEach(async ({ page }) => {
 	await expect(page).toHaveURL(/\/dashboard$/);
 });
 
+// A failure after the user was created (or renamed) must not leave it in the DB, or every rerun
+// would fail at the create step with a duplicate email. The email never changes, so match on it.
+test.afterEach(async ({ page }) => {
+	await page.keyboard.press('Escape').catch(() => {});
+	await page.goto('/settings/system-users');
+	const leftover = page.getByRole('button', { name: `Hapus ${EMAIL}` });
+	if (await leftover.isVisible().catch(() => false)) {
+		await leftover.click();
+		await page.getByRole('dialog', { name: 'Hapus pengguna' }).getByRole('button', { name: 'Hapus permanen' }).click();
+		await expect(page.getByRole('row').filter({ hasText: EMAIL })).toHaveCount(0);
+	}
+});
+
 test('super admin creates, edits, assigns, and deletes a user', async ({ page }) => {
 	await page.goto('/settings/system-users');
 	await expect(page.getByRole('heading', { name: 'Semua Pengguna' })).toBeVisible();
