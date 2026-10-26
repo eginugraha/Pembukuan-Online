@@ -13,3 +13,6 @@ export const CreateCompanyInput = CompanyFields.extend({
 });
 export const UpdateCompanyInput = CompanyFields.extend({ bankAccountId: z.uuid('Akun bank tidak valid').nullable().optional() });
 export type UpdateCompanyInput = z.infer<typeof UpdateCompanyInput>;
+
+export const DeleteCompanyInput = z.object({ confirmName: z.string() });
+export type DeleteCompanyInput = z.infer<typeof DeleteCompanyInput>;

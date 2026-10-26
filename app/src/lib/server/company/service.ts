@@ -3,11 +3,11 @@ import { COA_TEMPLATE_IDS } from '../../coa-templates';
 import { assertLeafAccount } from '../accounts/queries';
 import { ApiError, notFound } from '../api';
 import { db } from '../db';
-import { companies } from '../db/schema';
+import { companies, journalEntries } from '../db/schema';
 
-import { CreateCompanyInput, UpdateCompanyInput } from '../../schemas/company';
+import { CreateCompanyInput, DeleteCompanyInput, UpdateCompanyInput } from '../../schemas/company';
 
-export { CreateCompanyInput, UpdateCompanyInput };
+export { CreateCompanyInput, DeleteCompanyInput, UpdateCompanyInput };
 
 export async function getCompany(companyId: string) {
 	const company = await db.query.companies.findFirst({ where: eq(companies.id, companyId) });
@@ -39,5 +39,20 @@ export async function updateCompany(companyId: string, input: UpdateCompanyInput
 			.where(and(eq(companies.id, companyId)))
 			.returning({ id: companies.id });
 		if (updated.length === 0) throw notFound('Perusahaan');
+	});
+}
+
+/** Hapus perusahaan beserta seluruh datanya (semua tabel anak ON DELETE CASCADE). */
+export async function deleteCompany(companyId: string, confirmName: string): Promise<void> {
+	const company = await getCompany(companyId);
+	if (confirmName.trim() !== company.name) {
+		throw new ApiError(422, 'confirm_mismatch', 'Nama perusahaan tidak cocok', undefined, { field: 'confirmName' });
+	}
+	await db.transaction(async (tx) => {
+		// Putus referensi melingkar companies.bank_account_id <-> accounts sebelum cascade.
+		await tx.update(companies).set({ bankAccountId: null }).where(eq(companies.id, companyId));
+		// journal_lines.account_id tidak cascade; hapus jurnal dulu agar penghapusan akun tidak terblokir.
+		await tx.delete(journalEntries).where(eq(journalEntries.companyId, companyId));
+		await tx.delete(companies).where(eq(companies.id, companyId));
 	});
 }
