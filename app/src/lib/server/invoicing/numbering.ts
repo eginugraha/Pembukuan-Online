@@ -28,7 +28,7 @@ export function requireContactCode(code: string | null): string {
 export async function nextDocumentNumber(
 	tx: Tx,
 	companyId: string,
-	o: { kind: 'INV' | 'PO'; issueDate: string; companyCode: string; contactCode: string }
+	o: { kind: 'INV' | 'PO' | 'RCP'; issueDate: string; companyCode: string; contactCode: string }
 ): Promise<string> {
 	const [row] = await tx
 		.insert(documentNumberCounters)

@@ -10,7 +10,7 @@ import { resetDb } from './db';
 
 beforeEach(resetDb);
 
-const o = (kind: 'INV' | 'PO', issueDate: string, contactCode = 'PLG') => ({ kind, issueDate, companyCode: 'UJI', contactCode });
+const o = (kind: 'INV' | 'PO' | 'RCP', issueDate: string, contactCode = 'PLG') => ({ kind, issueDate, companyCode: 'UJI', contactCode });
 const line = { description: 'Jasa', quantity: '1', unitPrice: '1000' };
 
 test('numbers are sequential per company, per kind, per year, starting at 001', async () => {
@@ -22,6 +22,23 @@ test('numbers are sequential per company, per kind, per year, starting at 001', 
 		expect(await nextDocumentNumber(tx, companyId, o('INV', '2027-01-02'))).toBe('001/UJI-PLG/INV/I/2027');
 		expect(await nextDocumentNumber(tx, companyId, o('INV', '2026-05-01', 'ABC'))).toBe('003/UJI-ABC/INV/V/2026');
 	});
+});
+
+test('RCP has its own sequence per company and year, separate from INV and PO', async () => {
+	const { companyId } = await makeCompany();
+	await db.transaction(async (tx) => {
+		expect(await nextDocumentNumber(tx, companyId, o('INV', '2026-04-10'))).toBe('001/UJI-PLG/INV/IV/2026');
+		expect(await nextDocumentNumber(tx, companyId, o('INV', '2026-04-11'))).toBe('002/UJI-PLG/INV/IV/2026');
+		expect(await nextDocumentNumber(tx, companyId, o('INV', '2026-04-12'))).toBe('003/UJI-PLG/INV/IV/2026');
+		expect(await nextDocumentNumber(tx, companyId, o('PO', '2026-04-12'))).toBe('001/UJI-PLG/PO/IV/2026');
+		expect(await nextDocumentNumber(tx, companyId, o('PO', '2026-04-13'))).toBe('002/UJI-PLG/PO/IV/2026');
+		expect(await nextDocumentNumber(tx, companyId, o('RCP', '2026-04-15'))).toBe('001/UJI-PLG/RCP/IV/2026');
+		expect(await nextDocumentNumber(tx, companyId, o('RCP', '2026-04-16'))).toBe('002/UJI-PLG/RCP/IV/2026');
+		expect(await nextDocumentNumber(tx, companyId, o('RCP', '2027-01-02'))).toBe('001/UJI-PLG/RCP/I/2027');
+	});
+	const rows = await db.select().from(documentNumberCounters).where(eq(documentNumberCounters.companyId, companyId));
+	expect(rows.find((r) => r.prefix === 'RCP:v2' && r.year === '2026')?.lastSeq).toBe(2);
+	expect(rows.some((r) => r.prefix === 'RCP:v2' && r.year === '2027')).toBe(true);
 });
 
 test('two companies never share a sequence', async () => {

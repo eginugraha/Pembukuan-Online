@@ -12,7 +12,7 @@ export function formatDocumentNumber(o: {
 	seq: number;
 	companyCode: string;
 	contactCode: string;
-	kind: 'INV' | 'PO';
+	kind: 'INV' | 'PO' | 'RCP';
 	issueDate: string;
 }): string {
 	const [tahun, bulan] = o.issueDate.split('-');
