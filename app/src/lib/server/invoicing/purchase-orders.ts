@@ -5,7 +5,7 @@ import { assertContact } from './contacts';
 import { notFound } from '../api';
 import { db, type Tx } from '../db';
 import { contacts, purchaseOrderLines, purchaseOrders } from '../db/schema';
-import { nextDocumentNumber } from './numbering';
+import { nextDocumentNumber, requireCompanyCode, requireContactCode } from './numbering';
 
 export { CreatePurchaseOrderInput, POLineInput, UpdatePurchaseOrderInput };
 
@@ -66,12 +66,14 @@ async function insertLines(tx: Tx, poId: string, lines: ReturnType<typeof comput
 	);
 }
 
-/** Buat PO: nomor `PO-<tahun>-NNNN` dibuat saat itu juga; tidak ada status dan tidak ada jurnal. */
+/** Buat PO: nomor `NNN/<PERUSAHAAN>-<KONTAK>/PO/<BULAN>/<TAHUN>` dibuat saat itu juga; tidak ada status dan tidak ada jurnal. */
 export async function createPurchaseOrder(companyId: string, userId: string, input: CreatePurchaseOrderInput): Promise<{ id: string }> {
 	return db.transaction(async (tx) => {
-		await assertContact(tx, companyId, input.contactId, 'VENDOR');
+		const contact = await assertContact(tx, companyId, input.contactId, 'VENDOR');
 		const totals = computeTotals(input);
-		const poNo = await nextDocumentNumber(tx, companyId, 'PO', input.issueDate.slice(0, 4));
+		const companyCode = await requireCompanyCode(tx, companyId);
+		const contactCode = requireContactCode(contact.code);
+		const poNo = await nextDocumentNumber(tx, companyId, { kind: 'PO', issueDate: input.issueDate, companyCode, contactCode });
 
 		const [row] = await tx
 			.insert(purchaseOrders)

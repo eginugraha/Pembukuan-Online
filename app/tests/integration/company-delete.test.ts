@@ -40,9 +40,9 @@ async function populate(name: string, userId: string) {
 		{ journalId: je.id, accountId: c.bankAccountId, debit: '1000' },
 		{ journalId: je.id, accountId: await accountIdByCode(c.companyId, '3-1001'), credit: '1000' }
 	]);
-	const { id: contactId } = await createContact(c.companyId, { kind: 'CUSTOMER', name: 'PT Pelanggan' });
+	const { id: contactId } = await createContact(c.companyId, { kind: 'CUSTOMER', name: 'PT Pelanggan', code: 'PLG' });
 	await createInvoice(c.companyId, userId, { contactId, issueDate: '2026-10-01', lines: [{ description: 'Jasa', quantity: '1', unitPrice: '1000' }] });
-	const { id: vendorId } = await createContact(c.companyId, { kind: 'VENDOR', name: 'PT Vendor' });
+	const { id: vendorId } = await createContact(c.companyId, { kind: 'VENDOR', name: 'PT Vendor', code: 'VND' });
 	await createPurchaseOrder(c.companyId, userId, { contactId: vendorId, issueDate: '2026-10-01', lines: [{ description: 'Barang', quantity: '1', unitPrice: '500' }] });
 	await db.insert(fiscalClosings).values({ companyId: c.companyId, periodStart: '2026-01-01', periodEnd: '2026-12-31', retainedEarningsAccountId: modal });
 	await db.insert(companyLogos).values({ companyId: c.companyId, content: Buffer.from('x'), mime: 'image/png' });

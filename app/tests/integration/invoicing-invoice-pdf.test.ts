@@ -19,7 +19,7 @@ test('PDF contains the contact name, invoice number, line description, and total
 	const { companyId } = await makeCompany();
 	const u = await makeUser();
 	await addMember(u.id, companyId, 'viewer');
-	const [contact] = await db.insert(contacts).values({ companyId, kind: 'CUSTOMER', name: 'PT Pelanggan Uji' }).returning();
+	const [contact] = await db.insert(contacts).values({ companyId, kind: 'CUSTOMER', name: 'PT Pelanggan Uji', code: 'PLG' }).returning();
 	const { id } = await createInvoice(companyId, u.id, { contactId: contact.id, issueDate: '2026-10-01', lines: [{ description: 'Jasa konsultasi', quantity: '1', unitPrice: '1500000' }] });
 
 	const res = await GET(fakeEvent({ ctx: await contextFor(u, companyId), path: `/api/invoicing/invoices/${id}/pdf`, params: { id } }) as never);
@@ -27,7 +27,8 @@ test('PDF contains the contact name, invoice number, line description, and total
 	expect(res.headers.get('content-type')).toBe('application/pdf');
 	const text = await textOf(res);
 	expect(text).toContain('PT Pelanggan Uji');
-	expect(text).toContain('INV-2026-0001');
+	expect(text).toContain('001/UJI-PLG/INV/X/2026');
+	expect(res.headers.get('content-disposition')).toBe('attachment; filename="invoice-001-UJI-PLG-INV-X-2026.pdf"');
 	expect(text).toContain('Jasa konsultasi');
 	expect(text).toContain('1.500.000,00');
 });
@@ -36,7 +37,7 @@ test('PDF Kepada block shows Attn line with attention and position under the com
 	const { companyId } = await makeCompany();
 	const u = await makeUser();
 	await addMember(u.id, companyId, 'viewer');
-	const [contact] = await db.insert(contacts).values({ companyId, kind: 'CUSTOMER', name: 'PT Attn Uji', attention: 'Budi Santoso', position: 'Manajer Keuangan' }).returning();
+	const [contact] = await db.insert(contacts).values({ companyId, kind: 'CUSTOMER', name: 'PT Attn Uji', code: 'PLG', attention: 'Budi Santoso', position: 'Manajer Keuangan' }).returning();
 	const { id } = await createInvoice(companyId, u.id, { contactId: contact.id, issueDate: '2026-10-01', lines: [{ description: 'Jasa', quantity: '1', unitPrice: '1000' }] });
 
 	const res = await GET(fakeEvent({ ctx: await contextFor(u, companyId), path: `/api/invoicing/invoices/${id}/pdf`, params: { id } }) as never);
@@ -49,7 +50,7 @@ test('a 60-line invoice breaks onto more than one page, keeping every line and t
 	const { companyId } = await makeCompany();
 	const u = await makeUser();
 	await addMember(u.id, companyId, 'viewer');
-	const [contact] = await db.insert(contacts).values({ companyId, kind: 'CUSTOMER', name: 'PT Panjang' }).returning();
+	const [contact] = await db.insert(contacts).values({ companyId, kind: 'CUSTOMER', name: 'PT Panjang', code: 'PLG' }).returning();
 	const N = 60;
 	const desc = (i: number) => `Baris ke-${String(i).padStart(2, '0')}`;
 	const { id } = await createInvoice(companyId, u.id, {

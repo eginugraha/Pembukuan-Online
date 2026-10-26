@@ -12,16 +12,16 @@ beforeEach(resetDb);
 async function setup() {
 	const { companyId } = await makeCompany();
 	const u = await makeUser();
-	const { id: contactId } = await createContact(companyId, { kind: 'VENDOR', name: 'PT Pemasok' });
+	const { id: contactId } = await createContact(companyId, { kind: 'VENDOR', name: 'PT Pemasok', code: 'PLG' });
 	return { companyId, userId: u.id, contactId };
 }
 const line = (description: string, quantity = '1', unitPrice = '1000000') => ({ description, quantity, unitPrice });
 
-test('create assigns PO-<year of issueDate>-0001, computes totals, and writes no journal', async () => {
+test('create assigns 001/<codes>/PO/<month>/<year of issueDate>, computes totals, and writes no journal', async () => {
 	const { companyId, userId, contactId } = await setup();
 	const { id } = await createPurchaseOrder(companyId, userId, { contactId, issueDate: '2026-10-01', taxRate: '11', lines: [line('Sewa', '2', '500000.50')] });
 	const po = await getPurchaseOrder(companyId, id);
-	expect(po.poNo).toBe('PO-2026-0001');
+	expect(po.poNo).toBe('001/UJI-PLG/PO/X/2026');
 	expect(po).toMatchObject({ subtotal: '1000001.00', taxAmount: '110000.11', total: '1110001.11' });
 	expect(await db.select().from(journalEntries).where(eq(journalEntries.companyId, companyId))).toHaveLength(0);
 });
@@ -31,7 +31,7 @@ test('update replaces header, expected date and all lines and keeps the number',
 	const { id } = await createPurchaseOrder(companyId, userId, { contactId, issueDate: '2026-10-01', expectedDate: '2026-10-20', lines: [line('A'), line('B'), line('C')] });
 	await updatePurchaseOrder(companyId, id, { contactId, issueDate: '2027-01-05', expectedDate: '2027-01-30', notes: 'revisi', lines: [line('Satu-satunya', '3', '100')] });
 	const po = await getPurchaseOrder(companyId, id);
-	expect(po.poNo).toBe('PO-2026-0001');
+	expect(po.poNo).toBe('001/UJI-PLG/PO/X/2026');
 	expect(po).toMatchObject({ issueDate: '2027-01-05', expectedDate: '2027-01-30', notes: 'revisi', subtotal: '300.00', total: '300.00' });
 	expect(po.lines.map((l) => l.description)).toEqual(['Satu-satunya']);
 	expect(await db.select().from(purchaseOrderLines).where(eq(purchaseOrderLines.poId, id))).toHaveLength(1);
@@ -46,7 +46,7 @@ test('delete soft-deletes: gone from list/get, repeat delete and update give 404
 	await expect(deletePurchaseOrder(companyId, id)).rejects.toMatchObject({ status: 404 });
 	await expect(updatePurchaseOrder(companyId, id, { contactId, issueDate: '2026-10-01', lines: [line('A')] })).rejects.toMatchObject({ status: 404 });
 	const next = await createPurchaseOrder(companyId, userId, { contactId, issueDate: '2026-10-02', lines: [line('B')] });
-	expect((await getPurchaseOrder(companyId, next.id)).poNo).toBe('PO-2026-0002');
+	expect((await getPurchaseOrder(companyId, next.id)).poNo).toBe('002/UJI-PLG/PO/X/2026');
 });
 
 test('another company cannot get, update, or delete it', async () => {

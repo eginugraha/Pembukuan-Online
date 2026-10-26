@@ -13,16 +13,16 @@ beforeEach(resetDb);
 async function setup() {
 	const { companyId } = await makeCompany();
 	const u = await makeUser();
-	const { id: contactId } = await createContact(companyId, { kind: 'CUSTOMER', name: 'PT Pelanggan' });
+	const { id: contactId } = await createContact(companyId, { kind: 'CUSTOMER', name: 'PT Pelanggan', code: 'PLG' });
 	return { companyId, userId: u.id, contactId };
 }
 const line = (description: string, quantity = '1', unitPrice = '1000000') => ({ description, quantity, unitPrice });
 
-test('create assigns INV-<year of issueDate>-0001, computes totals, and writes no journal', async () => {
+test('create assigns 001/<codes>/INV/<month>/<year of issueDate>, computes totals, and writes no journal', async () => {
 	const { companyId, userId, contactId } = await setup();
 	const { id } = await createInvoice(companyId, userId, { contactId, issueDate: '2026-10-01', taxRate: '11', lines: [line('Jasa', '2', '500000.50')] });
 	const inv = await getInvoice(companyId, id);
-	expect(inv.invoiceNo).toBe('INV-2026-0001');
+	expect(inv.invoiceNo).toBe('001/UJI-PLG/INV/X/2026');
 	expect(inv).toMatchObject({ subtotal: '1000001.00', taxAmount: '110000.11', total: '1110001.11' });
 	expect(await db.select().from(journalEntries).where(eq(journalEntries.companyId, companyId))).toHaveLength(0);
 });
@@ -32,7 +32,7 @@ test('update replaces header and all lines and keeps the number', async () => {
 	const { id } = await createInvoice(companyId, userId, { contactId, issueDate: '2026-10-01', lines: [line('A'), line('B'), line('C')] });
 	await updateInvoice(companyId, id, { contactId, issueDate: '2027-01-05', notes: 'revisi', lines: [line('Satu-satunya', '3', '100')] });
 	const inv = await getInvoice(companyId, id);
-	expect(inv.invoiceNo).toBe('INV-2026-0001');
+	expect(inv.invoiceNo).toBe('001/UJI-PLG/INV/X/2026');
 	expect(inv).toMatchObject({ issueDate: '2027-01-05', notes: 'revisi', subtotal: '300.00', total: '300.00' });
 	expect(inv.lines.map((l) => l.description)).toEqual(['Satu-satunya']);
 	expect(await db.select().from(invoiceLines).where(eq(invoiceLines.invoiceId, id))).toHaveLength(1);
@@ -47,7 +47,7 @@ test('delete soft-deletes: gone from list/get, repeat delete and update give 404
 	await expect(deleteInvoice(companyId, id)).rejects.toMatchObject({ status: 404 });
 	await expect(updateInvoice(companyId, id, { contactId, issueDate: '2026-10-01', lines: [line('A')] })).rejects.toMatchObject({ status: 404 });
 	const next = await createInvoice(companyId, userId, { contactId, issueDate: '2026-10-02', lines: [line('B')] });
-	expect((await getInvoice(companyId, next.id)).invoiceNo).toBe('INV-2026-0002');
+	expect((await getInvoice(companyId, next.id)).invoiceNo).toBe('002/UJI-PLG/INV/X/2026');
 });
 
 test('another company cannot get, update, or delete it', async () => {
@@ -61,7 +61,7 @@ test('another company cannot get, update, or delete it', async () => {
 
 test('keeps working after its contact is deleted; switching to a deleted contact is rejected', async () => {
 	const { companyId, userId, contactId } = await setup();
-	const { id: otherContact } = await createContact(companyId, { kind: 'CUSTOMER', name: 'PT Lain' });
+	const { id: otherContact } = await createContact(companyId, { kind: 'CUSTOMER', name: 'PT Lain', code: 'LAN' });
 	const { id } = await createInvoice(companyId, userId, { contactId, issueDate: '2026-10-01', lines: [line('A')] });
 	await deleteContact(companyId, contactId);
 	await deleteContact(companyId, otherContact);
@@ -72,7 +72,7 @@ test('keeps working after its contact is deleted; switching to a deleted contact
 
 test('a vendor-only contact cannot be used on an invoice', async () => {
 	const { companyId, userId } = await setup();
-	const { id: vendor } = await createContact(companyId, { kind: 'VENDOR', name: 'PT Vendor' });
+	const { id: vendor } = await createContact(companyId, { kind: 'VENDOR', name: 'PT Vendor', code: 'VND' });
 	await expect(createInvoice(companyId, userId, { contactId: vendor, issueDate: '2026-10-01', lines: [line('A')] })).rejects.toMatchObject({ code: 'wrong_contact_kind' });
 });
 

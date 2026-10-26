@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '../../src/lib/server/db';
-import { accounts, companies, userCompanies } from '../../src/lib/server/db/schema';
+import { accounts, companies, contacts, userCompanies } from '../../src/lib/server/db/schema';
 import { createCompany } from '../../src/lib/server/company/seed-company';
 import { createUserWithPassword } from '../../src/lib/server/users/create';
 import { resolveContext, type AppContext } from '../../src/lib/server/rbac';
@@ -11,8 +11,27 @@ let seq = 0;
 
 export async function makeCompany(name = 'PT Uji Coba'): Promise<{ companyId: string; bankAccountId: string }> {
 	const { id } = await createCompany({ name });
+	await db.update(companies).set({ code: 'UJI' }).where(eq(companies.id, id));
 	const company = await db.query.companies.findFirst({ where: eq(companies.id, id) });
 	return { companyId: id, bankAccountId: company!.bankAccountId! };
+}
+
+export async function makeContact(
+	companyId: string,
+	kind: 'CUSTOMER' | 'VENDOR' | 'BOTH',
+	opts: { name?: string; code?: string | null; isActive?: boolean } = {}
+): Promise<{ id: string }> {
+	const [row] = await db
+		.insert(contacts)
+		.values({
+			companyId,
+			kind,
+			name: opts.name ?? `PT ${kind}`,
+			code: opts.code === undefined ? 'PLG' : opts.code,
+			isActive: opts.isActive ?? true
+		})
+		.returning({ id: contacts.id });
+	return row;
 }
 
 export async function makeUser(opts: { email?: string; name?: string; isSuperAdmin?: boolean; password?: string } = {}) {

@@ -12,7 +12,7 @@ import { resetDb } from './db';
 beforeEach(resetDb);
 
 async function contact(companyId: string, kind: 'CUSTOMER' | 'VENDOR' | 'BOTH', isActive = true) {
-	const [row] = await db.insert(contacts).values({ companyId, kind, name: `PT ${kind}`, isActive }).returning();
+	const [row] = await db.insert(contacts).values({ companyId, kind, name: `PT ${kind}`, code: 'PLG', isActive }).returning();
 	return row.id;
 }
 
@@ -78,8 +78,8 @@ test("list views never join in another company's contact name, even for a pre-ex
 	const b = await makeCompany('PT B');
 	const [foreign] = await db.insert(contacts).values({ companyId: b.companyId, kind: 'BOTH', name: 'Rahasia PT B' }).returning();
 	// Bypass the service (simulate a row created before the creation-time check existed).
-	await db.insert(invoices).values({ companyId: a.companyId, contactId: foreign.id, invoiceNo: 'INV-2026-0001', issueDate: '2026-10-01', subtotal: '0', taxAmount: '0', total: '0' });
-	await db.insert(purchaseOrders).values({ companyId: a.companyId, contactId: foreign.id, poNo: 'PO-2026-0001', issueDate: '2026-10-01', subtotal: '0', taxAmount: '0', total: '0' });
+	await db.insert(invoices).values({ companyId: a.companyId, contactId: foreign.id, invoiceNo: '001/UJI-PLG/INV/X/2026', issueDate: '2026-10-01', subtotal: '0', taxAmount: '0', total: '0' });
+	await db.insert(purchaseOrders).values({ companyId: a.companyId, contactId: foreign.id, poNo: '001/UJI-PLG/PO/X/2026', issueDate: '2026-10-01', subtotal: '0', taxAmount: '0', total: '0' });
 	expect((await listInvoices(a.companyId)).map((r) => r.contactName)).not.toContain('Rahasia PT B');
 	expect((await listPurchaseOrders(a.companyId)).map((r) => r.contactName)).not.toContain('Rahasia PT B');
 });

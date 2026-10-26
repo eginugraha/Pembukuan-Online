@@ -30,5 +30,5 @@ export const GET: RequestHandler = (event) =>
 		});
 
 		const buf = await finishPdf(doc);
-		return pdfResponse(buf, `invoice-${invoice.invoiceNo}.pdf`);
+		return pdfResponse(buf, `invoice-${invoice.invoiceNo.replaceAll('/', '-')}.pdf`);
 	});

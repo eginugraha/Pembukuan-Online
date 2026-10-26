@@ -28,5 +28,5 @@ export const GET: RequestHandler = (event) =>
 		});
 
 		const buf = await finishPdf(doc);
-		return pdfResponse(buf, `po-${po.poNo}.pdf`);
+		return pdfResponse(buf, `po-${po.poNo.replaceAll('/', '-')}.pdf`);
 	});

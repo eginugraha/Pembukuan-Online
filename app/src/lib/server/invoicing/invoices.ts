@@ -5,7 +5,7 @@ import { assertContact } from './contacts';
 import { ApiError, notFound } from '../api';
 import { db, type Tx } from '../db';
 import { contacts, invoiceLines, invoices } from '../db/schema';
-import { nextDocumentNumber } from './numbering';
+import { nextDocumentNumber, requireCompanyCode, requireContactCode } from './numbering';
 
 export { CreateInvoiceInput, InvoiceLineInput, UpdateInvoiceInput };
 
@@ -32,6 +32,7 @@ export interface InvoiceDetail {
 	companyId: string;
 	contactId: string;
 	invoiceNo: string;
+	subject: string | null;
 	issueDate: string;
 	dueDate: string | null;
 	subtotal: string;
@@ -71,12 +72,14 @@ async function insertLines(tx: Tx, invoiceId: string, lines: ReturnType<typeof c
 	);
 }
 
-/** Buat invoice: nomor `INV-<tahun>-NNNN` dibuat saat itu juga; tidak ada status dan tidak ada jurnal. */
+/** Buat invoice: nomor `NNN/<PERUSAHAAN>-<KONTAK>/INV/<BULAN>/<TAHUN>` dibuat saat itu juga; tidak ada status dan tidak ada jurnal. */
 export async function createInvoice(companyId: string, userId: string, input: CreateInvoiceInput): Promise<{ id: string }> {
 	return db.transaction(async (tx) => {
-		await assertContact(tx, companyId, input.contactId, 'CUSTOMER');
+		const contact = await assertContact(tx, companyId, input.contactId, 'CUSTOMER');
 		const totals = computeTotals(input);
-		const invoiceNo = await nextDocumentNumber(tx, companyId, 'INV', input.issueDate.slice(0, 4));
+		const companyCode = await requireCompanyCode(tx, companyId);
+		const contactCode = requireContactCode(contact.code);
+		const invoiceNo = await nextDocumentNumber(tx, companyId, { kind: 'INV', issueDate: input.issueDate, companyCode, contactCode });
 
 		const [row] = await tx
 			.insert(invoices)
@@ -84,6 +87,7 @@ export async function createInvoice(companyId: string, userId: string, input: Cr
 				companyId,
 				contactId: input.contactId,
 				invoiceNo,
+				subject: input.subject || null,
 				issueDate: input.issueDate,
 				dueDate: input.dueDate ?? null,
 				subtotal: totals.subtotal,
@@ -114,6 +118,7 @@ export async function updateInvoice(companyId: string, invoiceId: string, input:
 			.update(invoices)
 			.set({
 				contactId: input.contactId,
+				subject: input.subject || null,
 				issueDate: input.issueDate,
 				dueDate: input.dueDate ?? null,
 				subtotal: totals.subtotal,

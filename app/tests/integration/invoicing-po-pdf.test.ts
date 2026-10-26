@@ -19,7 +19,7 @@ test('PDF contains the vendor name, PO number, line description, and total', asy
 	const { companyId } = await makeCompany();
 	const u = await makeUser();
 	await addMember(u.id, companyId, 'viewer');
-	const [contact] = await db.insert(contacts).values({ companyId, kind: 'VENDOR', name: 'PT Pemasok Uji' }).returning();
+	const [contact] = await db.insert(contacts).values({ companyId, kind: 'VENDOR', name: 'PT Pemasok Uji', code: 'PLG' }).returning();
 	const { id } = await createPurchaseOrder(companyId, u.id, { contactId: contact.id, issueDate: '2026-10-01', lines: [{ description: 'Sewa server', quantity: '1', unitPrice: '2000000' }] });
 
 	const res = await GET(fakeEvent({ ctx: await contextFor(u, companyId), path: `/api/invoicing/purchase-orders/${id}/pdf`, params: { id } }) as never);
@@ -27,7 +27,8 @@ test('PDF contains the vendor name, PO number, line description, and total', asy
 	expect(res.headers.get('content-type')).toBe('application/pdf');
 	const text = await textOf(res);
 	expect(text).toContain('PT Pemasok Uji');
-	expect(text).toContain('PO-2026-0001');
+	expect(text).toContain('001/UJI-PLG/PO/X/2026');
+	expect(res.headers.get('content-disposition')).toBe('attachment; filename="po-001-UJI-PLG-PO-X-2026.pdf"');
 	expect(text).toContain('Sewa server');
 	expect(text).toContain('2.000.000,00');
 });
