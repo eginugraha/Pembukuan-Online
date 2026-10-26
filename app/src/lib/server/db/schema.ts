@@ -367,6 +367,7 @@ export const invoices = pgTable(
 		taxAmount: money('tax_amount').notNull().default('0'),
 		total: money('total').notNull(),
 		subject: text('subject'),
+		currency: varchar('currency', { length: 3 }).notNull().default('IDR'),
 		notes: text('notes'),
 		deletedAt: timestamp('deleted_at', { withTimezone: true }),
 		createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),

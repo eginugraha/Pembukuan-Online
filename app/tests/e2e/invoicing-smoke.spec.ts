@@ -80,9 +80,14 @@ test('create a contact, then create, edit, and delete an invoice without touchin
 
 	// --- Ubah: ganti keterangan baris, nomor tetap ---
 	await page.getByRole('link', { name: 'Ubah' }).click();
+	await expect(page.getByLabel('Mata uang')).toHaveText(/IDR/);
+	await page.getByLabel('Mata uang').click();
+	await page.getByRole('option', { name: 'USD' }).click();
 	await page.getByLabel('Keterangan baris 1').fill('Jasa konsultasi E2E (revisi)');
 	await page.getByRole('button', { name: 'Simpan' }).click();
 	await expect(page.getByText('Jasa konsultasi E2E (revisi)')).toBeVisible();
+	// Mata uang USD: nominal tampil gaya dolar (1 × 1.000.000 → $1,000,000.00).
+	await expect(page.getByText('$1,000,000.00').first()).toBeVisible();
 	await expect(page.getByRole('heading', { name: /^001\/E2E-PLG\/INV\/[IVX]+\/\d{4}$/ })).toBeVisible();
 
 	// --- Invoice tidak masuk Jurnal Umum ---

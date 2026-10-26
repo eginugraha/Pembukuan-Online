@@ -38,12 +38,14 @@ function ejaBulat(n: string): string {
 	return bagian.join(' ');
 }
 
-/** Terbilang rupiah dalam Title Case, mis. "Seratus Dua Puluh Lima Rupiah Lima Puluh Sen". */
-export function terbilang(amount: string): string {
+const SATUAN_UANG: Record<string, string> = { IDR: 'Rupiah', USD: 'Dolar Amerika Serikat' };
+
+/** Terbilang dalam Title Case, mis. "Seratus Dua Puluh Lima Rupiah Lima Puluh Sen"; USD "… Dolar Amerika Serikat". */
+export function terbilang(amount: string, currency = 'IDR'): string {
 	const nilai = D(amount).toDecimalPlaces(2).abs();
 	const [bulat, desimal = ''] = nilai.toFixed(2).split('.');
 	const sen = Number(desimal);
-	let hasil = `${ejaBulat(bulat)} Rupiah`;
+	let hasil = `${ejaBulat(bulat)} ${SATUAN_UANG[currency] ?? currency}`;
 	if (sen > 0) hasil += ` ${ejaBulat(String(sen))} Sen`;
 	return hasil;
 }

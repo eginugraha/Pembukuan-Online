@@ -118,6 +118,17 @@ test('full data: every block of the mockup is printed, with clickable email/phon
 	expect(text).not.toContain('Subtotal');
 });
 
+test('USD invoice prints dollar amounts, USD column labels, and dollar terbilang', async () => {
+	const { fetchPdf } = await setup({ invoice: { currency: 'USD', lines: [{ description: 'Consulting', quantity: '1', unitPrice: '1250' }] } });
+	const { text } = await parse(await fetchPdf());
+	expect(text).toContain('Harga (USD)');
+	expect(text).toContain('Jumlah Harga (USD)');
+	expect(text).toContain('$1,250.00');
+	expect(text).toContain('Seribu Dua Ratus Lima Puluh Dolar Amerika Serikat');
+	expect(text).not.toContain('Rp');
+	expect(text).not.toContain('Rupiah');
+});
+
 test('company name is printed above a multi-line address', async () => {
 	const { fetchPdf } = await setup({ company: { address: 'Jl. Uji No. 1\nKota Bandung 40265' } });
 	const { text } = await parse(await fetchPdf());

@@ -14,6 +14,7 @@ export interface InvoiceListRow {
 	invoiceNo: string;
 	issueDate: string;
 	total: string;
+	currency: string;
 	contactId: string;
 	contactName: string;
 }
@@ -33,6 +34,7 @@ export interface InvoiceDetail {
 	contactId: string;
 	invoiceNo: string;
 	subject: string | null;
+	currency: string;
 	issueDate: string;
 	dueDate: string | null;
 	subtotal: string;
@@ -88,6 +90,7 @@ export async function createInvoice(companyId: string, userId: string, input: Cr
 				contactId: input.contactId,
 				invoiceNo,
 				subject: input.subject || null,
+				currency: input.currency ?? 'IDR',
 				issueDate: input.issueDate,
 				dueDate: input.dueDate ?? null,
 				subtotal: totals.subtotal,
@@ -119,6 +122,8 @@ export async function updateInvoice(companyId: string, invoiceId: string, input:
 			.set({
 				contactId: input.contactId,
 				subject: input.subject || null,
+				// Tidak dikirim = mata uang lama dipertahankan.
+				...(input.currency ? { currency: input.currency } : {}),
 				issueDate: input.issueDate,
 				dueDate: input.dueDate ?? null,
 				subtotal: totals.subtotal,
@@ -152,7 +157,8 @@ export async function listInvoices(companyId: string): Promise<InvoiceListRow[]>
 			issueDate: invoices.issueDate,
 			total: invoices.total,
 			contactId: invoices.contactId,
-			contactName: contacts.name
+			contactName: contacts.name,
+			currency: invoices.currency
 		})
 		.from(invoices)
 		.innerJoin(contacts, and(eq(contacts.id, invoices.contactId), eq(contacts.companyId, companyId)))

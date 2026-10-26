@@ -12,13 +12,15 @@
 	import { CreateInvoiceInput, InvoiceLineInput } from '$lib/schemas/invoice';
 	import { CreatePurchaseOrderInput } from '$lib/schemas/purchase-order';
 	import FormField from '$lib/components/FormField.svelte';
+	import SimpleSelect from '$lib/components/SimpleSelect.svelte';
 	import DateField from '$lib/components/DateField.svelte';
 	import SearchSelect from '$lib/components/SearchSelect.svelte';
-	import { D, formatIdr, sumMoney } from '$lib/money';
+	import { D, sumMoney } from '$lib/money';
+	import { CURRENCIES, formatAmount, type Currency } from '$lib/currency';
 	import { inputClass, textareaClass } from '$lib/ui';
 
 	type Line = { description: string; quantity: string; unitPrice: string };
-	type Initial = { contactId: string; subject?: string; issueDate: string; expectedDate?: string; dueDate?: string; discount?: string; taxRate: string; notes: string; lines: Line[] };
+	type Initial = { contactId: string; subject?: string; currency?: string; issueDate: string; expectedDate?: string; dueDate?: string; discount?: string; taxRate: string; notes: string; lines: Line[] };
 
 	let {
 		kind,
@@ -47,18 +49,19 @@
 	const contactOptions = $derived(contacts.map((c) => ({ value: c.id, label: c.name })));
 
 	// --- Field header ---
-	const EMPTY = { contactId: '', subject: '', issueDate: '', expectedDate: '', dueDate: '', discount: '', taxRate: '', notes: '' };
+	const EMPTY = { contactId: '', subject: '', currency: 'IDR', issueDate: '', expectedDate: '', dueDate: '', discount: '', taxRate: '', notes: '' };
 	const toInput = (v: typeof EMPTY) => ({
 		contactId: v.contactId,
 		issueDate: v.issueDate,
 		...(isPo ? { expectedDate: v.expectedDate || undefined } : { dueDate: v.dueDate || undefined, discount: v.discount || undefined }),
-		...(isPo ? {} : { subject: v.subject || undefined }),
+		...(isPo ? {} : { subject: v.subject || undefined, currency: v.currency as Currency }),
 		taxRate: v.taxRate || undefined,
 		notes: v.notes || undefined,
 		lines: lines.map(({ description, quantity, unitPrice }) => ({ description, quantity, unitPrice }))
 	});
 	// svelte-ignore state_referenced_locally
-	const form = new FormState(schema, { ...EMPTY, ...(initial ? { ...initial, expectedDate: initial.expectedDate ?? '', dueDate: initial.dueDate ?? '', discount: initial.discount ?? '', subject: initial.subject ?? '' } : {}) }, toInput);
+	const form = new FormState(schema, { ...EMPTY, ...(initial ? { ...initial, expectedDate: initial.expectedDate ?? '', dueDate: initial.dueDate ?? '', discount: initial.discount ?? '', subject: initial.subject ?? '', currency: initial.currency ?? 'IDR' } : {}) }, toInput);
+	const money = (v: Parameters<typeof formatAmount>[0]) => formatAmount(v, isPo ? 'IDR' : form.values.currency);
 	let errorMessage = $state<string | null>(null);
 	let busy = $state(false);
 
@@ -149,7 +152,10 @@
 					</FormField>
 				{/if}
 				{#if !isPo}
-					<FormField id="doc-discount" label="Diskon Rp (opsional)" error={form.error('discount')}>
+					<FormField id="doc-currency" label="Mata uang" error={form.error('currency')}>
+						<SimpleSelect bind:value={form.values.currency} options={CURRENCIES.map((c) => ({ value: c, label: c }))} {...form.attrs('currency', 'doc-currency')} />
+					</FormField>
+					<FormField id="doc-discount" label="Diskon {form.values.currency === 'USD' ? 'USD' : 'Rp'} (opsional)" error={form.error('discount')}>
 						<input
 							class="{inputClass} text-right"
 							inputmode="decimal"
@@ -227,7 +233,7 @@
 									/>
 									{#if priceErr}<p id="doc-line-{i}-unit-price-error" role="alert" class="mt-1 text-right text-xs font-medium text-destructive">{priceErr}</p>{/if}
 								</Table.Cell>
-								<Table.Cell class="align-top text-right tabular-nums">{formatIdr(lineAmount(line))}</Table.Cell>
+								<Table.Cell class="align-top text-right tabular-nums">{money(lineAmount(line))}</Table.Cell>
 								<Table.Cell class="align-top">
 									<Button type="button" variant="ghost" size="icon-sm" aria-label="Hapus baris {i + 1}" disabled={lines.length === 1} onclick={() => removeLine(i)}>
 										<Trash2 class="size-4" />
@@ -241,12 +247,12 @@
 			<Button type="button" variant="outline" onclick={addLine}>Tambah Baris</Button>
 
 			<div class="flex flex-col items-end gap-1 text-sm">
-				<div class="flex w-64 justify-between"><span class="text-muted-foreground">Subtotal</span><span class="tabular-nums">{formatIdr(subtotal)}</span></div>
+				<div class="flex w-64 justify-between"><span class="text-muted-foreground">Subtotal</span><span class="tabular-nums">{money(subtotal)}</span></div>
 				{#if !isPo}
-					<div class="flex w-64 justify-between"><span class="text-muted-foreground">Diskon</span><span class="tabular-nums">{formatIdr(discount)}</span></div>
+					<div class="flex w-64 justify-between"><span class="text-muted-foreground">Diskon</span><span class="tabular-nums">{money(discount)}</span></div>
 				{/if}
-				<div class="flex w-64 justify-between"><span class="text-muted-foreground">PPN</span><span class="tabular-nums">{formatIdr(taxAmount)}</span></div>
-				<div class="flex w-64 justify-between font-semibold"><span>Total</span><span class="tabular-nums">{formatIdr(total)}</span></div>
+				<div class="flex w-64 justify-between"><span class="text-muted-foreground">PPN</span><span class="tabular-nums">{money(taxAmount)}</span></div>
+				<div class="flex w-64 justify-between font-semibold"><span>Total</span><span class="tabular-nums">{money(total)}</span></div>
 			</div>
 
 			{#if errorMessage}

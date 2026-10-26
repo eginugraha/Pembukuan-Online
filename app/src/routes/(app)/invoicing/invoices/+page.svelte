@@ -8,7 +8,7 @@
 	import type { Column } from '$lib/table';
 	import { apiFetch } from '$lib/api-client';
 	import { formatDate } from '$lib/dates';
-	import { formatIdr } from '$lib/money';
+	import { formatAmount } from '$lib/currency';
 	import { roleAtLeast } from '$lib/roles';
 
 	let { data } = $props();
@@ -17,7 +17,7 @@
 		{ key: 'invoiceNo', label: 'Nomor', sortable: true, searchable: true, text: (i) => i.invoiceNo },
 		{ key: 'contactName', label: 'Pelanggan', sortable: true, searchable: true, text: (i) => i.contactName },
 		{ key: 'issueDate', label: 'Tanggal', sortable: true, text: (i) => formatDate(i.issueDate) },
-		{ key: 'total', label: 'Total', align: 'right', sortable: true, sortValue: (i) => Number(i.total), text: (i) => formatIdr(i.total) },
+		{ key: 'total', label: 'Total', align: 'right', sortable: true, sortValue: (i) => Number(i.total), text: (i) => formatAmount(i.total, i.currency) },
 		{ key: 'actions', label: 'Aksi' }
 	];
 	const canManage = $derived(roleAtLeast(data.ctx.role, 'accountant'));
@@ -63,7 +63,7 @@
 		{:else if col.key === 'issueDate'}
 			{formatDate(i.issueDate)}
 		{:else if col.key === 'total'}
-			{formatIdr(i.total)}
+			{formatAmount(i.total, i.currency)}
 		{:else if col.key === 'actions'}
 			<span class="flex gap-1">
 				<Button size="sm" variant="ghost" href="/invoicing/invoices/{i.id}">Lihat</Button>

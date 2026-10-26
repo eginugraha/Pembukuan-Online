@@ -19,6 +19,7 @@
 		taxRate: inv.taxRate ?? '',
 		notes: inv.notes ?? '',
 		subject: inv.subject ?? '',
+		currency: inv.currency,
 		lines: inv.lines.map((l) => ({ description: l.description, quantity: l.quantity, unitPrice: l.unitPrice }))
 	}}
 />

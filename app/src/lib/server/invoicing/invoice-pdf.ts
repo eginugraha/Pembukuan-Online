@@ -1,5 +1,6 @@
 import { D, formatIdr, type MoneyValue } from '$lib/money';
 import { terbilang } from '$lib/terbilang';
+import { formatUsd } from '$lib/currency';
 import type { InvoiceCompanyData } from '$lib/server/reports/company';
 import type { ContactRow } from './contacts';
 import type { InvoiceDetail } from './invoices';
@@ -41,6 +42,11 @@ const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', '
 export function formatLongDate(iso: string): string {
 	const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
 	return `${d} ${BULAN[m - 1]} ${y}`;
+}
+
+/** Nominal di PDF: IDR "Rp 10.000.000" (sen hanya bila tidak nol), USD "$1,250.00". */
+export function formatPdfAmount(v: MoneyValue, currency: string): string {
+	return currency === 'USD' ? formatUsd(v) : formatRupiah(v);
 }
 
 /** "Rp 10.000.000" (sen hanya ditulis bila tidak nol), negatif "-Rp 100.000". */
@@ -91,6 +97,8 @@ export function drawInvoicePdf(
 	d: { company: InvoiceCompanyData; contact: ContactRow; invoice: InvoiceDetail }
 ): void {
 	const { company, contact, invoice } = d;
+	const money = (v: MoneyValue) => formatPdfAmount(v, invoice.currency);
+	const unit = invoice.currency === 'USD' ? 'USD' : 'Rp';
 	const L = doc.page.margins.left;
 	const R = doc.page.width - doc.page.margins.right;
 	const W = R - L;
@@ -302,8 +310,8 @@ export function drawInvoicePdf(
 		};
 		th('Keterangan', 'Description', cols.desc, 'left');
 		th('Jumlah', 'Quantity', cols.qty, 'left');
-		th('Harga (Rp)', 'Price (Rp)', cols.price, 'right');
-		th('Jumlah Harga (Rp)', 'Total Price (Rp)', cols.total, 'right');
+		th(`Harga (${unit})`, `Price (${unit})`, cols.price, 'right');
+		th(`Jumlah Harga (${unit})`, `Total Price (${unit})`, cols.total, 'right');
 		y += headerH;
 		rule(y, RULE_HEAD, 1.2);
 	};
@@ -326,8 +334,8 @@ export function drawInvoicePdf(
 		const ty = y + CELL_PAD;
 		para(l.description, cols.desc.x, ty, cols.desc.w, { size: CELL });
 		line(`x${formatPlain(l.quantity)}`, cols.qty.x, ty, { size: CELL, width: cols.qty.w });
-		line(formatRupiah(l.unitPrice), cols.price.x, ty, { size: CELL, width: cols.price.w, align: 'right' });
-		line(formatRupiah(l.amount), cols.total.x, ty, { size: CELL, width: cols.total.w, align: 'right' });
+		line(money(l.unitPrice), cols.price.x, ty, { size: CELL, width: cols.price.w, align: 'right' });
+		line(money(l.amount), cols.total.x, ty, { size: CELL, width: cols.total.w, align: 'right' });
 		y += h;
 		rule(y, RULE_ROW, 0.75);
 	}
@@ -337,11 +345,11 @@ export function drawInvoicePdf(
 	const hasDiscount = D(invoice.discount || 0).gt(0);
 	const hasTax = D(invoice.taxRate || 0).gt(0);
 	if (hasDiscount || hasTax) {
-		summary.push({ label: 'Subtotal', value: formatRupiah(invoice.subtotal) });
-		if (hasDiscount) summary.push({ label: 'Diskon / Discount', value: formatRupiah(D(invoice.discount).neg().toString()) });
-		if (hasTax) summary.push({ label: `PPN / VAT (${formatPlain(invoice.taxRate!)}%)`, value: formatRupiah(invoice.taxAmount) });
+		summary.push({ label: 'Subtotal', value: money(invoice.subtotal) });
+		if (hasDiscount) summary.push({ label: 'Diskon / Discount', value: money(D(invoice.discount).neg().toString()) });
+		if (hasTax) summary.push({ label: `PPN / VAT (${formatPlain(invoice.taxRate!)}%)`, value: money(invoice.taxAmount) });
 	}
-	summary.push({ label: 'Total', value: formatRupiah(invoice.total), bold: true });
+	summary.push({ label: 'Total', value: money(invoice.total), bold: true });
 	const sumRowH = CELL_PAD * 2 + lineH(BOLD, 9);
 	if (y + sumRowH * summary.length > BOTTOM) {
 		newPage();
@@ -361,7 +369,7 @@ export function drawInvoicePdf(
 	const blocks: Block[] = [];
 
 	{
-		const words = terbilang(invoice.total);
+		const words = terbilang(invoice.total, invoice.currency);
 		const headH = lineH(BOLD, 10) + 3;
 		const wordsH = heightOf(words, REG, 11, W);
 		blocks.push({

@@ -7,7 +7,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import { formatDate } from '$lib/dates';
-	import { formatIdr } from '$lib/money';
+	import { formatAmount } from '$lib/currency';
 	import { roleAtLeast } from '$lib/roles';
 
 	let { data } = $props();
@@ -63,7 +63,7 @@
 		</div>
 		<div>
 			<p class="text-muted-foreground">Total</p>
-			<p class="font-medium tabular-nums">{formatIdr(data.invoice.total)}</p>
+			<p class="font-medium tabular-nums">{formatAmount(data.invoice.total, data.invoice.currency)}</p>
 		</div>
 	</Card.Content>
 </Card.Root>
@@ -87,8 +87,8 @@
 				<Table.Row>
 					<Table.Cell>{line.description}</Table.Cell>
 					<Table.Cell class="text-right tabular-nums">{line.quantity}</Table.Cell>
-					<Table.Cell class="text-right tabular-nums">{formatIdr(line.unitPrice)}</Table.Cell>
-					<Table.Cell class="text-right tabular-nums">{formatIdr(line.amount)}</Table.Cell>
+					<Table.Cell class="text-right tabular-nums">{formatAmount(line.unitPrice, data.invoice.currency)}</Table.Cell>
+					<Table.Cell class="text-right tabular-nums">{formatAmount(line.amount, data.invoice.currency)}</Table.Cell>
 				</Table.Row>
 			{/each}
 		</Table.Body>
@@ -96,12 +96,12 @@
 </div>
 
 <div class="mt-4 flex flex-col items-end gap-1 text-sm">
-	<div class="flex w-64 justify-between"><span class="text-muted-foreground">Subtotal</span><span class="tabular-nums">{formatIdr(data.invoice.subtotal)}</span></div>
+	<div class="flex w-64 justify-between"><span class="text-muted-foreground">Subtotal</span><span class="tabular-nums">{formatAmount(data.invoice.subtotal, data.invoice.currency)}</span></div>
 	{#if Number(data.invoice.discount) > 0}
-		<div class="flex w-64 justify-between"><span class="text-muted-foreground">Diskon</span><span class="tabular-nums">-{formatIdr(data.invoice.discount)}</span></div>
+		<div class="flex w-64 justify-between"><span class="text-muted-foreground">Diskon</span><span class="tabular-nums">-{formatAmount(data.invoice.discount, data.invoice.currency)}</span></div>
 	{/if}
-	<div class="flex w-64 justify-between"><span class="text-muted-foreground">PPN</span><span class="tabular-nums">{formatIdr(data.invoice.taxAmount)}</span></div>
-	<div class="flex w-64 justify-between font-semibold"><span>Total</span><span class="tabular-nums">{formatIdr(data.invoice.total)}</span></div>
+	<div class="flex w-64 justify-between"><span class="text-muted-foreground">PPN</span><span class="tabular-nums">{formatAmount(data.invoice.taxAmount, data.invoice.currency)}</span></div>
+	<div class="flex w-64 justify-between font-semibold"><span>Total</span><span class="tabular-nums">{formatAmount(data.invoice.total, data.invoice.currency)}</span></div>
 </div>
 
 {#if data.invoice.notes}
