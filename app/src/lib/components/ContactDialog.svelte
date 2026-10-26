@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { textareaClass } from '$lib/ui';
 	import { apiFetch } from '$lib/api-client';
 	import FormField from '$lib/components/FormField.svelte';
 	import SimpleSelect from '$lib/components/SimpleSelect.svelte';
@@ -110,7 +111,7 @@
 				<Input bind:value={form.values.position} {...form.attrs('position', 'contact-position')} />
 			</FormField>
 			<FormField id="contact-address" label="Alamat" error={form.error('address')} class="sm:col-span-2">
-				<Input bind:value={form.values.address} {...form.attrs('address', 'contact-address')} />
+				<textarea bind:value={form.values.address} {...form.attrs('address', 'contact-address')} rows="3" class={textareaClass}></textarea>
 			</FormField>
 			<FormField id="contact-phone" label="Nomor telepon" error={form.error('phone')}>
 				<Input type="tel" bind:value={form.values.phone} {...form.attrs('phone', 'contact-phone')} />

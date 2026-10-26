@@ -16,7 +16,6 @@ test.beforeEach(async ({ page }) => {
 // leaving the logo set. Clean it up unconditionally so a mid-test failure here can't leak logo
 // state into other specs (e.g. dashboard-charts.spec.ts's "no logo chip" assertion).
 test.afterEach(async ({ page }) => {
-	await page.keyboard.press('Escape').catch(() => {});
 	await page.goto('/settings/company');
 	const removeButton = page.getByRole('button', { name: 'Hapus Logo' });
 	if (await removeButton.isVisible().catch(() => false)) {
@@ -25,25 +24,20 @@ test.afterEach(async ({ page }) => {
 	}
 });
 
-test('upload a logo through the crop dialog, see it applied, then remove it', async ({ page }) => {
+test('upload a non-square logo without cropping, see it applied, then remove it', async ({ page }) => {
+	// PNG_SMALL berukuran 4×3: logo tersimpan harus tetap 4×3, tidak dipotong persegi.
 	await page.getByLabel('Pilih logo perusahaan').setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: PNG_SMALL });
-	await expect(page.getByRole('dialog', { name: 'Atur Logo' })).toBeVisible();
-	await page.getByRole('button', { name: 'Gunakan' }).click();
 	await expect(page.getByText('Logo perusahaan diperbarui.')).toBeVisible();
-	await expect(page.getByRole('img', { name: /[Ll]ogo/ })).toHaveAttribute('src', /\/api\/companies\/[0-9a-f-]{36}\/logo\?v=\d+/);
+	await expect(page.getByRole('dialog')).toHaveCount(0);
+	const img = page.getByRole('img', { name: /[Ll]ogo/ });
+	await expect(img).toHaveAttribute('src', /\/api\/companies\/[0-9a-f-]{36}\/logo\?v=\d+/);
+	await expect.poll(() => img.evaluate((el: HTMLImageElement) => `${el.naturalWidth}x${el.naturalHeight}`)).toBe('4x3');
 
 	await page.getByRole('button', { name: 'Hapus Logo' }).click();
 	await expect(page.getByText('Logo perusahaan dihapus.')).toBeVisible();
 });
 
-test('cancelling the crop dialog does not upload anything', async ({ page }) => {
-	await page.getByLabel('Pilih logo perusahaan').setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: PNG_SMALL });
-	await expect(page.getByRole('dialog', { name: 'Atur Logo' })).toBeVisible();
-	await page.getByRole('button', { name: 'Batal' }).click();
-	await expect(page.getByRole('dialog', { name: 'Atur Logo' })).toBeHidden();
-});
-
-test('an unreadable file shows a friendly error in the dialog', async ({ page }) => {
+test('an unreadable file shows a friendly error', async ({ page }) => {
 	await page.getByLabel('Pilih logo perusahaan').setInputFiles({ name: 'rusak.png', mimeType: 'image/png', buffer: Buffer.from('bukan gambar') });
 	await expect(page.getByText('Logo tidak bisa dibaca. Coba file lain.')).toBeVisible();
 });

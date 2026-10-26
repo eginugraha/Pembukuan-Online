@@ -118,6 +118,16 @@ test('full data: every block of the mockup is printed, with clickable email/phon
 	expect(text).not.toContain('Subtotal');
 });
 
+test('company name is printed above a multi-line address', async () => {
+	const { fetchPdf } = await setup({ company: { address: 'Jl. Uji No. 1\nKota Bandung 40265' } });
+	const { text } = await parse(await fetchPdf());
+	const name = text.indexOf('PT Uji Coba');
+	expect(name).toBeGreaterThanOrEqual(0);
+	expect(name).toBeLessThan(text.indexOf('Jl. Uji No. 1'));
+	expect(text.indexOf('Jl. Uji No. 1')).toBeLessThan(text.indexOf('Kota Bandung 40265'));
+	expect(text).not.toContain('Jl. Uji No. 1\\n');
+});
+
 test('minimal data: optional blocks are skipped, total still printed', async () => {
 	const { fetchPdf } = await setup();
 	const res = await fetchPdf();

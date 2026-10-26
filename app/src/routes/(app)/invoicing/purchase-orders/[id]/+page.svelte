@@ -98,7 +98,7 @@
 </div>
 
 {#if data.po.notes}
-	<p class="mt-4 text-sm text-muted-foreground">{data.po.notes}</p>
+	<p class="mt-4 text-sm whitespace-pre-line text-muted-foreground">{data.po.notes}</p>
 {/if}
 
 <DeleteDocumentDialog bind:open={deleteOpen} title="Hapus purchase order" name={data.po.poNo} {busy} onconfirm={doDelete} />

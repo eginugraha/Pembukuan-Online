@@ -15,7 +15,7 @@
 	import DateField from '$lib/components/DateField.svelte';
 	import SearchSelect from '$lib/components/SearchSelect.svelte';
 	import { D, formatIdr, sumMoney } from '$lib/money';
-	import { inputClass } from '$lib/ui';
+	import { inputClass, textareaClass } from '$lib/ui';
 
 	type Line = { description: string; quantity: string; unitPrice: string };
 	type Initial = { contactId: string; subject?: string; issueDate: string; expectedDate?: string; dueDate?: string; discount?: string; taxRate: string; notes: string; lines: Line[] };
@@ -169,7 +169,7 @@
 					/>
 				</FormField>
 				<FormField id="doc-notes" label="Catatan (opsional)" error={form.error('notes')}>
-					<Input bind:value={form.values.notes} {...form.attrs('notes', 'doc-notes')} />
+					<textarea bind:value={form.values.notes} {...form.attrs('notes', 'doc-notes')} rows="3" class={textareaClass}></textarea>
 				</FormField>
 			</div>
 

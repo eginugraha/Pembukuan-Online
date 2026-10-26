@@ -33,6 +33,10 @@ test('create a contact, then create, edit, and delete an invoice without touchin
 	await dialog.getByLabel('Nama', { exact: true }).fill('PT Pelanggan E2E');
 	await dialog.getByLabel('Attention (untuk siapa)').fill('Budi Santoso');
 	await dialog.getByLabel('Posisi').fill('Manajer Keuangan');
+	await dialog.getByLabel('Alamat').fill('Jl. Contoh 1');
+	await dialog.getByLabel('Alamat').press('Enter');
+	await dialog.getByLabel('Alamat').pressSequentially('Kota Bandung');
+	await expect(dialog.getByLabel('Alamat')).toHaveValue('Jl. Contoh 1\nKota Bandung');
 	await dialog.getByLabel('Kode', { exact: true }).fill('plg');
 	await dialog.getByRole('button', { name: 'Simpan' }).click();
 	await expect(page.getByText('Kontak dibuat.')).toBeVisible();
@@ -60,6 +64,9 @@ test('create a contact, then create, edit, and delete an invoice without touchin
 	await page.locator('[role="spinbutton"]').first().click();
 	await page.keyboard.type(todayDdmmyyyy());
 	await page.getByLabel('Perihal').fill('Perihal E2E');
+	await page.getByLabel('Catatan (opsional)').fill('Baris satu');
+	await page.getByLabel('Catatan (opsional)').press('Enter');
+	await page.getByLabel('Catatan (opsional)').pressSequentially('Baris dua');
 	await page.getByLabel('Keterangan baris 1').fill('Jasa konsultasi E2E');
 	await page.getByLabel('Kuantitas baris 1').fill('1');
 	await page.getByLabel('Harga satuan baris 1').fill('1000000');
@@ -67,6 +74,8 @@ test('create a contact, then create, edit, and delete an invoice without touchin
 	await expect(page).toHaveURL(/\/invoicing\/invoices\/[0-9a-f-]{36}$/);
 	await expect(page.getByRole('heading', { name: /^001\/E2E-PLG\/INV\/[IVX]+\/\d{4}$/ })).toBeVisible();
 	await expect(page.getByText('Perihal E2E')).toBeVisible();
+	// Catatan multi-baris: Enter menambah baris, bukan mengirim form.
+	await expect(page.getByText(/Baris satu\s+Baris dua/)).toBeVisible();
 	await expect(page.getByText('Attn: Budi Santoso, Manajer Keuangan')).toBeVisible();
 
 	// --- Ubah: ganti keterangan baris, nomor tetap ---

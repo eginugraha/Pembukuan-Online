@@ -105,7 +105,7 @@
 </div>
 
 {#if data.invoice.notes}
-	<p class="mt-4 text-sm text-muted-foreground">{data.invoice.notes}</p>
+	<p class="mt-4 text-sm whitespace-pre-line text-muted-foreground">{data.invoice.notes}</p>
 {/if}
 
 <DeleteDocumentDialog bind:open={deleteOpen} title="Hapus invoice" name={data.invoice.invoiceNo} {busy} onconfirm={doDelete} />

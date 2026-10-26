@@ -3,7 +3,7 @@ import decodePng from '@jsquash/png/decode';
 import encodePng from '@jsquash/png/encode';
 
 /**
- * Logo perusahaan selalu disimpan sebagai WebP (lihat `src/lib/logo-crop.ts`), tapi `pdfkit`
+ * Logo perusahaan selalu disimpan sebagai WebP (lihat `src/lib/logo-resize.ts`), tapi `pdfkit`
  * hanya bisa menyisipkan PNG/JPEG. Konversi di sini sebelum `pdfkit` melihat bytes-nya.
  * Logo rusak/tidak terbaca harus dianggap "tanpa logo", bukan menggagalkan seluruh PDF.
  */

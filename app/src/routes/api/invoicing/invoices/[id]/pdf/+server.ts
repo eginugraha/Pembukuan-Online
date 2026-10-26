@@ -1,6 +1,6 @@
 import { getContact } from '$lib/server/invoicing/contacts';
 import { getInvoice } from '$lib/server/invoicing/invoices';
-import { drawInvoicePdf } from '$lib/server/invoicing/invoice-pdf';
+import { INVOICE_MARGIN, drawInvoicePdf } from '$lib/server/invoicing/invoice-pdf';
 import { apiHandler } from '$lib/server/api';
 import { requireRole } from '$lib/server/rbac';
 import { getInvoiceCompanyData } from '$lib/server/reports/company';
@@ -14,7 +14,7 @@ export const GET: RequestHandler = (event) =>
 		const invoice = await getInvoice(ctx.companyId, parseId(event.params.id, 'Invoice'));
 		const [contact, company] = await Promise.all([getContact(ctx.companyId, invoice.contactId), getInvoiceCompanyData(ctx.companyId)]);
 
-		const doc = createPdfDocument();
+		const doc = createPdfDocument({ margin: INVOICE_MARGIN });
 		drawInvoicePdf(doc, { company, contact, invoice });
 
 		const buf = await finishPdf(doc);

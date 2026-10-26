@@ -20,7 +20,7 @@ export function drawLetterhead(
 	const textX = company.logoPng ? 100 : LEFT_X;
 
 	if (company.logoPng) {
-		doc.image(company.logoPng, LEFT_X, TOP_Y, { width: LOGO_SIZE, height: LOGO_SIZE });
+		doc.image(company.logoPng, LEFT_X, TOP_Y, { fit: [LOGO_SIZE, LOGO_SIZE], valign: 'center' });
 	}
 
 	doc.font('Helvetica-Bold').fontSize(12).text(company.name, textX, TOP_Y);

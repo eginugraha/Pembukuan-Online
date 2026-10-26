@@ -6,15 +6,17 @@ import type { InvoiceDetail } from './invoices';
 
 /*
  * PDF invoice sesuai mockup revisi 9 (docs/superpowers/specs/assets/2026-10-26-invoice-mockup.html).
- * Mockup memakai kertas 640px dengan padding 30px (lebar konten 580px); di sini lebar konten A4
- * 495pt, jadi ukuran di mockup dikali ±0,85 untuk mendapat pt.
+ * Mockup memakai kertas 640px dengan padding 30px; margin A4 di sini (`INVOICE_MARGIN`) diambil
+ * dengan perbandingan yang sama, dan ukuran huruf di mockup dikali ±0,85 untuk mendapat pt.
  */
+
+/** Margin halaman invoice (pt), sebanding dengan padding 30px pada kertas 640px di mockup. */
+export const INVOICE_MARGIN = 30;
 
 const TEXT = '#1b1b1b';
 const MUTED = '#777777';
 const EN = '#888888';
 const TH_EN = '#999999';
-const NAME = '#1f2a44';
 const ICON = '#555555';
 const RULE_HEAD = '#bbbbbb';
 const RULE_ROW = '#eeeeee';
@@ -29,7 +31,8 @@ const ITALIC = 'Helvetica-Oblique';
 /** Lebar kolom kanan atas (INVOICE, nomor/tanggal) dan kolom "BILL TO". */
 const RIGHT_COL_W = 190;
 const CELL_PAD = 5;
-const LOGO_SIZE = 26;
+/** Kotak maksimum logo; logo tidak harus persegi, jadi digambar `fit` di dalam kotak ini. */
+const LOGO_BOX = { w: 150, h: 40 };
 const SIGNATURE_BOX = { w: 130, h: 46 };
 
 const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -193,24 +196,21 @@ export function drawInvoicePdf(
 		doc.save().moveTo(L, y).lineTo(R, y).lineWidth(width).strokeColor(color).stroke().restore();
 	};
 
-	// ── Kiri atas: logo + nama, alamat, email, telepon ──────────────────────────────────────────
+	// ── Kiri atas: logo, nama perusahaan, alamat, email, telepon ──────────────────────────────────────────
 	const leftW = RX - L - 20;
 	let ly = TOP;
 	{
-		const nameX = logo ? L + LOGO_SIZE + 8 : L;
-		const nameW = L + leftW - nameX;
-		const nameSize = 14;
-		const nameH = heightOf(company.name, BOLD, nameSize, nameW);
 		if (logo) {
+			const scale = Math.min(LOGO_BOX.w / logo.width, LOGO_BOX.h / logo.height);
+			const h = logo.height * scale;
 			try {
-				doc.image(asSrc(logo), L, TOP, { fit: [LOGO_SIZE, LOGO_SIZE], align: 'center', valign: 'center' });
+				doc.image(asSrc(logo), L, TOP, { width: logo.width * scale, height: h });
 			} catch {
 				// abaikan logo rusak
 			}
+			ly = TOP + h + 8;
 		}
-		const nameY = logo && nameH < LOGO_SIZE ? TOP + (LOGO_SIZE - nameH) / 2 + 1 : TOP;
-		para(company.name, nameX, nameY, nameW, { font: BOLD, size: nameSize, color: NAME });
-		ly = Math.max(logo ? TOP + LOGO_SIZE : TOP, nameY + nameH) + 5;
+		ly += para(company.name, L, ly, leftW, { size: 8, color: MUTED });
 		if (company.address) {
 			ly += para(company.address, L, ly, leftW, { size: 8, color: MUTED });
 		}

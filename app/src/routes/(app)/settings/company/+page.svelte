@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { textareaClass } from '$lib/ui';
 	import { goto, invalidateAll } from '$app/navigation';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
@@ -14,7 +15,7 @@
 	import { accountOptions as toAccountOptions } from '$lib/account-options';
 	import { COA_TEMPLATES, type CoaTemplateId } from '$lib/coa-templates';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
-	import LogoCropDialog from '$lib/components/LogoCropDialog.svelte';
+	import { loadBitmap, renderLogo } from '$lib/logo-resize';
 	import { AVATAR_ACCEPT, AVATAR_MAX_INPUT_BYTES } from '$lib/image';
 
 	let { data } = $props();
@@ -64,10 +65,10 @@
 	let message = $state<string | null>(null);
 	let errorMessage = $state<string | null>(null);
 	let logoFileInput = $state<HTMLInputElement | null>(null);
-	let pickedLogoFile = $state<File | null>(null);
 	let logoBusy = $state(false);
 
-	function onPickLogo(e: Event & { currentTarget: HTMLInputElement }) {
+	// Logo diunggah utuh (tidak dipotong persegi), hanya diperkecil bila terlalu besar.
+	async function onPickLogo(e: Event & { currentTarget: HTMLInputElement }) {
 		const file = e.currentTarget.files?.[0];
 		e.currentTarget.value = '';
 		if (!file) return;
@@ -79,28 +80,21 @@
 			errorMessage = 'Ukuran logo maksimal 5 MB';
 			return;
 		}
-		message = errorMessage = null;
-		pickedLogoFile = file;
-	}
-
-	async function onConfirmLogo(blob: Blob) {
 		logoBusy = true;
 		message = errorMessage = null;
 		try {
+			const blob = await renderLogo(await loadBitmap(file));
 			const form = new FormData();
 			form.append('file', blob, 'logo.webp');
 			const res = await fetch(`/api/companies/${data.company?.id}/logo`, { method: 'PUT', body: form });
 			if (!res.ok) throw new Error((await res.json().catch(() => null))?.error?.message ?? 'Gagal mengunggah logo');
 			message = 'Logo perusahaan diperbarui.';
-			pickedLogoFile = null;
 			await invalidateAll();
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Gagal mengunggah logo';
 		} finally {
 			logoBusy = false;
 		}
-	}
-
-	function onCancelLogo() {
-		pickedLogoFile = null;
 	}
 
 	async function removeLogo() {
@@ -254,7 +248,7 @@
 	<Card.Header><Card.Title>Logo Perusahaan</Card.Title></Card.Header>
 	<Card.Content class="flex flex-wrap items-center gap-5">
 		{#if data.company.logoUrl}
-			<img src={data.company.logoUrl} alt="Logo perusahaan" class="size-16 rounded-lg bg-chip-fixed object-contain" role="img" />
+			<img src={data.company.logoUrl} alt="Logo perusahaan" class="h-16 w-auto max-w-48 rounded-lg bg-chip-fixed object-contain p-1" />
 		{/if}
 		<div class="flex flex-wrap gap-2">
 			<input bind:this={logoFileInput} type="file" accept={AVATAR_ACCEPT.join(',')} class="sr-only" aria-label="Pilih logo perusahaan" onchange={onPickLogo} />
@@ -266,9 +260,6 @@
 	</Card.Content>
 </Card.Root>
 
-{#if pickedLogoFile}
-	<LogoCropDialog file={pickedLogoFile} onconfirm={onConfirmLogo} oncancel={onCancelLogo} />
-{/if}
 
 {#each ASSETS as a (a.kind)}
 	{@const url = data.company[a.urlKey]}
@@ -299,7 +290,7 @@
 				<Input bind:value={form.values.npwp} {...form.attrs('npwp', 'c-npwp')} />
 			</FormField>
 			<FormField id="c-addr" label="Alamat" error={form.error('address')}>
-				<Input bind:value={form.values.address} {...form.attrs('address', 'c-addr')} />
+				<textarea bind:value={form.values.address} {...form.attrs('address', 'c-addr')} rows="3" class={textareaClass}></textarea>
 			</FormField>
 			<FormField id="c-bank" label="Akun bank (lawan jurnal eStatement)" error={form.error('bankAccountId')}>
 				<SearchSelect
