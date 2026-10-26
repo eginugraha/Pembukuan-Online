@@ -1,0 +1,108 @@
+<h2>Coba: stempel LUNAS di tengah</h2>
+<p class="subtitle">Stempel hijau transparan, miring, di atas konten. Watermark logo tetap di kanan bawah.</p>
+
+<style>
+  .paper { background:#fff; color:#1b1b1b; font-family: 'Open Sans', system-ui, sans-serif; font-size:11px; line-height:1.45; padding:28px 30px; border-radius:6px; position:relative; overflow:hidden; max-width:640px; margin:0 auto; }
+  .paper .paid { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) rotate(-20deg); border:5px solid rgba(22,138,74,.45); color:rgba(22,138,74,.45); border-radius:10px; padding:6px 26px; font-size:64px; font-weight:800; letter-spacing:8px; z-index:2; pointer-events:none; }
+  .paper .wm { position:absolute; right:-40px; bottom:140px; width:500px; opacity:.75; z-index:0; pointer-events:none; }
+  .paper a { color:inherit; text-decoration:none; }
+  .paper > * { position:relative; z-index:1; }
+  .row { display:flex; justify-content:space-between; gap:24px; }
+  .logo { display:flex; align-items:center; gap:8px; font-weight:800; font-size:20px; letter-spacing:.5px; color:#1f2a44; }
+  .logo .mark { width:26px; height:26px; border-radius:6px; background:linear-gradient(135deg,#7c4dff,#22c1a5); }
+  .muted { color:#777; font-size:9.5px; }
+  .contact { display:flex; align-items:center; gap:6px; color:#777; font-size:9.5px; margin-top:4px; }
+  .contact svg { width:13px; height:13px; stroke:#555; fill:none; stroke-width:1.6; flex-shrink:0; }
+  .doc-title { font-size:15px; font-weight:700; letter-spacing:.3px; }
+  .en { color:#888; font-style:italic; font-weight:400; font-size:10px; }
+  .kv b { display:block; font-size:10.5px; } .kv .v { font-size:13px; font-weight:600; margin-bottom:6px; }
+  .tag { color:#777; font-size:9px; letter-spacing:.4px; font-weight:600; margin-bottom:2px; }
+  table.items { width:100%; border-collapse:collapse; margin-top:6px; }
+  table.items th { text-align:left; font-size:10.5px; padding:6px 6px; border-bottom:1.5px solid #bbb; font-weight:600; }
+  table.items th small { display:block; color:#999; font-style:italic; font-weight:400; font-size:8.5px; }
+  table.items td { padding:6px; border-bottom:1px solid #eee; font-size:10px; vertical-align:top; }
+  table.items td.r, table.items th.r { text-align:right; }
+  table.items th:first-child, table.items td:first-child { padding-left:0; }
+  table.items th:last-child, table.items td:last-child { padding-right:0; }
+  table.items tr.total td { font-weight:700; border-bottom:2px solid #ddd; }
+  .section-h { font-weight:700; font-size:12px; letter-spacing:.3px; margin-top:16px; }
+  .words { font-size:13px; font-weight:500; margin-top:2px; }
+  .sign { text-align:right; margin-top:18px; }
+  .sign .scribble { font-family: 'Brush Script MT', cursive; font-size:26px; margin:2px 0; }
+  .paybox { border:1px solid #eee; border-radius:6px; padding:8px 10px; background:#fafafa; display:inline-block; min-width:240px; margin-top:4px; }
+  .changes li { margin:3px 0; } .changes mark { background:#fff3a3; padding:0 3px; border-radius:3px; color:#222; }
+</style>
+
+<div class="mockup">
+<div class="mockup-header">Preview: Invoice A rev.9</div>
+<div class="mockup-body">
+<div class="paper">
+  <img class="wm" src="/files/watermark.png" alt="">
+  <div class="paid">LUNAS</div>
+  <div class="row">
+    <div>
+      <div class="logo"><span class="mark"></span>EKUATOR</div>
+      <div class="muted" style="margin-top:6px">PT Sabio Ekuator Teknologi<br>Jalan Situlembang Baru No.9, Cijagra, Kec. Lengkong<br>Kota Bandung, Jawa Barat 40265</div>
+      <div class="contact" style="margin-top:8px"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg><a href="mailto:contact@ekuator.id">contact@ekuator.id</a></div>
+      <div class="contact"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg><a href="tel:+6287823203711">+62 878-2320-3711</a></div>
+    </div>
+    <div class="kv" style="min-width:210px">
+      <div class="doc-title">INVOICE</div>
+      <div class="en" style="margin-bottom:8px">Tagihan</div>
+      <b>Nomor Invoice <span class="en">/ Invoice Number</span></b><div class="v">001/EKT-RFS/INV/IX/2026</div>
+      <b>Tanggal <span class="en">/ Issue Date</span></b><div class="v">29 September 2026</div>
+      <b>Jatuh Tempo <span class="en">/ Due Date</span></b><div class="v">6 Oktober 2026</div>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:18px">
+    <div style="max-width:52%">
+      <div class="tag">PERIHAL / SUBJECT</div>
+      <div style="font-weight:600">Invoice Development Website RFS One Studio – Special Development &amp; Delivery</div>
+    </div>
+    <div style="min-width:210px">
+      <div class="tag">DITAGIHKAN KEPADA / BILL TO</div>
+      <div style="font-weight:600">RFS One Studio Indonesia</div>
+      <div style="font-weight:600">Attn: Mr. P.S Diatmika</div>
+      <div class="muted" style="font-size:10px">Denpasar, Indonesia<br><a href="mailto:putu@rfsonestudio.com">putu@rfsonestudio.com</a><br><a href="tel:+6281234567890">+62 812-3456-7890</a><br>NPWP 01.234.567.8-901.000</div>
+    </div>
+  </div>
+
+  <div class="section-h">RINCIAN TAGIHAN <span class="en">/ Billing Summary</span></div>
+  <table class="items">
+    <tr><th>Keterangan<small>Description</small></th><th>Jumlah<small>Quantity</small></th><th class="r">Harga (Rp)<small>Price (Rp)</small></th><th class="r">Jumlah Harga (Rp)<small>Total Price (Rp)</small></th></tr>
+    <tr><td>Development UIUX Design Website Portal</td><td>x1</td><td class="r">–</td><td class="r" rowspan="2" style="vertical-align:middle">Rp 10.000.000</td></tr>
+    <tr><td>Development Fullstack Website Portal</td><td>x1</td><td class="r">–</td></tr>
+    <tr><td>Setup Infrastructure System</td><td>–</td><td class="r">–</td><td class="r">Gratis</td></tr>
+    <tr><td>Setup Emails</td><td>–</td><td class="r">–</td><td class="r">Gratis</td></tr>
+    <tr><td>Setup Internal Comms, Task Management &amp; File Storage</td><td>–</td><td class="r">–</td><td class="r">Gratis</td></tr>
+    <tr class="total"><td>Total</td><td></td><td></td><td class="r">Rp 10.000.000</td></tr>
+  </table>
+
+  <div class="section-h">TERBILANG <span class="en">/ Amount in Words</span></div>
+  <div class="words">Sepuluh Juta Rupiah</div>
+
+  <div class="paybox" style="margin-top:14px">
+    <div style="font-weight:700;font-size:10.5px">INFORMASI PEMBAYARAN <span class="en">/ Payment Information</span></div>
+    <div style="font-size:12px;font-weight:600;margin-top:3px">BCA 233-0636800</div>
+    <div style="font-size:10px">a.n. PT Sabio Ekuator Teknologi</div>
+    <div class="muted">SWIFT CENAIDJAXXX</div>
+  </div>
+
+
+  <div class="sign">
+    <div style="font-weight:600">Approved by,</div>
+    <div class="scribble">Egi N.</div>
+    <div style="font-weight:600">Egi Nugraha</div>
+    <div>Director</div>
+  </div>
+</div>
+</div>
+</div>
+
+<div class="section" style="margin-top:16px">
+<h3>Yang berubah</h3>
+<ol class="changes">
+  <li>"Cabang Setiabudi (Kota Bandung)" <mark>dihapus</mark>; baris terakhir kartu kini hanya kode SWIFT.</li>
+</ol>
+</div>
