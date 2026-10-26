@@ -334,6 +334,7 @@ export const invoices = pgTable(
 		issueDate: day('issue_date').notNull(),
 		dueDate: day('due_date'),
 		subtotal: money('subtotal').notNull(),
+		discount: money('discount').notNull().default('0'),
 		taxRate: numeric('tax_rate', { precision: 5, scale: 2 }),
 		taxAmount: money('tax_amount').notNull().default('0'),
 		total: money('total').notNull(),

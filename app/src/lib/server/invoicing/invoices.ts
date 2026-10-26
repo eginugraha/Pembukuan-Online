@@ -2,7 +2,7 @@ import { and, asc, eq, isNull } from 'drizzle-orm';
 import { D, sumMoney, toMoney } from '../../money';
 import { CreateInvoiceInput, InvoiceLineInput, UpdateInvoiceInput } from '../../schemas/invoice';
 import { assertContact } from './contacts';
-import { notFound } from '../api';
+import { ApiError, notFound } from '../api';
 import { db, type Tx } from '../db';
 import { contacts, invoiceLines, invoices } from '../db/schema';
 import { nextDocumentNumber } from './numbering';
@@ -35,6 +35,7 @@ export interface InvoiceDetail {
 	issueDate: string;
 	dueDate: string | null;
 	subtotal: string;
+	discount: string;
 	taxRate: string | null;
 	taxAmount: string;
 	total: string;
@@ -48,9 +49,13 @@ export interface InvoiceDetail {
 function computeTotals(input: CreateInvoiceInput) {
 	const lines = input.lines.map((l) => ({ ...l, amount: toMoney(D(l.quantity).times(l.unitPrice)) }));
 	const subtotal = sumMoney(lines.map((l) => l.amount));
-	const taxAmount = input.taxRate ? toMoney(subtotal.times(input.taxRate).div(100)) : '0.00';
-	const total = toMoney(subtotal.plus(taxAmount));
-	return { lines, subtotal: toMoney(subtotal), taxAmount, total };
+	const discount = toMoney(input.discount || '0');
+	if (D(discount).gt(subtotal)) throw new ApiError(400, 'validation_error', 'Diskon tidak boleh melebihi subtotal', undefined, { field: 'discount' });
+	// PPN dihitung dari nilai setelah diskon.
+	const taxable = subtotal.minus(discount);
+	const taxAmount = input.taxRate ? toMoney(taxable.times(input.taxRate).div(100)) : '0.00';
+	const total = toMoney(taxable.plus(taxAmount));
+	return { lines, subtotal: toMoney(subtotal), discount, taxAmount, total };
 }
 
 async function insertLines(tx: Tx, invoiceId: string, lines: ReturnType<typeof computeTotals>['lines']) {
@@ -82,6 +87,7 @@ export async function createInvoice(companyId: string, userId: string, input: Cr
 				issueDate: input.issueDate,
 				dueDate: input.dueDate ?? null,
 				subtotal: totals.subtotal,
+				discount: totals.discount,
 				taxRate: input.taxRate ?? null,
 				taxAmount: totals.taxAmount,
 				total: totals.total,
@@ -111,6 +117,7 @@ export async function updateInvoice(companyId: string, invoiceId: string, input:
 				issueDate: input.issueDate,
 				dueDate: input.dueDate ?? null,
 				subtotal: totals.subtotal,
+				discount: totals.discount,
 				taxRate: input.taxRate ?? null,
 				taxAmount: totals.taxAmount,
 				total: totals.total,

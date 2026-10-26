@@ -34,6 +34,7 @@ export function drawDocumentPdf(
 		contact: { name: string; attention?: string | null; position?: string | null; address?: string | null; npwp?: string | null };
 		lines: { description: string; quantity: string; unitPrice: string; amount: string }[];
 		subtotal: string;
+		discount?: string | null;
 		taxRate?: string | null;
 		taxAmount?: string | null;
 		total: string;
@@ -90,7 +91,7 @@ export function drawDocumentPdf(
 	}
 
 	// Blok total (garis + hingga 3 baris) dijaga tetap utuh di satu halaman.
-	ensureSpace(12 + ROW_H * 3);
+	ensureSpace(12 + ROW_H * 4);
 	y += 4;
 	doc.moveTo(LEFT_X, y).lineTo(RIGHT_X, y).stroke();
 	y += 8;
@@ -103,6 +104,7 @@ export function drawDocumentPdf(
 	};
 
 	totalsRow('Subtotal', opts.subtotal);
+	if (opts.discount && D(opts.discount).gt(0)) totalsRow('Diskon', D(opts.discount).neg().toString());
 	if (opts.taxRate && D(opts.taxRate).gt(0)) {
 		totalsRow(`PPN (${opts.taxRate}%)`, opts.taxAmount ?? '0');
 	}

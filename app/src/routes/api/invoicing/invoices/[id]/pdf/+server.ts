@@ -22,6 +22,7 @@ export const GET: RequestHandler = (event) =>
 			contact,
 			lines: invoice.lines,
 			subtotal: invoice.subtotal,
+			discount: invoice.discount,
 			taxRate: invoice.taxRate,
 			taxAmount: invoice.taxAmount,
 			total: invoice.total,

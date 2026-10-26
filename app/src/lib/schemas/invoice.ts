@@ -15,6 +15,7 @@ export const CreateInvoiceInput = z
 		contactId: requiredId('Pelanggan'),
 		issueDate: isoDate,
 		dueDate: isoDate.optional(),
+		discount: moneyString.optional(),
 		taxRate: z
 			.string()
 			.trim()

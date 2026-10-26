@@ -95,3 +95,12 @@ test('due date is stored, can be changed or cleared, and may not precede the iss
 	expect((await getInvoice(companyId, id)).dueDate).toBeNull();
 	expect(CreateInvoiceInput.safeParse({ contactId, issueDate: '2026-10-10', dueDate: '2026-10-09', lines: [line('A')] }).success).toBe(false);
 });
+
+test('discount is taken off the subtotal before PPN, defaults to 0, and cannot exceed the subtotal', async () => {
+	const { companyId, userId, contactId } = await setup();
+	const { id } = await createInvoice(companyId, userId, { contactId, issueDate: '2026-10-01', discount: '200000', taxRate: '10', lines: [line('A', '1', '1000000')] });
+	expect(await getInvoice(companyId, id)).toMatchObject({ subtotal: '1000000.00', discount: '200000.00', taxAmount: '80000.00', total: '880000.00' });
+	await updateInvoice(companyId, id, { contactId, issueDate: '2026-10-01', lines: [line('A', '1', '1000000')] });
+	expect(await getInvoice(companyId, id)).toMatchObject({ discount: '0.00', total: '1000000.00' });
+	await expect(updateInvoice(companyId, id, { contactId, issueDate: '2026-10-01', discount: '1000000.01', lines: [line('A', '1', '1000000')] })).rejects.toMatchObject({ status: 400, field: 'discount' });
+});

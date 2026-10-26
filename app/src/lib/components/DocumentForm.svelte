@@ -18,7 +18,7 @@
 	import { inputClass } from '$lib/ui';
 
 	type Line = { description: string; quantity: string; unitPrice: string };
-	type Initial = { contactId: string; issueDate: string; expectedDate?: string; dueDate?: string; taxRate: string; notes: string; lines: Line[] };
+	type Initial = { contactId: string; issueDate: string; expectedDate?: string; dueDate?: string; discount?: string; taxRate: string; notes: string; lines: Line[] };
 
 	let {
 		kind,
@@ -38,17 +38,17 @@
 	const contactOptions = $derived(contacts.map((c) => ({ value: c.id, label: c.name })));
 
 	// --- Field header ---
-	const EMPTY = { contactId: '', issueDate: '', expectedDate: '', dueDate: '', taxRate: '', notes: '' };
+	const EMPTY = { contactId: '', issueDate: '', expectedDate: '', dueDate: '', discount: '', taxRate: '', notes: '' };
 	const toInput = (v: typeof EMPTY) => ({
 		contactId: v.contactId,
 		issueDate: v.issueDate,
-		...(isPo ? { expectedDate: v.expectedDate || undefined } : { dueDate: v.dueDate || undefined }),
+		...(isPo ? { expectedDate: v.expectedDate || undefined } : { dueDate: v.dueDate || undefined, discount: v.discount || undefined }),
 		taxRate: v.taxRate || undefined,
 		notes: v.notes || undefined,
 		lines: lines.map(({ description, quantity, unitPrice }) => ({ description, quantity, unitPrice }))
 	});
 	// svelte-ignore state_referenced_locally
-	const form = new FormState(schema, { ...EMPTY, ...(initial ? { ...initial, expectedDate: initial.expectedDate ?? '', dueDate: initial.dueDate ?? '' } : {}) }, toInput);
+	const form = new FormState(schema, { ...EMPTY, ...(initial ? { ...initial, expectedDate: initial.expectedDate ?? '', dueDate: initial.dueDate ?? '', discount: initial.discount ?? '' } : {}) }, toInput);
 	let errorMessage = $state<string | null>(null);
 	let busy = $state(false);
 
@@ -75,8 +75,9 @@
 	// Ringkasan hanya pratinjau klien; nilai final dihitung ulang di server.
 	const lineAmount = (l: Line) => (l.quantity && l.unitPrice ? D(l.quantity).times(l.unitPrice || 0) : D(0));
 	const subtotal = $derived(sumMoney(lines.map(lineAmount)));
-	const taxAmount = $derived(form.values.taxRate ? subtotal.times(form.values.taxRate).div(100) : D(0));
-	const total = $derived(subtotal.plus(taxAmount));
+	const discount = $derived(!isPo && /^\d+(\.\d+)?$/.test(form.values.discount) ? D(form.values.discount) : D(0));
+	const taxAmount = $derived(form.values.taxRate ? subtotal.minus(discount).times(form.values.taxRate).div(100) : D(0));
+	const total = $derived(subtotal.minus(discount).plus(taxAmount));
 
 	async function submit(e: SubmitEvent) {
 		e.preventDefault();
@@ -125,6 +126,17 @@
 				{:else}
 					<FormField id="doc-due-date" label="Jatuh tempo (opsional)" error={form.error('dueDate')}>
 						<DateField bind:value={form.values.dueDate} {...form.attrs('dueDate', 'doc-due-date')} />
+					</FormField>
+				{/if}
+				{#if !isPo}
+					<FormField id="doc-discount" label="Diskon Rp (opsional)" error={form.error('discount')}>
+						<input
+							class="{inputClass} text-right"
+							inputmode="decimal"
+							placeholder="0"
+							bind:value={form.values.discount}
+							{...form.attrs('discount', 'doc-discount')}
+						/>
 					</FormField>
 				{/if}
 				<FormField id="doc-tax-rate" label="Tarif PPN % (opsional)" error={form.error('taxRate')}>
@@ -210,6 +222,9 @@
 
 			<div class="flex flex-col items-end gap-1 text-sm">
 				<div class="flex w-64 justify-between"><span class="text-muted-foreground">Subtotal</span><span class="tabular-nums">{formatIdr(subtotal)}</span></div>
+				{#if !isPo}
+					<div class="flex w-64 justify-between"><span class="text-muted-foreground">Diskon</span><span class="tabular-nums">{formatIdr(discount)}</span></div>
+				{/if}
 				<div class="flex w-64 justify-between"><span class="text-muted-foreground">PPN</span><span class="tabular-nums">{formatIdr(taxAmount)}</span></div>
 				<div class="flex w-64 justify-between font-semibold"><span>Total</span><span class="tabular-nums">{formatIdr(total)}</span></div>
 			</div>

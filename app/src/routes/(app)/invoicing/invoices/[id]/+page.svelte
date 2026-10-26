@@ -93,6 +93,9 @@
 
 <div class="mt-4 flex flex-col items-end gap-1 text-sm">
 	<div class="flex w-64 justify-between"><span class="text-muted-foreground">Subtotal</span><span class="tabular-nums">{formatIdr(data.invoice.subtotal)}</span></div>
+	{#if Number(data.invoice.discount) > 0}
+		<div class="flex w-64 justify-between"><span class="text-muted-foreground">Diskon</span><span class="tabular-nums">-{formatIdr(data.invoice.discount)}</span></div>
+	{/if}
 	<div class="flex w-64 justify-between"><span class="text-muted-foreground">PPN</span><span class="tabular-nums">{formatIdr(data.invoice.taxAmount)}</span></div>
 	<div class="flex w-64 justify-between font-semibold"><span>Total</span><span class="tabular-nums">{formatIdr(data.invoice.total)}</span></div>
 </div>
