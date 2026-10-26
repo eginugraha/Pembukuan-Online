@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { E2E_PASSWORD } from '../../playwright.config';
+import { todayIso } from '../../src/lib/dates';
 
 /** Format tanggal hari ini sebagai `DDMMYYYY`, urutan ketik segmen DateField (lihat manual-entry.spec.ts). */
 function todayDdmmyyyy(): string {
@@ -96,7 +97,7 @@ test('create a contact, then create, edit, and delete an invoice without touchin
 	await page.getByRole('button', { name: 'Terbitkan Receipt' }).click();
 	const receiptDialog = page.getByRole('dialog');
 	// Tanggal pembayaran default = hari ini (segmen pertama = hari).
-	await expect(receiptDialog.locator('[role="spinbutton"]').first()).toHaveAttribute('aria-valuenow', String(new Date().getDate()));
+	await expect(receiptDialog.locator('[role="spinbutton"]').first()).toHaveAttribute('aria-valuenow', String(Number(todayIso().slice(8, 10))));
 	await receiptDialog.getByRole('button', { name: 'Simpan' }).click();
 	// Nomor tampil di kartu hanya bila POST berhasil (dialog menutup diam-diam saat gagal).
 	await expect(page.getByText(/^001\/E2E-PLG\/RCP\/[IVX]+\/\d{4}$/)).toBeVisible();
