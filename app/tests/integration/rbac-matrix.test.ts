@@ -29,6 +29,8 @@ import * as contactOne from '../../src/routes/api/invoicing/contacts/[id]/+serve
 import * as invoicesApi from '../../src/routes/api/invoicing/invoices/+server';
 import * as invoiceOne from '../../src/routes/api/invoicing/invoices/[id]/+server';
 import * as invoicePdf from '../../src/routes/api/invoicing/invoices/[id]/pdf/+server';
+import * as invoiceReceipt from '../../src/routes/api/invoicing/invoices/[id]/receipt/+server';
+import * as invoiceReceiptPdf from '../../src/routes/api/invoicing/invoices/[id]/receipt/pdf/+server';
 import * as purchaseOrdersApi from '../../src/routes/api/invoicing/purchase-orders/+server';
 import * as purchaseOrderOne from '../../src/routes/api/invoicing/purchase-orders/[id]/+server';
 import * as purchaseOrderPdf from '../../src/routes/api/invoicing/purchase-orders/[id]/pdf/+server';
@@ -86,6 +88,10 @@ const ENDPOINTS: Array<{ name: string; handler: H; method: string; min: Level; b
 	{ name: 'GET /invoicing/invoices/:id/pdf', handler: invoicePdf.GET, method: 'GET', min: 'viewer', params: { id: RID } },
 	{ name: 'PUT /invoicing/invoices/:id', handler: invoiceOne.PUT, method: 'PUT', min: 'accountant', params: { id: RID }, body: {} },
 	{ name: 'DELETE /invoicing/invoices/:id', handler: invoiceOne.DELETE, method: 'DELETE', min: 'accountant', params: { id: RID } },
+	{ name: 'GET /invoicing/invoices/:id/receipt', handler: invoiceReceipt.GET, method: 'GET', min: 'viewer', params: { id: RID } },
+	{ name: 'POST /invoicing/invoices/:id/receipt', handler: invoiceReceipt.POST, method: 'POST', min: 'accountant', params: { id: RID }, body: {} },
+	{ name: 'DELETE /invoicing/invoices/:id/receipt', handler: invoiceReceipt.DELETE, method: 'DELETE', min: 'accountant', params: { id: RID } },
+	{ name: 'GET /invoicing/invoices/:id/receipt/pdf', handler: invoiceReceiptPdf.GET, method: 'GET', min: 'viewer', params: { id: RID } },
 	// Invoicing: Purchase Order
 	{ name: 'GET /invoicing/purchase-orders', handler: purchaseOrdersApi.GET, method: 'GET', min: 'viewer' },
 	{ name: 'POST /invoicing/purchase-orders', handler: purchaseOrdersApi.POST, method: 'POST', min: 'accountant', body: {} },

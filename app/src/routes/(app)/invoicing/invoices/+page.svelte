@@ -18,6 +18,7 @@
 		{ key: 'contactName', label: 'Pelanggan', sortable: true, searchable: true, text: (i) => i.contactName },
 		{ key: 'issueDate', label: 'Tanggal', sortable: true, text: (i) => formatDate(i.issueDate) },
 		{ key: 'total', label: 'Total', align: 'right', sortable: true, sortValue: (i) => Number(i.total), text: (i) => formatAmount(i.total, i.currency) },
+		{ key: 'receipt', label: 'Receipt', text: (i) => (i.hasReceipt ? 'Terbit' : '') },
 		{ key: 'actions', label: 'Aksi' }
 	];
 	const canManage = $derived(roleAtLeast(data.ctx.role, 'accountant'));
@@ -64,6 +65,8 @@
 			{formatDate(i.issueDate)}
 		{:else if col.key === 'total'}
 			{formatAmount(i.total, i.currency)}
+		{:else if col.key === 'receipt'}
+			{i.hasReceipt ? 'Terbit' : ''}
 		{:else if col.key === 'actions'}
 			<span class="flex gap-1">
 				<Button size="sm" variant="ghost" href="/invoicing/invoices/{i.id}">Lihat</Button>
