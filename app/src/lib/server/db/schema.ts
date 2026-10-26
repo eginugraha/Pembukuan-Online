@@ -14,6 +14,7 @@ import {
 	text,
 	timestamp,
 	unique,
+	uniqueIndex,
 	uuid,
 	varchar
 } from 'drizzle-orm/pg-core';
@@ -379,6 +380,53 @@ export const invoices = pgTable(
 export const invoiceLines = pgTable('invoice_lines', {
 	id: uuid('id').primaryKey().defaultRandom(),
 	invoiceId: uuid('invoice_id').notNull().references(() => invoices.id, { onDelete: 'cascade' }),
+	lineNo: integer('line_no').notNull(),
+	description: text('description').notNull(),
+	quantity: numeric('quantity', { precision: 12, scale: 2 }).notNull(),
+	unitPrice: money('unit_price').notNull(),
+	amount: money('amount').notNull()
+});
+
+// Payment receipt: salinan tetap dari invoice saat diterbitkan (data kontak, baris, nominal), tanpa jurnal.
+export const paymentReceipts = pgTable(
+	'payment_receipts',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+		invoiceId: uuid('invoice_id').notNull().references(() => invoices.id),
+		receiptNo: varchar('receipt_no', { length: 50 }).notNull(),
+		paymentDate: day('payment_date').notNull(),
+		invoiceNo: varchar('invoice_no', { length: 50 }).notNull(),
+		subject: text('subject'),
+		currency: varchar('currency', { length: 3 }).notNull(),
+		subtotal: money('subtotal').notNull(),
+		discount: money('discount').notNull().default('0'),
+		taxRate: numeric('tax_rate', { precision: 5, scale: 2 }),
+		taxAmount: money('tax_amount').notNull().default('0'),
+		total: money('total').notNull(),
+		notes: text('notes'),
+		contactName: text('contact_name').notNull(),
+		contactAttention: text('contact_attention'),
+		contactPosition: text('contact_position'),
+		contactAddress: text('contact_address'),
+		contactEmail: text('contact_email'),
+		contactPhone: varchar('contact_phone', { length: 30 }),
+		contactNpwp: varchar('contact_npwp', { length: 20 }),
+		deletedAt: timestamp('deleted_at', { withTimezone: true }),
+		createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: createdAt()
+	},
+	(t) => [
+		// Nomor unik termasuk yang sudah dihapus, supaya tidak pernah dipakai ulang.
+		unique('payment_receipts_company_no_uq').on(t.companyId, t.receiptNo),
+		// Satu invoice hanya boleh punya satu receipt aktif.
+		uniqueIndex('payment_receipts_active_invoice_uq').on(t.invoiceId).where(sql`${t.deletedAt} IS NULL`)
+	]
+);
+
+export const paymentReceiptLines = pgTable('payment_receipt_lines', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	receiptId: uuid('receipt_id').notNull().references(() => paymentReceipts.id, { onDelete: 'cascade' }),
 	lineNo: integer('line_no').notNull(),
 	description: text('description').notNull(),
 	quantity: numeric('quantity', { precision: 12, scale: 2 }).notNull(),

@@ -1,10 +1,10 @@
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { D, sumMoney, toMoney } from '../../money';
 import { CreateInvoiceInput, InvoiceLineInput, UpdateInvoiceInput } from '../../schemas/invoice';
 import { assertContact } from './contacts';
 import { ApiError, notFound } from '../api';
 import { db, type Tx } from '../db';
-import { contacts, invoiceLines, invoices } from '../db/schema';
+import { contacts, invoiceLines, invoices, paymentReceipts } from '../db/schema';
 import { nextDocumentNumber, requireCompanyCode, requireContactCode } from './numbering';
 
 export { CreateInvoiceInput, InvoiceLineInput, UpdateInvoiceInput };
@@ -17,6 +17,8 @@ export interface InvoiceListRow {
 	currency: string;
 	contactId: string;
 	contactName: string;
+	/** True bila invoice punya payment receipt yang masih aktif. */
+	hasReceipt: boolean;
 }
 
 export interface InvoiceLineRow {
@@ -139,14 +141,28 @@ export async function updateInvoice(companyId: string, invoiceId: string, input:
 	});
 }
 
-/** Soft delete: barisnya tetap ada supaya nomor dokumen tidak pernah dipakai ulang. */
+/**
+ * Soft delete: barisnya tetap ada supaya nomor dokumen tidak pernah dipakai ulang.
+ * Ditolak (409) selama invoice masih punya receipt aktif. Baris invoice dikunci FOR UPDATE, sama seperti
+ * penerbitan receipt, supaya keduanya tidak bisa saling mendahului.
+ */
 export async function deleteInvoice(companyId: string, invoiceId: string): Promise<void> {
-	const deleted = await db
-		.update(invoices)
-		.set({ deletedAt: new Date() })
-		.where(and(eq(invoices.id, invoiceId), eq(invoices.companyId, companyId), isNull(invoices.deletedAt)))
-		.returning({ id: invoices.id });
-	if (deleted.length === 0) throw notFound('Invoice');
+	return db.transaction(async (tx) => {
+		const [current] = await tx
+			.select({ id: invoices.id })
+			.from(invoices)
+			.where(and(eq(invoices.id, invoiceId), eq(invoices.companyId, companyId), isNull(invoices.deletedAt)))
+			.limit(1)
+			.for('update');
+		if (!current) throw notFound('Invoice');
+		const receipt = await tx
+			.select({ id: paymentReceipts.id })
+			.from(paymentReceipts)
+			.where(and(eq(paymentReceipts.invoiceId, invoiceId), isNull(paymentReceipts.deletedAt)))
+			.limit(1);
+		if (receipt.length > 0) throw new ApiError(409, 'invoice_has_receipt', 'Hapus receipt terlebih dahulu');
+		await tx.update(invoices).set({ deletedAt: new Date() }).where(eq(invoices.id, invoiceId));
+	});
 }
 
 export async function listInvoices(companyId: string): Promise<InvoiceListRow[]> {
@@ -158,7 +174,8 @@ export async function listInvoices(companyId: string): Promise<InvoiceListRow[]>
 			total: invoices.total,
 			contactId: invoices.contactId,
 			contactName: contacts.name,
-			currency: invoices.currency
+			currency: invoices.currency,
+			hasReceipt: sql<boolean>`exists (select 1 from ${paymentReceipts} where ${paymentReceipts.invoiceId} = ${invoices.id} and ${paymentReceipts.deletedAt} is null)`
 		})
 		.from(invoices)
 		.innerJoin(contacts, and(eq(contacts.id, invoices.contactId), eq(contacts.companyId, companyId)))

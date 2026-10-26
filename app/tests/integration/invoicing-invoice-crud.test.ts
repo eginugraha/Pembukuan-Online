@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { createContact, deleteContact } from '../../src/lib/server/invoicing/contacts';
 import { CreateInvoiceInput } from '../../src/lib/schemas/invoice';
 import { createInvoice, deleteInvoice, getInvoice, listInvoices, updateInvoice } from '../../src/lib/server/invoicing/invoices';
+import { deletePaymentReceipt, issuePaymentReceipt } from '../../src/lib/server/invoicing/payment-receipts';
 import { db } from '../../src/lib/server/db';
 import { invoiceLines, journalEntries } from '../../src/lib/server/db/schema';
 import { makeCompany, makeUser } from './factory';
@@ -123,4 +124,26 @@ test('currency defaults to IDR, can be set to USD on create, changed on update, 
 test('schema rejects an unknown currency', () => {
 	const r = CreateInvoiceInput.safeParse({ contactId: crypto.randomUUID(), issueDate: '2026-10-01', currency: 'EUR', lines: [line('Jasa')] });
 	expect(r.success).toBe(false);
+});
+
+test('delete is refused with 409 invoice_has_receipt while a receipt is active, and works once it is deleted', async () => {
+	const { companyId, userId, contactId } = await setup();
+	const { id } = await createInvoice(companyId, userId, { contactId, issueDate: '2026-10-01', lines: [line('A')] });
+	await issuePaymentReceipt(companyId, userId, id, { paymentDate: '2026-10-15' });
+	await expect(deleteInvoice(companyId, id)).rejects.toMatchObject({ status: 409, code: 'invoice_has_receipt', message: 'Hapus receipt terlebih dahulu' });
+	expect(await listInvoices(companyId)).toHaveLength(1);
+	await deletePaymentReceipt(companyId, id);
+	await deleteInvoice(companyId, id);
+	expect(await listInvoices(companyId)).toEqual([]);
+});
+
+test('list marks hasReceipt only for invoices with an active receipt', async () => {
+	const { companyId, userId, contactId } = await setup();
+	const { id: a } = await createInvoice(companyId, userId, { contactId, issueDate: '2026-10-01', lines: [line('A')] });
+	const { id: b } = await createInvoice(companyId, userId, { contactId, issueDate: '2026-10-02', lines: [line('B')] });
+	expect((await listInvoices(companyId)).map((r) => r.hasReceipt)).toEqual([false, false]);
+	await issuePaymentReceipt(companyId, userId, a, { paymentDate: '2026-10-15' });
+	expect((await listInvoices(companyId)).map((r) => [r.id, r.hasReceipt])).toEqual([[a, true], [b, false]]);
+	await deletePaymentReceipt(companyId, a);
+	expect((await listInvoices(companyId)).map((r) => r.hasReceipt)).toEqual([false, false]);
 });
