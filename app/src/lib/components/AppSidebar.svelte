@@ -2,6 +2,7 @@
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import BookUser from '@lucide/svelte/icons/book-user';
 	import Building2 from '@lucide/svelte/icons/building-2';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import History from '@lucide/svelte/icons/history';
 	import Landmark from '@lucide/svelte/icons/landmark';
@@ -20,7 +21,8 @@
 	import Wallet from '@lucide/svelte/icons/wallet';
 	import WandSparkles from '@lucide/svelte/icons/wand-sparkles';
 	import { Tooltip } from 'bits-ui';
-	import { untrack, type Component } from 'svelte';
+	import { onMount, untrack, type Component } from 'svelte';
+	import { readClosedGroups, saveClosedGroups } from '$lib/sidebar';
 	import NextStepCard from '$lib/components/NextStepCard.svelte';
 	import type { NavGroup } from '$lib/nav';
 	import type { NextStep } from '$lib/server/dashboard/next-step';
@@ -40,11 +42,45 @@
 		collapsed?: boolean;
 	} = $props();
 
-	// Satu indikator aktif di bawah teks menu, digeser dengan transisi CSS ke menu yang aktif.
 	let navEl = $state<HTMLElement | null>(null);
 	let indicator = $state<{ top: number; height: number } | null>(null);
 	let animate = $state(false);
 	const activeHref = $derived(nav.flatMap((g) => g.items).find((i) => isActive(i.href))?.href ?? null);
+	const activeGroup = $derived(nav.find((g) => g.items.some((i) => i.href === activeHref))?.label ?? null);
+
+	// Grup bertajuk bisa dibuka/ditutup sendiri-sendiri; pilihannya diingat di browser.
+	let closed = $state<string[]>([]);
+	onMount(() => (closed = readClosedGroups()));
+	const isClosed = (label: string | null) => label !== null && !collapsed && closed.includes(label);
+	// Menu aktif yang tersembunyi di grup tertutup tidak diberi indikator.
+	const activeHidden = $derived(isClosed(activeGroup));
+
+	// Pindah ke halaman di grup yang tertutup membukanya kembali.
+	$effect(() => {
+		const label = activeGroup;
+		if (label && untrack(() => closed.includes(label))) closed = closed.filter((l) => l !== label);
+	});
+
+	function toggleGroup(label: string) {
+		closed = closed.includes(label) ? closed.filter((l) => l !== label) : [...closed, label];
+		saveClosedGroups(closed);
+		// Menu di bawah grup ini bergeser selama animasi, jadi indikator diukur ulang tiap frame.
+		const until = performance.now() + 260;
+		animate = false;
+		const tick = () => {
+			measure();
+			if (performance.now() < until) requestAnimationFrame(tick);
+			else animate = true;
+		};
+		requestAnimationFrame(tick);
+	}
+
+	function measure() {
+		const el = navEl?.querySelector<HTMLElement>('[aria-current="page"]');
+		indicator = el ? { top: el.offsetTop, height: el.offsetHeight } : null;
+	}
+
+	// Satu indikator aktif di bawah teks menu, digeser dengan transisi CSS ke menu yang aktif.
 	$effect(() => {
 		void activeHref;
 		void collapsed; // posisi berubah saat label grup disembunyikan/ditampilkan
@@ -90,7 +126,7 @@
 
 	<Tooltip.Provider>
 	<nav bind:this={navEl} class="relative -mx-4 min-h-0 flex-1 space-y-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 pb-2 rail-collapsed:-mx-2 rail-collapsed:px-2" aria-label="Menu utama">
-		{#if indicator}
+		{#if indicator && !activeHidden}
 			<span
 				class="nav-indicator pointer-events-none absolute inset-x-4 top-0 rounded-xl bg-pale rail-collapsed:inset-x-2 {animate ? 'is-animated' : ''}"
 				style:transform="translateY({indicator.top}px)"
@@ -100,11 +136,7 @@
 				<span class="absolute top-1.5 bottom-1.5 -left-4 w-1 rounded-r bg-green rail-collapsed:-left-2"></span>
 			</span>
 		{/if}
-		{#each nav as group, gi (gi)}
-			{@const label = groupLabel(group.label, gi)}
-			{#if label}
-				<p class="px-2 pt-4 pb-1.5 text-[11px] font-semibold text-ink/55 rail-collapsed:hidden">{label}</p>
-			{/if}
+		{#snippet items(group: NavGroup)}
 			{#each group.items as item (item.href)}
 				{@const Icon = ICONS[item.icon] ?? LayoutDashboard}
 				{@const active = isActive(item.href)}
@@ -137,6 +169,33 @@
 					</Tooltip.Portal>
 				</Tooltip.Root>
 			{/each}
+		{/snippet}
+		{#each nav as group, gi (gi)}
+			{@const label = groupLabel(group.label, gi)}
+			{#if group.label}
+				{@const shut = isClosed(group.label)}
+				<button
+					type="button"
+					onclick={() => toggleGroup(group.label!)}
+					aria-expanded={!shut}
+					aria-controls="nav-group-{gi}"
+					class="flex w-full items-center justify-between rounded-lg px-2 pt-4 pb-1.5 text-left text-[11px] font-semibold text-ink/55 transition-colors hover:text-deep rail-collapsed:hidden"
+				>
+					<span>{group.label}</span>
+					<ChevronDown class="size-3.5 transition-transform duration-200 {shut ? '-rotate-90' : ''}" />
+				</button>
+				<!-- Tinggi dianimasikan lewat grid 0fr↔1fr; mode ikon selalu menampilkan semua menu. -->
+				<div id="nav-group-{gi}" class="grid transition-[grid-template-rows,visibility] duration-200 {shut ? 'invisible grid-rows-[0fr]' : 'grid-rows-[1fr]'} rail-collapsed:visible rail-collapsed:grid-rows-[1fr]" inert={shut}>
+					<div class="min-h-0 space-y-1 overflow-hidden rail-collapsed:overflow-visible">
+						{@render items(group)}
+					</div>
+				</div>
+			{:else}
+				{#if label}
+					<p class="px-2 pt-4 pb-1.5 text-[11px] font-semibold text-ink/55 rail-collapsed:hidden">{label}</p>
+				{/if}
+				{@render items(group)}
+			{/if}
 		{/each}
 	</nav>
 	</Tooltip.Provider>

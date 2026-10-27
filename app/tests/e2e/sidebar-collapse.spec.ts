@@ -87,3 +87,26 @@ test('the collapse toggle has the right accessible name from the first paint whe
 	await expect(page.getByRole('banner').getByRole('button', { name: 'Lebarkan sidebar' })).toBeVisible();
 	await expect(page.getByRole('banner').getByRole('button', { name: 'Ciutkan sidebar' })).toHaveCount(0);
 });
+
+test('menu groups collapse individually, are remembered, and reopen for the active page', async ({ page }) => {
+	await login(page);
+	const aside = page.locator('aside').first();
+	const buku = aside.getByRole('button', { name: 'Buku' });
+	await expect(buku).toHaveAttribute('aria-expanded', 'true');
+	await expect(aside.getByRole('link', { name: 'Buku Besar' })).toBeVisible();
+
+	await buku.click();
+	await expect(buku).toHaveAttribute('aria-expanded', 'false');
+	await expect(aside.getByRole('link', { name: 'Buku Besar' })).toBeHidden();
+	// Grup lain tidak ikut tertutup, dan menu tanpa judul grup selalu terlihat.
+	await expect(aside.getByRole('link', { name: 'Jurnal Umum' })).toBeVisible();
+	await expect(aside.getByRole('link', { name: 'Dashboard' })).toBeVisible();
+
+	await page.reload();
+	await expect(aside.getByRole('button', { name: 'Buku' })).toHaveAttribute('aria-expanded', 'false');
+
+	// Membuka halaman di grup yang tertutup membukanya kembali.
+	await page.goto('/ledger');
+	await expect(aside.getByRole('button', { name: 'Buku' })).toHaveAttribute('aria-expanded', 'true');
+	await expect(aside.getByRole('link', { name: 'Buku Besar' })).toBeVisible();
+});
