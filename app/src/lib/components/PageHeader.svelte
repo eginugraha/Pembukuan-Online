@@ -25,7 +25,7 @@
 		{/if}
 		<div class="flex items-center gap-3">
 			{#if logoUrl}
-				<img src={logoUrl} alt="Logo perusahaan" class="h-10 w-auto max-w-32 rounded-lg bg-chip-fixed p-1 object-contain" />
+				<img src={logoUrl} alt="Logo perusahaan" class="h-10 w-auto max-w-32 object-contain" />
 			{/if}
 			<h1 class="text-2xl font-bold tracking-tight text-ink">{title}</h1>
 		</div>
