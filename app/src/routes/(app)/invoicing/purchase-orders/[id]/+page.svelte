@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SignerPdfButton from '$lib/components/SignerPdfButton.svelte';
 	import { goto } from '$app/navigation';
 	import { apiFetch, ClientApiError } from '$lib/api-client';
 	import DeleteDocumentDialog from '$lib/components/DeleteDocumentDialog.svelte';
@@ -35,7 +36,7 @@
 
 <PageHeader title={data.po.poNo} description={data.contact.name}>
 	{#snippet actions()}
-		<Button href="/api/invoicing/purchase-orders/{data.po.id}/pdf">Unduh PDF</Button>
+		<SignerPdfButton label="Unduh PDF" href="/api/invoicing/purchase-orders/{data.po.id}/pdf" signers={data.signers} lastSignerId={data.po.lastSignerId} />
 		{#if canManage}<Button variant="outline" href="/invoicing/purchase-orders/{data.po.id}/edit">Ubah</Button>{/if}
 		{#if canManage}<Button variant="outline" onclick={() => (deleteOpen = true)}>Hapus</Button>{/if}
 	{/snippet}

@@ -4,6 +4,7 @@ import { PDFParse } from 'pdf-parse';
 import encodeWebp from '@jsquash/webp/encode';
 import { GET } from '../../src/routes/api/invoicing/invoices/[id]/pdf/+server';
 import { createInvoice, type CreateInvoiceInput } from '../../src/lib/server/invoicing/invoices';
+import { createSigner, updateSigner } from '../../src/lib/server/company/signers';
 import { setCompanyAsset } from '../../src/lib/server/company/assets';
 import { db } from '../../src/lib/server/db';
 import { companies, contacts, invoices } from '../../src/lib/server/db/schema';
@@ -28,9 +29,7 @@ const FULL_COMPANY = {
 	bankName: 'BCA',
 	bankAccountNo: '233-0636800',
 	bankAccountHolder: 'PT Uji',
-	swiftCode: 'CENAIDJA',
-	signerName: 'Sari Penanda',
-	signerTitle: 'Direktur Utama'
+	swiftCode: 'CENAIDJA'
 };
 
 const FULL_CONTACT = {
@@ -45,6 +44,7 @@ const FULL_CONTACT = {
 async function setup(opts: { company?: Partial<typeof FULL_COMPANY>; contact?: Partial<typeof FULL_CONTACT>; invoice?: Partial<CreateInvoiceInput> } = {}) {
 	const { companyId } = await makeCompany();
 	if (opts.company) await db.update(companies).set(opts.company).where(eq(companies.id, companyId));
+	const signerId = opts.company ? await createSigner(companyId, { name: 'Sari Penanda', title: 'Direktur Utama' }) : null;
 	const u = await makeUser();
 	await addMember(u.id, companyId, 'viewer');
 	const [contact] = await db
@@ -59,7 +59,7 @@ async function setup(opts: { company?: Partial<typeof FULL_COMPANY>; contact?: P
 	});
 	const fetchPdf = async () =>
 		GET(fakeEvent({ ctx: await contextFor(u, companyId), path: `/api/invoicing/invoices/${id}/pdf`, params: { id } }) as never);
-	return { companyId, fetchPdf };
+	return { companyId, signerId: signerId!, fetchPdf };
 }
 
 test('full data: every block of the mockup is printed, with clickable email/phone', async () => {
@@ -202,12 +202,12 @@ test('a 60-line invoice paginates: each line once, header repeated, closing bloc
 });
 
 test('a transparent WebP watermark still yields a PDF', async () => {
-	const { companyId, fetchPdf } = await setup({ company: FULL_COMPANY });
+	const { companyId, signerId, fetchPdf } = await setup({ company: FULL_COMPANY });
 	const rgba = new Uint8ClampedArray(4 * 4 * 4);
 	for (let i = 0; i < rgba.length; i += 4) rgba.set(i % 8 === 0 ? [200, 30, 30, 255] : [0, 0, 0, 0], i);
 	const webp = new Uint8Array(await encodeWebp({ data: rgba, width: 4, height: 4, colorSpace: 'srgb' } as ImageData, { lossless: 1 }));
 	await setCompanyAsset(companyId, 'watermark', webp);
-	await setCompanyAsset(companyId, 'signature', webp);
+	await updateSigner(companyId, signerId, { name: 'Sari Penanda', title: 'Direktur Utama', image: webp });
 	const res = await fetchPdf();
 	expect(res.status).toBe(200);
 	expect(res.headers.get('content-type')).toBe('application/pdf');
@@ -217,10 +217,10 @@ test('a transparent WebP watermark still yields a PDF', async () => {
 });
 
 test('corrupted watermark/signature bytes are ignored instead of failing the PDF', async () => {
-	const { companyId, fetchPdf } = await setup({ company: FULL_COMPANY });
+	const { companyId, signerId, fetchPdf } = await setup({ company: FULL_COMPANY });
 	const broken = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4, 5, 6, 7, 8]);
 	await setCompanyAsset(companyId, 'watermark', broken);
-	await setCompanyAsset(companyId, 'signature', broken);
+	await updateSigner(companyId, signerId, { name: 'Sari Penanda', title: 'Direktur Utama', image: broken });
 	const res = await fetchPdf();
 	expect(res.status).toBe(200);
 	expect(res.headers.get('content-type')).toBe('application/pdf');

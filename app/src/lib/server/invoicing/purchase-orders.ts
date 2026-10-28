@@ -10,6 +10,8 @@ import { nextDocumentNumber, requireCompanyCode, requireContactCode } from './nu
 export { CreatePurchaseOrderInput, POLineInput, UpdatePurchaseOrderInput };
 
 export interface POListRow {
+	/** Penandatangan pada unduhan PDF terakhir; pilihan awal unduhan berikutnya. */
+	lastSignerId: string | null;
 	id: string;
 	poNo: string;
 	issueDate: string;
@@ -29,6 +31,8 @@ export interface POLineRow {
 }
 
 export interface PODetail {
+	/** Penandatangan pada unduhan PDF terakhir; pilihan awal unduhan berikutnya. */
+	lastSignerId: string | null;
 	id: string;
 	companyId: string;
 	contactId: string;
@@ -150,7 +154,8 @@ export async function listPurchaseOrders(companyId: string): Promise<POListRow[]
 			currency: purchaseOrders.currency,
 			total: purchaseOrders.total,
 			contactId: purchaseOrders.contactId,
-			contactName: contacts.name
+			contactName: contacts.name,
+			lastSignerId: purchaseOrders.lastSignerId
 		})
 		.from(purchaseOrders)
 		.innerJoin(contacts, and(eq(contacts.id, purchaseOrders.contactId), eq(contacts.companyId, companyId)))

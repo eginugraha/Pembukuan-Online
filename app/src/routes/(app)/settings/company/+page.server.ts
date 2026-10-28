@@ -1,4 +1,5 @@
 import { listLeafAccounts } from '$lib/server/accounts/queries';
+import { listSigners } from '$lib/server/company/signers';
 import { getCompany } from '$lib/server/company/service';
 import { db } from '$lib/server/db';
 import { requirePageRole } from '$lib/server/rbac';
@@ -11,13 +12,14 @@ export const load: PageServerLoad = async (event) => {
 	// Super Admin yang perusahaan terakhirnya baru dihapus tidak punya perusahaan aktif: hanya boleh membuat yang baru.
 	if (!user.companyId) {
 		if (!user.user.isSuperAdmin) error(403, 'Anda tidak memiliki akses ke halaman ini');
-		return { company: null, assetAccounts: [], showNew: true, isSuperAdmin: true };
+		return { company: null, assetAccounts: [], signers: [], showNew: true, isSuperAdmin: true };
 	}
 	const ctx = requirePageRole(event, 'admin');
-	const [company, leaf] = await Promise.all([getCompany(ctx.companyId), listLeafAccounts(db, ctx.companyId)]);
+	const [company, leaf, signers] = await Promise.all([getCompany(ctx.companyId), listLeafAccounts(db, ctx.companyId), listSigners(ctx.companyId)]);
 	return {
 		company,
 		assetAccounts: leaf.filter((a) => a.type === 'ASSET'),
+		signers,
 		showNew: ctx.user.isSuperAdmin && event.url.searchParams.get('new') === '1',
 		isSuperAdmin: ctx.user.isSuperAdmin
 	};

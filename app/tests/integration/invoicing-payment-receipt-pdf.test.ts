@@ -1,4 +1,5 @@
 import { beforeEach, expect, test } from 'bun:test';
+import { createSigner } from '../../src/lib/server/company/signers';
 import { eq } from 'drizzle-orm';
 import { PDFParse } from 'pdf-parse';
 import { GET } from '../../src/routes/api/invoicing/invoices/[id]/receipt/pdf/+server';
@@ -26,9 +27,7 @@ const FULL_COMPANY = {
 	bankName: 'BCA',
 	bankAccountNo: '233-0636800',
 	bankAccountHolder: 'PT Uji',
-	swiftCode: 'CENAIDJA',
-	signerName: 'Sari Penanda',
-	signerTitle: 'Direktur Utama'
+	swiftCode: 'CENAIDJA'
 };
 
 const FULL_CONTACT = {
@@ -45,6 +44,7 @@ async function setup(
 ) {
 	const { companyId } = await makeCompany();
 	if (opts.company) await db.update(companies).set(opts.company).where(eq(companies.id, companyId));
+	if (opts.company) await createSigner(companyId, { name: 'Sari Penanda', title: 'Direktur Utama' });
 	const u = await makeUser();
 	await addMember(u.id, companyId, 'viewer');
 	const [contact] = await db

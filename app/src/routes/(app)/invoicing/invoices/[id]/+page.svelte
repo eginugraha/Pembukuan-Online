@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SignerPdfButton from '$lib/components/SignerPdfButton.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { apiFetch, ClientApiError } from '$lib/api-client';
 	import DeleteDocumentDialog from '$lib/components/DeleteDocumentDialog.svelte';
@@ -77,7 +78,7 @@
 
 <PageHeader title={data.invoice.invoiceNo} description={data.contact.name}>
 	{#snippet actions()}
-		<Button href="/api/invoicing/invoices/{data.invoice.id}/pdf">Unduh PDF</Button>
+		<SignerPdfButton label="Unduh PDF" href="/api/invoicing/invoices/{data.invoice.id}/pdf" signers={data.signers} lastSignerId={data.invoice.lastSignerId} />
 		{#if canManage && !data.receipt}<Button variant="outline" onclick={openIssue}>Terbitkan Receipt</Button>{/if}
 		{#if canManage}<Button variant="outline" href="/invoicing/invoices/{data.invoice.id}/edit">Ubah</Button>{/if}
 		{#if canManage}<Button variant="outline" onclick={() => (deleteOpen = true)}>Hapus</Button>{/if}
@@ -100,7 +101,7 @@
 				<p class="font-medium">{formatDate(data.receipt.paymentDate)}</p>
 			</div>
 			<div class="flex flex-wrap items-center gap-2 sm:justify-end">
-				<Button variant="outline" href="/api/invoicing/invoices/{data.invoice.id}/receipt/pdf">Unduh PDF Receipt</Button>
+				<SignerPdfButton variant="outline" label="Unduh PDF Receipt" href="/api/invoicing/invoices/{data.invoice.id}/receipt/pdf" signers={data.signers} lastSignerId={data.receipt?.lastSignerId ?? null} />
 				{#if canManage}<Button variant="outline" onclick={() => (receiptDeleteOpen = true)}>Hapus Receipt</Button>{/if}
 			</div>
 			<p class="text-muted-foreground sm:col-span-3">Receipt sudah terbit. Perubahan pada invoice ini tidak mengubah receipt.</p>

@@ -4,11 +4,11 @@ import { db } from '../db';
 import { companies, companyAssets } from '../db/schema';
 import { MAX_LOGO_BYTES, sniffImage } from './logo';
 
-export type CompanyAssetKind = 'signature' | 'watermark';
+export type CompanyAssetKind = 'watermark';
 
-export const isAssetKind = (v: string): v is CompanyAssetKind => v === 'signature' || v === 'watermark';
+export const isAssetKind = (v: string): v is CompanyAssetKind => v === 'watermark';
 
-const urlColumn = (kind: CompanyAssetKind) => (kind === 'signature' ? 'signatureUrl' : 'watermarkUrl');
+const urlColumn = (_kind: CompanyAssetKind) => 'watermarkUrl' as const;
 
 export async function setCompanyAsset(companyId: string, kind: CompanyAssetKind, content: Uint8Array): Promise<string> {
 	if (content.byteLength > MAX_LOGO_BYTES) throw new ApiError(400, 'image_too_large', 'Ukuran gambar maksimal 512 KB', undefined, { field: 'file' });

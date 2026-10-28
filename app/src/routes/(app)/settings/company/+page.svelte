@@ -17,6 +17,7 @@
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { loadBitmap, renderLogo } from '$lib/logo-resize';
 	import { AVATAR_ACCEPT, AVATAR_MAX_INPUT_BYTES } from '$lib/image';
+	import SignerSettings from '$lib/components/SignerSettings.svelte';
 
 	let { data } = $props();
 	// Nilai awal form diambil sekali dari data (snapshot), lalu diedit lokal.
@@ -32,8 +33,6 @@
 		bankAccountNo: data.company?.bankAccountNo ?? '',
 		bankAccountHolder: data.company?.bankAccountHolder ?? '',
 		swiftCode: data.company?.swiftCode ?? '',
-		signerName: data.company?.signerName ?? '',
-		signerTitle: data.company?.signerTitle ?? ''
 	});
 	type CompanyForm = ReturnType<typeof initialForm>;
 	// Field baru dikirim sebagai string (kosong = hapus), sesuai kontrak updateCompany.
@@ -49,8 +48,6 @@
 		bankAccountNo: v.bankAccountNo,
 		bankAccountHolder: v.bankAccountHolder,
 		swiftCode: v.swiftCode,
-		signerName: v.signerName,
-		signerTitle: v.signerTitle
 	});
 	const form = new FormState(UpdateCompanyInput, initialForm(), toUpdate);
 	const newForm = new FormState(CreateCompanyInput, { name: '', coaTemplate: 'general' as CoaTemplateId });
@@ -112,14 +109,13 @@
 	}
 
 	// Tanda tangan / watermark: file mentah, tanpa crop.
-	type AssetKind = 'signature' | 'watermark';
-	const ASSETS: { kind: AssetKind; title: string; label: string; urlKey: 'signatureUrl' | 'watermarkUrl' }[] = [
-		{ kind: 'signature', title: 'Tanda tangan', label: 'tanda tangan', urlKey: 'signatureUrl' },
+	type AssetKind = 'watermark';
+	const ASSETS: { kind: AssetKind; title: string; label: string; urlKey: 'watermarkUrl' }[] = [
 		{ kind: 'watermark', title: 'Watermark', label: 'watermark', urlKey: 'watermarkUrl' }
 	];
 	const ASSET_MAX_BYTES = 512 * 1024;
 	let assetBusy = $state(false);
-	let assetInputs = $state<Record<AssetKind, HTMLInputElement | null>>({ signature: null, watermark: null });
+	let assetInputs = $state<Record<AssetKind, HTMLInputElement | null>>({ watermark: null });
 
 	async function onPickAsset(kind: AssetKind, label: string, e: Event & { currentTarget: HTMLInputElement }) {
 		const file = e.currentTarget.files?.[0];
@@ -248,7 +244,7 @@
 	<Card.Header><Card.Title>Logo Perusahaan</Card.Title></Card.Header>
 	<Card.Content class="flex flex-wrap items-center gap-5">
 		{#if data.company.logoUrl}
-			<img src={data.company.logoUrl} alt="Logo perusahaan" class="h-16 w-auto max-w-48 rounded-lg bg-chip-fixed object-contain p-1" />
+			<img src={data.company.logoUrl} alt="Logo perusahaan" class="h-16 w-auto max-w-48 object-contain" />
 		{/if}
 		<div class="flex flex-wrap gap-2">
 			<input bind:this={logoFileInput} type="file" accept={AVATAR_ACCEPT.join(',')} class="sr-only" aria-label="Pilih logo perusahaan" onchange={onPickLogo} />
@@ -260,6 +256,8 @@
 	</Card.Content>
 </Card.Root>
 
+
+<SignerSettings signers={data.signers} />
 
 {#each ASSETS as a (a.kind)}
 	{@const url = data.company[a.urlKey]}
@@ -322,12 +320,6 @@
 			</FormField>
 			<FormField id="c-swift" label="Kode SWIFT" error={form.error('swiftCode')}>
 				<Input bind:value={form.values.swiftCode} {...form.attrs('swiftCode', 'c-swift')} />
-			</FormField>
-			<FormField id="c-signer" label="Nama penanda tangan" error={form.error('signerName')}>
-				<Input bind:value={form.values.signerName} {...form.attrs('signerName', 'c-signer')} />
-			</FormField>
-			<FormField id="c-signer-title" label="Jabatan penanda tangan" error={form.error('signerTitle')}>
-				<Input bind:value={form.values.signerTitle} {...form.attrs('signerTitle', 'c-signer-title')} />
 			</FormField>
 			<Button type="submit">Simpan</Button>
 		</form>

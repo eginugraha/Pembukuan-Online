@@ -10,6 +10,8 @@ import { nextDocumentNumber, requireCompanyCode, requireContactCode } from './nu
 export { CreateInvoiceInput, InvoiceLineInput, UpdateInvoiceInput };
 
 export interface InvoiceListRow {
+	/** Penandatangan pada unduhan PDF terakhir; pilihan awal unduhan berikutnya. */
+	lastSignerId: string | null;
 	id: string;
 	invoiceNo: string;
 	issueDate: string;
@@ -31,6 +33,8 @@ export interface InvoiceLineRow {
 }
 
 export interface InvoiceDetail {
+	/** Penandatangan pada unduhan PDF terakhir; pilihan awal unduhan berikutnya. */
+	lastSignerId: string | null;
 	id: string;
 	companyId: string;
 	contactId: string;
@@ -175,6 +179,7 @@ export async function listInvoices(companyId: string): Promise<InvoiceListRow[]>
 			contactId: invoices.contactId,
 			contactName: contacts.name,
 			currency: invoices.currency,
+			lastSignerId: invoices.lastSignerId,
 			hasReceipt: sql<boolean>`exists (select 1 from ${paymentReceipts} where ${paymentReceipts.invoiceId} = ${invoices.id} and ${paymentReceipts.deletedAt} is null)`
 		})
 		.from(invoices)

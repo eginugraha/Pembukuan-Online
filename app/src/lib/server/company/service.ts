@@ -22,9 +22,7 @@ const OPTIONAL_COMPANY_FIELDS = [
 	'bankName',
 	'bankAccountNo',
 	'bankAccountHolder',
-	'swiftCode',
-	'signerName',
-	'signerTitle'
+	'swiftCode'
 ] as const;
 
 function optionalFields(input: UpdateCompanyInput) {

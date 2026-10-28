@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SignerPdfButton from '$lib/components/SignerPdfButton.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
@@ -67,7 +68,7 @@
 		{:else if col.key === 'actions'}
 			<span class="flex gap-1">
 				<Button size="sm" variant="ghost" href="/invoicing/purchase-orders/{p.id}">Lihat</Button>
-				<Button size="sm" variant="ghost" href="/api/invoicing/purchase-orders/{p.id}/pdf">PDF</Button>
+				<SignerPdfButton size="sm" variant="ghost" label="PDF" href="/api/invoicing/purchase-orders/{p.id}/pdf" signers={data.signers} lastSignerId={p.lastSignerId} />
 				{#if canManage}
 					<Button size="sm" variant="ghost" href="/invoicing/purchase-orders/{p.id}/edit">Ubah</Button>
 					<Button size="sm" variant="ghost" onclick={() => { deleting = p; deleteOpen = true; }}>Hapus</Button>

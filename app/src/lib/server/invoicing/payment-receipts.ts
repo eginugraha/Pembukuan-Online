@@ -18,6 +18,8 @@ export interface PaymentReceiptLineRow {
 }
 
 export interface PaymentReceiptDetail {
+	/** Penandatangan pada unduhan PDF terakhir; pilihan awal unduhan berikutnya. */
+	lastSignerId: string | null;
 	id: string;
 	companyId: string;
 	invoiceId: string;
@@ -157,6 +159,7 @@ export async function getPaymentReceiptForInvoice(companyId: string, invoiceId: 
 		.orderBy(asc(paymentReceiptLines.lineNo));
 	return {
 		id: r.id,
+		lastSignerId: r.lastSignerId,
 		companyId: r.companyId,
 		invoiceId: r.invoiceId,
 		receiptNo: r.receiptNo,

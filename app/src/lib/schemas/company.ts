@@ -26,8 +26,6 @@ export const UpdateCompanyInput = CompanyFields.extend({
 		.max(11, 'Kode SWIFT maksimal 11 karakter')
 		.nullable()
 		.optional(),
-	signerName: optionalText('Nama penanda tangan', 200),
-	signerTitle: optionalText('Jabatan penanda tangan', 200)
 });
 export type UpdateCompanyInput = z.infer<typeof UpdateCompanyInput>;
 

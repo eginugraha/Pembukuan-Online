@@ -27,17 +27,13 @@ const form = (bytes: Uint8Array = PNG) => {
 	return f;
 };
 
-test('setCompanyAsset stores per kind and fills the matching URL column', async () => {
+test('setCompanyAsset stores the watermark and fills its URL column', async () => {
 	const { companyId } = await makeCompany();
-	const url = await setCompanyAsset(companyId, 'signature', PNG);
-	expect(url).toMatch(new RegExp(`^/api/companies/${companyId}/assets/signature\\?v=\\d+$`));
-	let row = await db.query.companies.findFirst({ where: eq(companies.id, companyId) });
-	expect(row?.signatureUrl).toBe(url);
-	expect(row?.watermarkUrl).toBeNull();
-	const wurl = await setCompanyAsset(companyId, 'watermark', PNG);
-	row = await db.query.companies.findFirst({ where: eq(companies.id, companyId) });
-	expect(row?.watermarkUrl).toBe(wurl);
-	const a = await getCompanyAsset(companyId, 'signature');
+	const url = await setCompanyAsset(companyId, 'watermark', PNG);
+	expect(url).toMatch(new RegExp(`^/api/companies/${companyId}/assets/watermark\\?v=\\d+$`));
+	const row = await db.query.companies.findFirst({ where: eq(companies.id, companyId) });
+	expect(row?.watermarkUrl).toBe(url);
+	const a = await getCompanyAsset(companyId, 'watermark');
 	expect(a?.mime).toBe('image/png');
 	expect([...a!.content]).toEqual([...PNG]);
 });
@@ -46,17 +42,17 @@ test('setCompanyAsset rejects oversized files and non-images', async () => {
 	const { companyId } = await makeCompany();
 	const big = new Uint8Array(MAX_LOGO_BYTES + 1);
 	big.set(PNG);
-	expect(await codeOf(setCompanyAsset(companyId, 'signature', big))).toBe('image_too_large');
+	expect(await codeOf(setCompanyAsset(companyId, 'watermark', big))).toBe('image_too_large');
 	expect(await codeOf(setCompanyAsset(companyId, 'watermark', new TextEncoder().encode('hello')))).toBe('invalid_image');
-	expect(await getCompanyAsset(companyId, 'signature')).toBeNull();
+	expect(await getCompanyAsset(companyId, 'watermark')).toBeNull();
 });
 
 test('removeCompanyAsset clears the row and URL', async () => {
 	const { companyId } = await makeCompany();
-	await setCompanyAsset(companyId, 'signature', PNG);
-	await removeCompanyAsset(companyId, 'signature');
-	expect(await getCompanyAsset(companyId, 'signature')).toBeNull();
-	expect((await db.query.companies.findFirst({ where: eq(companies.id, companyId) }))?.signatureUrl).toBeNull();
+	await setCompanyAsset(companyId, 'watermark', PNG);
+	await removeCompanyAsset(companyId, 'watermark');
+	expect(await getCompanyAsset(companyId, 'watermark')).toBeNull();
+	expect((await db.query.companies.findFirst({ where: eq(companies.id, companyId) }))?.watermarkUrl).toBeNull();
 });
 
 test('routes: PUT/DELETE admin only, GET viewer with cache headers, bad kind and other company 404', async () => {
@@ -71,22 +67,22 @@ test('routes: PUT/DELETE admin only, GET viewer with cache headers, bad kind and
 	const viewerCtx = await contextFor(viewer, companyId);
 	const p = (id: string, kind: string) => ({ id, kind });
 
-	expect((await call(PUT, fakeEvent({ ctx: viewerCtx, method: 'PUT', params: p(companyId, 'signature'), form: form() }))).status).toBe(403);
+	expect((await call(PUT, fakeEvent({ ctx: viewerCtx, method: 'PUT', params: p(companyId, 'watermark'), form: form() }))).status).toBe(403);
 	expect((await call(PUT, fakeEvent({ ctx: adminCtx, method: 'PUT', params: p(companyId, 'foo'), form: form() }))).status).toBe(404);
-	expect((await call(PUT, fakeEvent({ ctx: adminCtx, method: 'PUT', params: p(other, 'signature'), form: form() }))).status).toBe(404);
-	const put = await call(PUT, fakeEvent({ ctx: adminCtx, method: 'PUT', params: p(companyId, 'signature'), form: form() }));
+	expect((await call(PUT, fakeEvent({ ctx: adminCtx, method: 'PUT', params: p(other, 'watermark'), form: form() }))).status).toBe(404);
+	const put = await call(PUT, fakeEvent({ ctx: adminCtx, method: 'PUT', params: p(companyId, 'watermark'), form: form() }));
 	expect(put.status).toBe(200);
-	expect(put.body.image).toMatch(`/api/companies/${companyId}/assets/signature?v=`);
+	expect(put.body.image).toMatch(`/api/companies/${companyId}/assets/watermark?v=`);
 
-	const res = await GET(fakeEvent({ ctx: viewerCtx, params: p(companyId, 'signature') }) as never);
+	const res = await GET(fakeEvent({ ctx: viewerCtx, params: p(companyId, 'watermark') }) as never);
 	expect(res.status).toBe(200);
 	expect(res.headers.get('content-type')).toBe('image/png');
 	expect(res.headers.get('cache-control')).toContain('private');
 	expect([...new Uint8Array(await res.arrayBuffer())]).toEqual([...PNG]);
-	expect((await GET(fakeEvent({ ctx: viewerCtx, params: p(companyId, 'watermark') }) as never)).status).toBe(404);
 	expect((await GET(fakeEvent({ ctx: viewerCtx, params: p(companyId, 'foo') }) as never)).status).toBe(404);
 
-	expect((await call(DELETE, fakeEvent({ ctx: viewerCtx, method: 'DELETE', params: p(companyId, 'signature') }))).status).toBe(403);
-	expect((await call(DELETE, fakeEvent({ ctx: adminCtx, method: 'DELETE', params: p(companyId, 'signature') }))).status).toBe(200);
-	expect(await getCompanyAsset(companyId, 'signature')).toBeNull();
+	expect((await call(DELETE, fakeEvent({ ctx: viewerCtx, method: 'DELETE', params: p(companyId, 'watermark') }))).status).toBe(403);
+	expect((await call(DELETE, fakeEvent({ ctx: adminCtx, method: 'DELETE', params: p(companyId, 'watermark') }))).status).toBe(200);
+	expect(await getCompanyAsset(companyId, 'watermark')).toBeNull();
+	expect((await GET(fakeEvent({ ctx: viewerCtx, params: p(companyId, 'watermark') }) as never)).status).toBe(404);
 });

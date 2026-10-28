@@ -4,6 +4,7 @@ import { companies } from '../db/schema';
 import { notFound } from '../api';
 import { getCompanyLogo } from '../company/logo';
 import { getCompanyAsset } from '../company/assets';
+import { getSigner } from '../company/signers';
 import { toEmbeddablePng, toSafePdfImage } from './logo-for-pdf';
 
 export async function getCompanyReportInfo(companyId: string): Promise<{ name: string; fiscalYear: string }> {
@@ -43,16 +44,14 @@ export interface InvoiceCompanyData {
 	watermarkPng: Buffer | null;
 }
 
-/** Data perusahaan untuk PDF invoice: kontak, info pembayaran, penanda tangan, dan gambar yang
+/** Data perusahaan untuk PDF invoice: kontak, info pembayaran, penandatangan terpilih, dan gambar yang
  * sudah siap disisipkan `pdfkit` (gambar rusak menjadi `null`, bukan error). */
-export async function getInvoiceCompanyData(companyId: string): Promise<InvoiceCompanyData> {
+export async function getInvoiceCompanyData(companyId: string, signerId: string | null = null): Promise<InvoiceCompanyData> {
 	const company = await db.query.companies.findFirst({ where: eq(companies.id, companyId) });
 	if (!company) throw notFound('Perusahaan');
-	const [logo, signature, watermark] = await Promise.all([
-		getCompanyLogo(companyId),
-		getCompanyAsset(companyId, 'signature'),
-		getCompanyAsset(companyId, 'watermark')
-	]);
+	const signer = signerId ? await getSigner(companyId, signerId) : null;
+	const signature = signer?.content && signer.mime ? { content: signer.content, mime: signer.mime } : null;
+	const [logo, watermark] = await Promise.all([getCompanyLogo(companyId), getCompanyAsset(companyId, 'watermark')]);
 	const [logoPng, signaturePng, watermarkPng] = await Promise.all(
 		[logo, signature, watermark].map((a) => (a ? toSafePdfImage(a.content, a.mime) : null))
 	);
@@ -65,8 +64,8 @@ export async function getInvoiceCompanyData(companyId: string): Promise<InvoiceC
 		bankAccountNo: company.bankAccountNo,
 		bankAccountHolder: company.bankAccountHolder,
 		swiftCode: company.swiftCode,
-		signerName: company.signerName,
-		signerTitle: company.signerTitle,
+		signerName: signer?.name ?? null,
+		signerTitle: signer?.title ?? null,
 		logoPng,
 		signaturePng,
 		watermarkPng

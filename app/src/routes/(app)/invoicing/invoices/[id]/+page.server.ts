@@ -1,3 +1,4 @@
+import { listSigners } from '$lib/server/company/signers';
 import { getInvoice } from '$lib/server/invoicing/invoices';
 import { getPaymentReceiptForInvoice } from '$lib/server/invoicing/payment-receipts';
 import { getContact } from '$lib/server/invoicing/contacts';
@@ -12,5 +13,5 @@ export const load: PageServerLoad = async (event) => {
 	const invoice = await withPageErrors(() => getInvoice(ctx.companyId, invoiceId));
 	const contact = await withPageErrors(() => getContact(ctx.companyId, invoice.contactId));
 	const receipt = await withPageErrors(() => getPaymentReceiptForInvoice(ctx.companyId, invoiceId));
-	return { invoice, contact, receipt };
+	return { invoice, contact, receipt, signers: await listSigners(ctx.companyId) };
 };

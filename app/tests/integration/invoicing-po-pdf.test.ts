@@ -1,4 +1,5 @@
 import { beforeEach, expect, test } from 'bun:test';
+import { createSigner } from '../../src/lib/server/company/signers';
 import { PDFParse } from 'pdf-parse';
 import { GET } from '../../src/routes/api/invoicing/purchase-orders/[id]/pdf/+server';
 import { createPurchaseOrder } from '../../src/lib/server/invoicing/purchase-orders';
@@ -39,8 +40,9 @@ test('full PO in USD: invoice layout with PO labels, no payment card or discount
 	const { companyId } = await makeCompany();
 	await db
 		.update(companies)
-		.set({ bankName: 'BCA', bankAccountNo: '233-0636800', bankAccountHolder: 'PT Uji', signerName: 'Sari Penanda', signerTitle: 'Direktur Utama' })
+		.set({ bankName: 'BCA', bankAccountNo: '233-0636800', bankAccountHolder: 'PT Uji' })
 		.where(eq(companies.id, companyId));
+	await createSigner(companyId, { name: 'Sari Penanda', title: 'Direktur Utama' });
 	const u = await makeUser();
 	await addMember(u.id, companyId, 'viewer');
 	const [contact] = await db

@@ -1,3 +1,5 @@
+import { signerForDownload } from '$lib/server/company/signers';
+import { invoices } from '$lib/server/db/schema';
 import { getContact } from '$lib/server/invoicing/contacts';
 import { getInvoice } from '$lib/server/invoicing/invoices';
 import { INVOICE_MARGIN, drawInvoicePdf } from '$lib/server/invoicing/invoice-pdf';
@@ -12,7 +14,8 @@ export const GET: RequestHandler = (event) =>
 	apiHandler(async () => {
 		const ctx = requireRole(event, 'viewer');
 		const invoice = await getInvoice(ctx.companyId, parseId(event.params.id, 'Invoice'));
-		const [contact, company] = await Promise.all([getContact(ctx.companyId, invoice.contactId), getInvoiceCompanyData(ctx.companyId)]);
+		const signerId = await signerForDownload(ctx.companyId, invoices, invoice, event.url.searchParams.get('signer'));
+		const [contact, company] = await Promise.all([getContact(ctx.companyId, invoice.contactId), getInvoiceCompanyData(ctx.companyId, signerId)]);
 
 		const doc = createPdfDocument({ margin: INVOICE_MARGIN });
 		drawInvoicePdf(doc, { company, contact, invoice });

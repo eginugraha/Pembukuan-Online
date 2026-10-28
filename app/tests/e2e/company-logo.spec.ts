@@ -5,7 +5,7 @@ const PNG_SMALL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAIAAAA7ljmRAAAAE
 
 test.beforeEach(async ({ page }) => {
 	await page.goto('/login');
-	await page.getByLabel('Email').fill('admin@jurnalku.local');
+	await page.getByLabel('Email').fill('admin@pembukuan.local');
 	await page.getByLabel('Password').fill(E2E_PASSWORD);
 	await page.getByRole('button', { name: 'Masuk' }).click();
 	await expect(page).toHaveURL(/\/dashboard$/);
@@ -42,10 +42,16 @@ test('an unreadable file shows a friendly error', async ({ page }) => {
 	await expect(page.getByText('Logo tidak bisa dibaca. Coba file lain.')).toBeVisible();
 });
 
-test('upload and remove a signature image without cropping', async ({ page }) => {
-	await page.getByLabel('Pilih gambar tanda tangan').setInputFiles({ name: 'ttd.png', mimeType: 'image/png', buffer: PNG_SMALL });
-	await expect(page.getByText('Gambar tanda tangan diperbarui.')).toBeVisible();
-	await expect(page.getByRole('img', { name: 'Pratinjau tanda tangan' })).toBeVisible();
-	await page.getByRole('button', { name: 'Hapus Tanda tangan' }).click();
-	await expect(page.getByText('Gambar tanda tangan dihapus.')).toBeVisible();
+test('add a signer with a signature image, then delete it', async ({ page }) => {
+	await page.getByRole('button', { name: 'Tambah Penandatangan' }).click();
+	const dialog = page.getByRole('dialog');
+	await dialog.getByLabel('Nama').fill('Sari Penanda');
+	await dialog.getByLabel('Jabatan').fill('Direktur Utama');
+	await dialog.getByLabel('Pilih gambar tanda tangan').setInputFiles({ name: 'ttd.png', mimeType: 'image/png', buffer: PNG_SMALL });
+	await dialog.getByRole('button', { name: 'Simpan' }).click();
+	await expect(page.getByText('Sari Penanda', { exact: true })).toBeVisible();
+	await expect(page.getByRole('img', { name: 'Tanda tangan Sari Penanda' })).toBeVisible();
+	await page.getByRole('button', { name: 'Hapus', exact: true }).first().click();
+	await page.getByRole('dialog').getByRole('button', { name: 'Hapus' }).click();
+	await expect(page.getByText('Sari Penanda', { exact: true })).toBeHidden();
 });

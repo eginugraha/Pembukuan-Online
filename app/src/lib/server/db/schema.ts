@@ -114,7 +114,7 @@ export const companies = pgTable('companies', {
 		onDelete: 'set null'
 	}),
 	logoUrl: text('logo_url'),
-	// Kode dokumen (nomor invoice/PO), kontak, rekening pembayaran, dan penanda tangan; semuanya opsional.
+	// Kode dokumen (nomor invoice/PO), kontak, dan rekening pembayaran; semuanya opsional.
 	code: varchar('code', { length: 15 }),
 	email: text('email'),
 	phone: varchar('phone', { length: 30 }),
@@ -122,9 +122,6 @@ export const companies = pgTable('companies', {
 	bankAccountNo: varchar('bank_account_no', { length: 50 }),
 	bankAccountHolder: text('bank_account_holder'),
 	swiftCode: varchar('swift_code', { length: 11 }),
-	signerName: text('signer_name'),
-	signerTitle: text('signer_title'),
-	signatureUrl: text('signature_url'),
 	watermarkUrl: text('watermark_url'),
 	createdAt: createdAt()
 });
@@ -139,20 +136,33 @@ export const companyLogos = pgTable('company_logos', {
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
 
-// Gambar tanda tangan dan watermark per perusahaan, disimpan terpisah seperti companyLogos.
+// Gambar watermark per perusahaan, disimpan terpisah seperti companyLogos.
 export const companyAssets = pgTable(
 	'company_assets',
 	{
 		companyId: uuid('company_id')
 			.notNull()
 			.references(() => companies.id, { onDelete: 'cascade' }),
-		kind: varchar('kind', { length: 20 }).$type<'signature' | 'watermark'>().notNull(),
+		kind: varchar('kind', { length: 20 }).$type<'watermark'>().notNull(),
 		content: bytea('content').notNull(),
 		mime: varchar('mime', { length: 20 }).notNull(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 	},
 	(t) => [primaryKey({ columns: [t.companyId, t.kind] })]
 );
+
+// Penandatangan dokumen (invoice, receipt, PO); gambar tanda tangan opsional. Dipilih saat PDF diunduh.
+export const companySigners = pgTable('company_signers', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	companyId: uuid('company_id')
+		.notNull()
+		.references(() => companies.id, { onDelete: 'cascade' }),
+	name: text('name').notNull(),
+	title: text('title'),
+	content: bytea('content'),
+	mime: varchar('mime', { length: 20 }),
+	createdAt: createdAt()
+});
 
 export const userCompanies = pgTable(
 	'user_companies',
@@ -371,6 +381,7 @@ export const invoices = pgTable(
 		subject: text('subject'),
 		currency: varchar('currency', { length: 3 }).notNull().default('IDR'),
 		notes: text('notes'),
+		lastSignerId: uuid('last_signer_id').references(() => companySigners.id, { onDelete: 'set null' }),
 		deletedAt: timestamp('deleted_at', { withTimezone: true }),
 		createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
 		createdAt: createdAt()
@@ -406,6 +417,7 @@ export const paymentReceipts = pgTable(
 		taxAmount: money('tax_amount').notNull().default('0'),
 		total: money('total').notNull(),
 		notes: text('notes'),
+		lastSignerId: uuid('last_signer_id').references(() => companySigners.id, { onDelete: 'set null' }),
 		contactName: text('contact_name').notNull(),
 		contactAttention: text('contact_attention'),
 		contactPosition: text('contact_position'),
@@ -451,6 +463,7 @@ export const purchaseOrders = pgTable(
 		taxAmount: money('tax_amount').notNull().default('0'),
 		total: money('total').notNull(),
 		notes: text('notes'),
+		lastSignerId: uuid('last_signer_id').references(() => companySigners.id, { onDelete: 'set null' }),
 		deletedAt: timestamp('deleted_at', { withTimezone: true }),
 		createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
 		createdAt: createdAt()
