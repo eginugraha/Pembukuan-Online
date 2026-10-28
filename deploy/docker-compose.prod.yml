@@ -6,6 +6,13 @@
 # Isi APP_DOMAIN dan PROXY_NETWORK di .env (PROXY_NETWORK = jaringan Docker milik nginx-proxy).
 # App tidak membuka port ke host; hanya terjangkau lewat jaringan itu.
 services:
+  # Layanan pendukung hanya diakses app lewat jaringan internal compose; jangan bentrok dengan port di host.
+  db:
+    ports: !reset []
+  sidecar:
+    ports: !reset []
+  ollama:
+    ports: !reset []
   app:
     ports: !reset []
     environment:
