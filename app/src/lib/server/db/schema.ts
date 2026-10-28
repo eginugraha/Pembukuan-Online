@@ -481,6 +481,47 @@ export const purchaseOrderLines = pgTable('purchase_order_lines', {
 	amount: money('amount').notNull()
 });
 
+// Penawaran: satu baris per versi. Versi dikelompokkan oleh `base_no`; revisi 0 = versi pertama, revisi n tampil `-R<n>`.
+// Versi terbaru = revisi tertinggi yang belum dihapus. Status dihitung saat dibaca (approved_at + valid_until).
+export const quotations = pgTable(
+	'quotations',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+		contactId: uuid('contact_id').notNull().references(() => contacts.id),
+		baseNo: varchar('base_no', { length: 50 }).notNull(),
+		revision: integer('revision').notNull().default(0),
+		subject: text('subject'),
+		currency: varchar('currency', { length: 3 }).notNull().default('IDR'),
+		issueDate: day('issue_date').notNull(),
+		validUntil: day('valid_until'),
+		subtotal: money('subtotal').notNull(),
+		discount: money('discount').notNull().default('0'),
+		taxRate: numeric('tax_rate', { precision: 5, scale: 2 }),
+		taxAmount: money('tax_amount').notNull().default('0'),
+		total: money('total').notNull(),
+		notes: text('notes'),
+		lastSignerId: uuid('last_signer_id').references(() => companySigners.id, { onDelete: 'set null' }),
+		approvedAt: timestamp('approved_at', { withTimezone: true }),
+		approvedBy: uuid('approved_by').references(() => user.id, { onDelete: 'set null' }),
+		deletedAt: timestamp('deleted_at', { withTimezone: true }),
+		createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: createdAt()
+	},
+	// Termasuk baris terhapus, supaya nomor revisi tidak pernah dipakai ulang.
+	(t) => [unique('quotations_company_no_rev_uq').on(t.companyId, t.baseNo, t.revision)]
+);
+
+export const quotationLines = pgTable('quotation_lines', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	quotationId: uuid('quotation_id').notNull().references(() => quotations.id, { onDelete: 'cascade' }),
+	lineNo: integer('line_no').notNull(),
+	description: text('description').notNull(),
+	quantity: numeric('quantity', { precision: 12, scale: 2 }).notNull(),
+	unitPrice: money('unit_price').notNull(),
+	amount: money('amount').notNull()
+});
+
 export const documentNumberCounters = pgTable(
 	'document_number_counters',
 	{

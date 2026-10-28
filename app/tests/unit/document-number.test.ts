@@ -12,6 +12,7 @@ describe('document number', () => {
 		expect(
 			formatDocumentNumber({ seq: 1, companyCode: 'SET', contactCode: 'XFORMATION', kind: 'RCP', issueDate: '2026-04-15' })
 		).toBe('001/SET-XFORMATION/RCP/IV/2026');
+		expect(formatDocumentNumber({ seq: 1, companyCode: 'SAB', contactCode: 'PLG', kind: 'QUO', issueDate: '2026-10-29' })).toBe('001/SAB-PLG/QUO/X/2026');
 	});
 	test('toRoman', () => {
 		expect([1, 4, 9, 12].map(toRoman)).toEqual(['I', 'IV', 'IX', 'XII']);

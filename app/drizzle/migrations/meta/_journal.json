@@ -127,6 +127,13 @@
       "when": 1793176364156,
       "tag": "0017_real_doctor_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793215127570,
+      "tag": "0018_quick_skreet",
+      "breakpoints": true
     }
   ]
 }

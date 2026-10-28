@@ -11,18 +11,21 @@ export const InvoiceLineInput = z.object({
 });
 export type InvoiceLineInput = z.infer<typeof InvoiceLineInput>;
 
+/** Tarif PPN dalam persen, dipakai bersama invoice, PO, dan penawaran. */
+export const taxRateInput = z
+	.string()
+	.trim()
+	.regex(/^\d{1,3}(\.\d{1,2})?$/, 'Tarif PPN tidak valid')
+	.refine((v) => Number(v) <= 100, 'Tarif PPN maksimal 100%')
+	.optional();
+
 export const CreateInvoiceInput = z
 	.object({
 		contactId: requiredId('Pelanggan'),
 		issueDate: isoDate,
 		dueDate: isoDate.optional(),
 		discount: moneyString.optional(),
-		taxRate: z
-			.string()
-			.trim()
-			.regex(/^\d{1,3}(\.\d{1,2})?$/, 'Tarif PPN tidak valid')
-			.refine((v) => Number(v) <= 100, 'Tarif PPN maksimal 100%')
-			.optional(),
+		taxRate: taxRateInput,
 		subject: optionalText('Perihal', 200),
 		currency: z.enum(CURRENCIES, { error: 'Mata uang tidak valid' }).optional(),
 		notes: richNotes('Catatan', 8000),
