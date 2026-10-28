@@ -1,7 +1,7 @@
 import { and, asc, eq } from 'drizzle-orm';
 import { ApiError, notFound } from '../api';
 import { db } from '../db';
-import { companySigners, invoices, paymentReceipts, purchaseOrders } from '../db/schema';
+import { companySigners, invoices, paymentReceipts, purchaseOrders, quotations } from '../db/schema';
 import { MAX_LOGO_BYTES, sniffImage } from './logo';
 
 export interface SignerInput {
@@ -80,7 +80,7 @@ export async function resolveSignerId(companyId: string, chosen: string | null, 
 	return all.find((s) => s.id === last)?.id ?? all[0]?.id ?? null;
 }
 
-type SignedDocTable = typeof invoices | typeof paymentReceipts | typeof purchaseOrders;
+type SignedDocTable = typeof invoices | typeof paymentReceipts | typeof purchaseOrders | typeof quotations;
 
 /**
  * Penandatangan untuk unduhan PDF satu dokumen. Pilihan eksplisit (`?signer=`) diingat di dokumen

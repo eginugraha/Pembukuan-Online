@@ -7,6 +7,7 @@ import type { ContactRow } from './contacts';
 import type { InvoiceDetail } from './invoices';
 import type { PaymentReceiptDetail } from './payment-receipts';
 import type { PODetail } from './purchase-orders';
+import type { QuotationDetail } from './quotations';
 
 /*
  * PDF invoice sesuai mockup revisi 9 (docs/superpowers/specs/assets/2026-10-26-invoice-mockup.html).
@@ -202,6 +203,40 @@ export function drawPurchaseOrderPdf(
 		notes: po.notes,
 		paymentCard: false,
 		signatureLabel: 'Authorized by,',
+		paragraph: null,
+		stamp: false
+	});
+}
+
+/** PDF penawaran: tata letak invoice tanpa kartu pembayaran; "Berlaku Sampai" menggantikan jatuh tempo. */
+export function drawQuotationPdf(
+	doc: PDFKit.PDFDocument,
+	d: { company: InvoiceCompanyData; contact: ContactRow; quotation: QuotationDetail }
+): void {
+	const { quotation: q } = d;
+	const meta = [
+		{ id: 'Nomor Penawaran', en: 'Quotation Number', value: q.quotationNo },
+		{ id: 'Tanggal', en: 'Issue Date', value: formatLongDate(q.issueDate) }
+	];
+	if (q.validUntil) meta.push({ id: 'Berlaku Sampai', en: 'Valid Until', value: formatLongDate(q.validUntil) });
+	drawDocumentPdf(doc, d.company, {
+		title: 'PENAWARAN',
+		subtitle: 'Quotation',
+		meta,
+		subject: q.subject,
+		partyLabel: { id: 'DITAWARKAN KEPADA', en: 'QUOTED TO' },
+		tableTitle: { id: 'RINCIAN PENAWARAN', en: 'Quotation Details' },
+		contact: d.contact,
+		lines: q.lines,
+		currency: q.currency,
+		subtotal: q.subtotal,
+		discount: q.discount,
+		taxRate: q.taxRate,
+		taxAmount: q.taxAmount,
+		total: q.total,
+		notes: q.notes,
+		paymentCard: false,
+		signatureLabel: 'Approved by,',
 		paragraph: null,
 		stamp: false
 	});
