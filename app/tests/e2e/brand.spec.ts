@@ -4,8 +4,8 @@ import { E2E_PASSWORD } from '../../playwright.config';
 test('login shows the Pembukuan Online brand, tagline and favicon', async ({ page, request }) => {
 	await page.goto('/login');
 	await expect(page.getByText('Pembukuan Online', { exact: true })).toBeVisible();
-	await expect(page.getByText('Pembukuan Keuangan Online Gratis')).toBeVisible();
-	await expect(page).toHaveTitle('Masuk · Pembukuan Online — Pembukuan Keuangan Online Gratis');
+	await expect(page.getByText('Pembukuan Keuangan')).toBeVisible();
+	await expect(page).toHaveTitle('Masuk · Pembukuan Online — Pembukuan Keuangan');
 	await expect(page.locator('link[rel="icon"][type="image/svg+xml"]')).toHaveAttribute('href', /(^|\/\/[^/]+)\/favicon\.svg$/);
 
 	const svg = await request.get('/favicon.svg');

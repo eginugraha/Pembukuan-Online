@@ -137,7 +137,7 @@
 </script>
 
 <div class="flex h-full flex-col px-4 py-5 rail-collapsed:px-2">
-	<a href="/dashboard" onclick={onnavigate} aria-label="Pembukuan Online" title="Pembukuan Online — Pembukuan Keuangan Online Gratis" class="mb-4 flex shrink-0 items-center gap-2.5 px-2 text-base font-extrabold tracking-tight text-green rail-collapsed:justify-center rail-collapsed:px-0">
+	<a href="/dashboard" onclick={onnavigate} aria-label="Pembukuan Online" title="Pembukuan Online — Pembukuan Keuangan" class="mb-4 flex shrink-0 items-center gap-2.5 px-2 text-base font-extrabold tracking-tight text-green rail-collapsed:justify-center rail-collapsed:px-0">
 		<span class="icon-tile icon-tile-deep size-9 shrink-0 rounded-xl font-black">P</span>
 		<span class="truncate rail-collapsed:hidden">Pembukuan Online</span>
 	</a>
