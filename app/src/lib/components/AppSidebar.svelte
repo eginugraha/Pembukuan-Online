@@ -21,6 +21,7 @@
 	import Settings from '@lucide/svelte/icons/settings';
 	import ShieldUser from '@lucide/svelte/icons/shield-user';
 	import ShoppingCart from '@lucide/svelte/icons/shopping-cart';
+	import FilePenLine from '@lucide/svelte/icons/file-pen-line';
 	import TrendingUp from '@lucide/svelte/icons/trending-up';
 	import Upload from '@lucide/svelte/icons/upload';
 	import Users from '@lucide/svelte/icons/users';
@@ -131,6 +132,7 @@
 		wallet: Wallet,
 		closing: Lock,
 		contacts: BookUser,
+		quotation: FilePenLine,
 		invoice: Receipt,
 		po: ShoppingCart
 	};

@@ -42,6 +42,7 @@ export const NAV: NavGroup[] = [
 		icon: 'invoicing',
 		items: [
 			{ label: 'Kontak', href: '/invoicing/contacts', min: 'viewer', icon: 'contacts' },
+			{ label: 'Penawaran', href: '/invoicing/quotations', min: 'viewer', icon: 'quotation' },
 			{ label: 'Invoice', href: '/invoicing/invoices', min: 'viewer', icon: 'invoice' },
 			{ label: 'Purchase Order', href: '/invoicing/purchase-orders', min: 'viewer', icon: 'po' }
 		]

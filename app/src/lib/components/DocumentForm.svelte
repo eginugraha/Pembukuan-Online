@@ -11,6 +11,7 @@
 	import { FormState } from '$lib/forms/form-state.svelte';
 	import { CreateInvoiceInput, InvoiceLineInput } from '$lib/schemas/invoice';
 	import { CreatePurchaseOrderInput } from '$lib/schemas/purchase-order';
+	import { CreateQuotationInput } from '$lib/schemas/quotation';
 	import FormField from '$lib/components/FormField.svelte';
 	import SimpleSelect from '$lib/components/SimpleSelect.svelte';
 	import DateField from '$lib/components/DateField.svelte';
@@ -21,7 +22,7 @@
 	import RichTextEditor from '$lib/components/RichTextEditor.svelte';
 
 	type Line = { description: string; quantity: string; unitPrice: string };
-	type Initial = { contactId: string; subject?: string; currency?: string; issueDate: string; expectedDate?: string; dueDate?: string; discount?: string; taxRate: string; notes: string; lines: Line[] };
+	type Initial = { contactId: string; subject?: string; currency?: string; issueDate: string; expectedDate?: string; dueDate?: string; validUntil?: string; discount?: string; taxRate: string; notes: string; lines: Line[] };
 
 	let {
 		kind,
@@ -30,14 +31,17 @@
 		canEditCompany = false,
 		docId,
 		initial,
-		contactLocked = !!docId
+		reviseOf,
+		contactLocked = !!docId || !!reviseOf
 	}: {
-		kind: 'invoice' | 'po';
+		kind: 'invoice' | 'po' | 'quotation';
 		contacts: { id: string; name: string; code?: string | null }[];
 		companyCode?: string | null;
 		canEditCompany?: boolean;
 		docId?: string;
 		initial?: Initial;
+		/** Id versi penawaran yang direvisi: simpan membuat versi baru lewat `/revisions`. */
+		reviseOf?: string;
 		/** Pelanggan/pemasok tidak bisa diganti (kodenya ada di nomor dokumen); default saat mengubah. */
 		contactLocked?: boolean;
 	} = $props();
@@ -45,19 +49,27 @@
 	// Jenis dokumen dan nilai awal bersifat tetap selama komponen hidup (rute berganti = komponen baru).
 	// svelte-ignore state_referenced_locally
 	const isPo = kind === 'po';
-	const COPY = isPo
+	// svelte-ignore state_referenced_locally
+	const isQuote = kind === 'quotation';
+	const COPY = isQuote
+		? { contact: 'Pelanggan', contactPlaceholder: 'Pilih pelanggan…', contactSearch: 'Cari pelanggan…', contactEmpty: 'Tidak ada pelanggan yang cocok', date: 'Tanggal penawaran', base: '/api/invoicing/quotations', page: '/invoicing/quotations' }
+		: isPo
 		? { contact: 'Pemasok', contactPlaceholder: 'Pilih pemasok…', contactSearch: 'Cari pemasok…', contactEmpty: 'Tidak ada pemasok yang cocok', date: 'Tanggal PO', base: '/api/invoicing/purchase-orders', page: '/invoicing/purchase-orders' }
 		: { contact: 'Pelanggan', contactPlaceholder: 'Pilih pelanggan…', contactSearch: 'Cari pelanggan…', contactEmpty: 'Tidak ada pelanggan yang cocok', date: 'Tanggal invoice', base: '/api/invoicing/invoices', page: '/invoicing/invoices' };
-	const schema = isPo ? CreatePurchaseOrderInput : CreateInvoiceInput;
+	const schema = isQuote ? CreateQuotationInput : isPo ? CreatePurchaseOrderInput : CreateInvoiceInput;
 
 	const contactOptions = $derived(contacts.map((c) => ({ value: c.id, label: c.name })));
 
 	// --- Field header ---
-	const EMPTY = { contactId: '', subject: '', currency: 'IDR', issueDate: '', expectedDate: '', dueDate: '', discount: '', taxRate: '', notes: '' };
+	const EMPTY = { contactId: '', subject: '', currency: 'IDR', issueDate: '', expectedDate: '', dueDate: '', validUntil: '', discount: '', taxRate: '', notes: '' };
 	const toInput = (v: typeof EMPTY) => ({
 		contactId: v.contactId,
 		issueDate: v.issueDate,
-		...(isPo ? { expectedDate: v.expectedDate || undefined } : { dueDate: v.dueDate || undefined, discount: v.discount || undefined }),
+		...(isPo
+			? { expectedDate: v.expectedDate || undefined }
+			: isQuote
+				? { validUntil: v.validUntil || undefined, discount: v.discount || undefined }
+				: { dueDate: v.dueDate || undefined, discount: v.discount || undefined }),
 		subject: v.subject || undefined,
 		currency: v.currency as Currency,
 		taxRate: v.taxRate || undefined,
@@ -65,15 +77,17 @@
 		lines: lines.map(({ description, quantity, unitPrice }) => ({ description, quantity, unitPrice }))
 	});
 	// svelte-ignore state_referenced_locally
-	const form = new FormState(schema, { ...EMPTY, ...(initial ? { ...initial, expectedDate: initial.expectedDate ?? '', dueDate: initial.dueDate ?? '', discount: initial.discount ?? '', subject: initial.subject ?? '', currency: initial.currency ?? 'IDR' } : {}) }, toInput);
+	const form = new FormState(schema, { ...EMPTY, ...(initial ? { ...initial, expectedDate: initial.expectedDate ?? '', dueDate: initial.dueDate ?? '', validUntil: initial.validUntil ?? '', discount: initial.discount ?? '', subject: initial.subject ?? '', currency: initial.currency ?? 'IDR' } : {}) }, toInput);
 	const money = (v: Parameters<typeof formatAmount>[0]) => formatAmount(v, form.values.currency);
 	let errorMessage = $state<string | null>(null);
 	let busy = $state(false);
 
 	// Peringatan kode hanya saat membuat; mengubah dokumen tidak memeriksa kode.
-	const missingCompanyCode = $derived(!docId && !companyCode);
+	// Revisi memakai nomor dasar yang sudah ada, jadi juga tidak memeriksa kode.
+	const isNew = $derived(!docId && !reviseOf);
+	const missingCompanyCode = $derived(isNew && !companyCode);
 	const selectedContact = $derived(contacts.find((c) => c.id === form.values.contactId));
-	const missingContactCode = $derived(!docId && !!selectedContact && !selectedContact.code);
+	const missingContactCode = $derived(isNew && !!selectedContact && !selectedContact.code);
 
 	// --- Baris: error per baris dihitung terhadap skema satu baris, bukan seluruh array ---
 	// svelte-ignore state_referenced_locally
@@ -110,7 +124,10 @@
 		if (!headerValid || hasLineErrors) return;
 		busy = true;
 		try {
-			if (docId) {
+			if (reviseOf) {
+				const res = await apiFetch<{ id: string }>(`${COPY.base}/${reviseOf}/revisions`, { method: 'POST', json: toInput(form.values) });
+				await goto(`${COPY.page}/${res.id}`);
+			} else if (docId) {
 				await apiFetch(`${COPY.base}/${docId}`, { method: 'PUT', json: toInput(form.values) });
 				await goto(`${COPY.page}/${docId}`);
 			} else {
@@ -146,7 +163,11 @@
 				<FormField id="doc-subject" label="Perihal (opsional)" error={form.error('subject')} class="sm:col-span-3">
 					<Input bind:value={form.values.subject} {...form.attrs('subject', 'doc-subject')} />
 				</FormField>
-				{#if isPo}
+				{#if isQuote}
+					<FormField id="doc-valid-until" label="Berlaku sampai (opsional)" error={form.error('validUntil')}>
+						<DateField bind:value={form.values.validUntil} {...form.attrs('validUntil', 'doc-valid-until')} />
+					</FormField>
+				{:else if isPo}
 					<FormField id="doc-expected-date" label="Perkiraan tiba (opsional)" error={form.error('expectedDate')}>
 						<DateField bind:value={form.values.expectedDate} {...form.attrs('expectedDate', 'doc-expected-date')} />
 					</FormField>

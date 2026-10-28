@@ -96,6 +96,8 @@ test('create a contact, then create, edit, and delete an invoice without touchin
 
 	// --- Ubah: ganti keterangan baris, nomor tetap ---
 	await page.getByRole('link', { name: 'Ubah' }).click();
+	// Pelanggan terkunci saat mengubah: kodenya ada di nomor invoice.
+	await expect(page.getByLabel('Pelanggan')).toBeDisabled();
 	await expect(page.getByLabel('Mata uang')).toHaveText(/IDR/);
 	await page.getByLabel('Mata uang').click();
 	await page.getByRole('option', { name: 'USD' }).click();
