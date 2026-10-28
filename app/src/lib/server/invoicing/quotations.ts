@@ -255,18 +255,22 @@ export async function listQuotations(companyId: string): Promise<QuotationListRo
 }
 
 export async function getQuotation(companyId: string, quotationId: string): Promise<QuotationDetail> {
-	const row = await db.query.quotations.findFirst({
-		where: and(eq(quotations.id, quotationId), eq(quotations.companyId, companyId), isNull(quotations.deletedAt))
-	});
+	// Versi yang dituju dan semua versi senomornya dibaca dalam satu query, supaya penghapusan bersamaan
+	// tidak bisa menyisakan versi tanpa riwayat (dulu dua query terpisah → 500 alih-alih 404).
+	const versions = await db
+		.select()
+		.from(quotations)
+		.where(
+			and(
+				eq(quotations.companyId, companyId),
+				isNull(quotations.deletedAt),
+				sql`${quotations.baseNo} = (select base_no from quotations where id = ${quotationId} and company_id = ${companyId})`
+			)
+		)
+		.orderBy(desc(quotations.revision));
+	const row = versions.find((v) => v.id === quotationId);
 	if (!row) throw notFound('Penawaran');
-	const [lines, versions] = await Promise.all([
-		db.select().from(quotationLines).where(eq(quotationLines.quotationId, quotationId)).orderBy(asc(quotationLines.lineNo)),
-		db
-			.select({ id: quotations.id, revision: quotations.revision, issueDate: quotations.issueDate, total: quotations.total, currency: quotations.currency, approvedAt: quotations.approvedAt, validUntil: quotations.validUntil })
-			.from(quotations)
-			.where(and(eq(quotations.companyId, companyId), eq(quotations.baseNo, row.baseNo), isNull(quotations.deletedAt)))
-			.orderBy(desc(quotations.revision))
-	]);
+	const lines = await db.select().from(quotationLines).where(eq(quotationLines.quotationId, quotationId)).orderBy(asc(quotationLines.lineNo));
 	const today = todayIso();
 	const latestRevision = versions[0].revision;
 	const history = versions.map((v) => ({

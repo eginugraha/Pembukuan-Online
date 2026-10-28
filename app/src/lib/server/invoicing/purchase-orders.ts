@@ -112,7 +112,7 @@ export async function updatePurchaseOrder(companyId: string, poId: string, input
 			where: and(eq(purchaseOrders.id, poId), eq(purchaseOrders.companyId, companyId), isNull(purchaseOrders.deletedAt))
 		});
 		if (!current) throw notFound('PO');
-		if (input.contactId !== current.contactId) throw contactLocked();
+		if (input.contactId !== current.contactId) throw contactLocked('Pemasok');
 
 		const totals = computeTotals(input);
 		await tx

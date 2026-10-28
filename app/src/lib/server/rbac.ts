@@ -34,7 +34,7 @@ export interface ActiveContext extends AppContext {
 	role: Role;
 }
 
-interface HasLocals {
+export interface HasLocals {
 	locals: { ctx: AppContext | null };
 }
 

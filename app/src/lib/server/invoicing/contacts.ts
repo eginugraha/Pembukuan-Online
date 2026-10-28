@@ -7,8 +7,10 @@ import { CreateContactInput, UpdateContactInput } from '../../schemas/contact';
 export { CreateContactInput, UpdateContactInput };
 
 /** Pelanggan/vendor dokumen tidak boleh diganti: kodenya ada di nomor dokumen yang mungkin sudah terkirim. */
-export const contactLocked = () =>
-	new ApiError(422, 'contact_locked', 'Pelanggan tidak bisa diganti. Hapus dokumen lalu buat baru bila salah pelanggan', undefined, { field: 'contactId' });
+export const contactLocked = (label: 'Pelanggan' | 'Pemasok' = 'Pelanggan') =>
+	new ApiError(422, 'contact_locked', `${label} tidak bisa diganti. Hapus dokumen lalu buat baru bila salah ${label.toLowerCase()}`, undefined, {
+		field: 'contactId'
+	});
 
 export interface ContactRow {
 	id: string;

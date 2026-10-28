@@ -106,3 +106,12 @@ test('update rejects a different active contact with 422 contact_locked and keep
 	});
 	expect((await getPurchaseOrder(companyId, id)).contactId).toBe(contactId);
 });
+
+test('the contact_locked message on a PO talks about the vendor (Pemasok)', async () => {
+	const { companyId, userId, contactId } = await setup();
+	const { id: otherContact } = await createContact(companyId, { kind: 'VENDOR', name: 'PT Lain', code: 'LAN' });
+	const { id } = await createPurchaseOrder(companyId, userId, { contactId, issueDate: '2026-10-01', lines: [line('A')] });
+	await expect(updatePurchaseOrder(companyId, id, { contactId: otherContact, issueDate: '2026-10-01', lines: [line('A')] })).rejects.toMatchObject({
+		message: expect.stringContaining('Pemasok tidak bisa diganti')
+	});
+});
