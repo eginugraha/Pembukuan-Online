@@ -11,6 +11,8 @@ export interface NavItem {
 }
 export interface NavGroup {
 	label: string | null;
+	/** Key ikon judul grup (hanya untuk grup bertajuk); dipetakan di AppSidebar.svelte. */
+	icon?: string;
 	items: NavItem[];
 }
 
@@ -19,15 +21,17 @@ export const NAV: NavGroup[] = [
 	{ label: null, items: [{ label: 'Dashboard', href: '/dashboard', min: 'viewer', icon: 'dashboard' }] },
 	{
 		label: 'eStatement',
+		icon: 'estatement',
 		items: [
 			{ label: 'Upload Baru', href: '/uploads/new', min: 'accountant', icon: 'upload' },
-			{ label: 'Riwayat Upload', href: '/uploads', min: 'viewer', icon: 'history' }
+			{ label: 'Riwayat Upload', href: '/uploads', min: 'viewer', icon: 'history' },
+			{ label: 'Review & Konfirmasi', href: '/review', min: 'accountant', icon: 'review' }
 		]
 	},
-	{ label: null, items: [{ label: 'Review & Konfirmasi', href: '/review', min: 'accountant', icon: 'review' }] },
-	{ label: 'Jurnal', items: [{ label: 'Jurnal Umum', href: '/journal', min: 'viewer', icon: 'journal' }] },
+	{ label: 'Jurnal', icon: 'journalGroup', items: [{ label: 'Jurnal Umum', href: '/journal', min: 'viewer', icon: 'journal' }] },
 	{
 		label: 'Buku',
+		icon: 'books',
 		items: [
 			{ label: 'Buku Besar', href: '/ledger', min: 'viewer', icon: 'ledger' },
 			{ label: 'Neraca Saldo', href: '/trial-balance', min: 'viewer', icon: 'scale' }
@@ -35,6 +39,7 @@ export const NAV: NavGroup[] = [
 	},
 	{
 		label: 'Invoicing',
+		icon: 'invoicing',
 		items: [
 			{ label: 'Kontak', href: '/invoicing/contacts', min: 'viewer', icon: 'contacts' },
 			{ label: 'Invoice', href: '/invoicing/invoices', min: 'viewer', icon: 'invoice' },
@@ -43,6 +48,7 @@ export const NAV: NavGroup[] = [
 	},
 	{
 		label: 'Laporan Keuangan',
+		icon: 'reports',
 		items: [
 			{ label: 'Laba Rugi', href: '/income-statement', min: 'viewer', icon: 'income' },
 			{ label: 'Posisi Keuangan', href: '/balance-sheet', min: 'viewer', icon: 'landmark' }
@@ -50,14 +56,21 @@ export const NAV: NavGroup[] = [
 	},
 	{
 		label: 'Pengaturan',
+		icon: 'settings',
 		items: [
 			{ label: 'Perusahaan', href: '/settings/company', min: 'admin', icon: 'company' },
-			{ label: 'Semua Pengguna', href: '/settings/system-users', min: 'viewer', icon: 'systemUsers', superAdminOnly: true },
-			{ label: 'Pengguna & Role', href: '/settings/users', min: 'admin', icon: 'users' },
 			{ label: 'Chart of Accounts', href: '/settings/accounts', min: 'admin', icon: 'accounts' },
 			{ label: 'Category Rules', href: '/settings/rules', min: 'accountant', icon: 'rules' },
 			{ label: 'Saldo Awal', href: '/settings/opening-balance', min: 'accountant', icon: 'wallet' },
 			{ label: 'Tutup Buku', href: '/settings/closing', min: 'admin', icon: 'closing' }
+		]
+	},
+	{
+		label: 'RBAC',
+		icon: 'rbac',
+		items: [
+			{ label: 'Semua Pengguna', href: '/settings/system-users', min: 'viewer', icon: 'systemUsers', superAdminOnly: true },
+			{ label: 'Pengguna & Role', href: '/settings/users', min: 'admin', icon: 'users' }
 		]
 	}
 ];

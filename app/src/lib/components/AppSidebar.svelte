@@ -1,9 +1,11 @@
 <script lang="ts">
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import BookUser from '@lucide/svelte/icons/book-user';
+	import BookText from '@lucide/svelte/icons/book-text';
 	import Building2 from '@lucide/svelte/icons/building-2';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
-	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import ChartColumn from '@lucide/svelte/icons/chart-column';
+	import FileText from '@lucide/svelte/icons/file-text';
 	import History from '@lucide/svelte/icons/history';
 	import Landmark from '@lucide/svelte/icons/landmark';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
@@ -11,8 +13,12 @@
 	import ListChecks from '@lucide/svelte/icons/list-checks';
 	import ListTree from '@lucide/svelte/icons/list-tree';
 	import Lock from '@lucide/svelte/icons/lock';
+	import NotebookPen from '@lucide/svelte/icons/notebook-pen';
 	import Receipt from '@lucide/svelte/icons/receipt';
+	import ReceiptText from '@lucide/svelte/icons/receipt-text';
 	import Scale from '@lucide/svelte/icons/scale';
+	import ShieldCheck from '@lucide/svelte/icons/shield-check';
+	import Settings from '@lucide/svelte/icons/settings';
 	import ShieldUser from '@lucide/svelte/icons/shield-user';
 	import ShoppingCart from '@lucide/svelte/icons/shopping-cart';
 	import TrendingUp from '@lucide/svelte/icons/trending-up';
@@ -55,14 +61,18 @@
 	// Menu aktif yang tersembunyi di grup tertutup tidak diberi indikator.
 	const activeHidden = $derived(isClosed(activeGroup));
 
-	// Pindah ke halaman di grup yang tertutup membukanya kembali.
+	// Hanya satu grup yang terbuka: membuka grup menutup grup lain.
+	const groupLabels = $derived(nav.flatMap((g) => (g.label ? [g.label] : [])));
+	const onlyOpen = (label: string) => groupLabels.filter((l) => l !== label);
+
+	// Pindah ke halaman di grup yang tertutup membukanya, dan menutup grup lain.
 	$effect(() => {
 		const label = activeGroup;
-		if (label && untrack(() => closed.includes(label))) closed = closed.filter((l) => l !== label);
+		if (label && untrack(() => closed.includes(label))) closed = onlyOpen(label);
 	});
 
 	function toggleGroup(label: string) {
-		closed = closed.includes(label) ? closed.filter((l) => l !== label) : [...closed, label];
+		closed = closed.includes(label) ? onlyOpen(label) : [...closed, label];
 		saveClosedGroups(closed);
 		// Menu di bawah grup ini bergeser selama animasi, jadi indikator diukur ulang tiap frame.
 		const until = performance.now() + 260;
@@ -94,6 +104,15 @@
 		if (next && !untrack(() => animate)) requestAnimationFrame(() => (animate = true));
 	});
 
+	const GROUP_ICONS: Record<string, Component<{ class?: string }>> = {
+		estatement: FileText,
+		journalGroup: NotebookPen,
+		books: BookText,
+		invoicing: ReceiptText,
+		reports: ChartColumn,
+		settings: Settings,
+		rbac: ShieldCheck
+	};
 	const ICONS: Record<string, Component<{ class?: string }>> = {
 		dashboard: LayoutDashboard,
 		upload: Upload,
@@ -115,7 +134,6 @@
 		invoice: Receipt,
 		po: ShoppingCart
 	};
-	const groupLabel = (label: string | null, i: number) => label ?? (i === 0 ? 'Menu Utama' : null);
 </script>
 
 <div class="flex h-full flex-col px-4 py-5 rail-collapsed:px-2">
@@ -150,7 +168,7 @@
 								aria-label={item.label}
 								aria-describedby={undefined}
 								aria-current={active ? 'page' : undefined}
-								class="group relative flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm transition-colors duration-200 hover:bg-pale/50 rail-collapsed:justify-center rail-collapsed:px-0 {active
+								class="group relative flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm transition-colors duration-200 hover:bg-pale/50 rail-collapsed:justify-center rail-collapsed:px-0 {group.label ? 'pl-5 rail-collapsed:pl-0' : ''} {active
 									? 'font-semibold text-deep'
 									: 'text-ink/65 hover:text-deep'}"
 							>
@@ -158,7 +176,6 @@
 									<Icon class="size-4" />
 								</span>
 								<span class="relative min-w-0 flex-1 truncate rail-collapsed:hidden">{item.label}</span>
-								<ChevronRight class="relative size-3.5 shrink-0 opacity-35 transition-transform duration-200 group-hover:translate-x-0.5 rail-collapsed:hidden" />
 							</a>
 						{/snippet}
 					</Tooltip.Trigger>
@@ -171,7 +188,6 @@
 			{/each}
 		{/snippet}
 		{#each nav as group, gi (gi)}
-			{@const label = groupLabel(group.label, gi)}
 			{#if group.label}
 				{@const shut = isClosed(group.label)}
 				<button
@@ -179,9 +195,18 @@
 					onclick={() => toggleGroup(group.label!)}
 					aria-expanded={!shut}
 					aria-controls="nav-group-{gi}"
-					class="flex w-full items-center justify-between rounded-lg px-2 pt-4 pb-1.5 text-left text-[11px] font-semibold text-ink/55 transition-colors hover:text-deep rail-collapsed:hidden"
+					class="flex w-full items-center justify-between rounded-xl px-2.5 pt-3 pb-1 text-left text-sm font-bold text-ink/70 transition-colors hover:text-deep rail-collapsed:hidden"
 				>
-					<span>{group.label}</span>
+					<span class="flex items-center gap-3">
+						<!-- Kolom ikon selebar ubin ikon menu (size-7) agar ikon dan teks judul sejajar dengan menu di bawahnya. -->
+						<span class="flex size-7 shrink-0 items-center justify-center">
+							{#if group.icon && GROUP_ICONS[group.icon]}
+								{@const GroupIcon = GROUP_ICONS[group.icon]}
+								<GroupIcon class="size-4 text-green" />
+							{/if}
+						</span>
+						{group.label}
+					</span>
 					<ChevronDown class="size-3.5 transition-transform duration-200 {shut ? '-rotate-90' : ''}" />
 				</button>
 				<!-- Tinggi dianimasikan lewat grid 0fr↔1fr; mode ikon selalu menampilkan semua menu. -->
@@ -191,9 +216,6 @@
 					</div>
 				</div>
 			{:else}
-				{#if label}
-					<p class="px-2 pt-4 pb-1.5 text-[11px] font-semibold text-ink/55 rail-collapsed:hidden">{label}</p>
-				{/if}
 				{@render items(group)}
 			{/if}
 		{/each}
