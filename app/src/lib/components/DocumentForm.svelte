@@ -17,7 +17,8 @@
 	import SearchSelect from '$lib/components/SearchSelect.svelte';
 	import { D, sumMoney } from '$lib/money';
 	import { CURRENCIES, formatAmount, type Currency } from '$lib/currency';
-	import { inputClass, textareaClass } from '$lib/ui';
+	import { inputClass } from '$lib/ui';
+	import RichTextEditor from '$lib/components/RichTextEditor.svelte';
 
 	type Line = { description: string; quantity: string; unitPrice: string };
 	type Initial = { contactId: string; subject?: string; currency?: string; issueDate: string; expectedDate?: string; dueDate?: string; discount?: string; taxRate: string; notes: string; lines: Line[] };
@@ -173,9 +174,6 @@
 						{...form.attrs('taxRate', 'doc-tax-rate')}
 					/>
 				</FormField>
-				<FormField id="doc-notes" label="Catatan (opsional)" error={form.error('notes')}>
-					<textarea bind:value={form.values.notes} {...form.attrs('notes', 'doc-notes')} rows="3" class={textareaClass}></textarea>
-				</FormField>
 			</div>
 
 			<div class="panel px-2 py-1">
@@ -253,6 +251,10 @@
 				<div class="flex w-64 justify-between"><span class="text-muted-foreground">PPN</span><span class="tabular-nums">{money(taxAmount)}</span></div>
 				<div class="flex w-64 justify-between font-semibold"><span>Total</span><span class="tabular-nums">{money(total)}</span></div>
 			</div>
+
+			<FormField id="doc-notes" label="Catatan (opsional)" error={form.error('notes')}>
+				<RichTextEditor bind:value={form.values.notes} {...form.attrs('notes', 'doc-notes')} />
+			</FormField>
 
 			{#if errorMessage}
 				<Alert.Root variant="destructive">

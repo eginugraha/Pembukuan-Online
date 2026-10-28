@@ -225,6 +225,25 @@
 
 /* ── Utilitas tema "Modern 3D" ───────────────────────────────── */
 @layer components {
+	/* Catatan berformat (editor dan tampilan): Tailwind menghapus gaya daftar bawaan. */
+	.rich-notes p {
+		min-height: 1.25em;
+	}
+	.rich-notes p + p,
+	.rich-notes p + ul,
+	.rich-notes p + ol,
+	.rich-notes ul + p,
+	.rich-notes ol + p {
+		margin-top: 0.35rem;
+	}
+	.rich-notes ul {
+		list-style: disc;
+		padding-left: 1.4rem;
+	}
+	.rich-notes ol {
+		list-style: decimal;
+		padding-left: 1.4rem;
+	}
 	/* Permukaan konten utama. */
 	.panel {
 		border-radius: 20px;

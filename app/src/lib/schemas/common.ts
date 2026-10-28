@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { cleanNotes } from '../rich-text';
 
 // Skema dasar dengan pesan Bahasa Indonesia; dipakai bersama oleh form (klien) dan API (server).
 export const requiredText = (label: string, max: number) =>
@@ -10,6 +11,16 @@ export const requiredText = (label: string, max: number) =>
 
 export const optionalText = (label: string, max: number) =>
 	z.string().trim().max(max, `${label} maksimal ${max} karakter`).nullable().optional();
+
+/** Catatan berformat: dibersihkan jadi HTML kanonis (lihat rich-text.ts); batas berlaku pada hasil bersih. */
+export const richNotes = (label: string, max: number) =>
+	z
+		.string()
+		.max(max * 4, `${label} terlalu panjang`)
+		.transform((v) => cleanNotes(v))
+		.refine((v) => !v || v.length <= max, `${label} terlalu panjang`)
+		.nullable()
+		.optional();
 
 // Kode perusahaan/kontak untuk nomor dokumen. String kosong dianggap null (kode belum diisi).
 export const documentCode = z.preprocess(

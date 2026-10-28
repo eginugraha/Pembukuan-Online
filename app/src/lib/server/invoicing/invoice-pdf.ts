@@ -1,6 +1,7 @@
 import { D, formatIdr, type MoneyValue } from '$lib/money';
 import { terbilang } from '$lib/terbilang';
 import { formatUsd } from '$lib/currency';
+import { parseNotes, type Run } from '$lib/rich-text';
 import type { InvoiceCompanyData } from '$lib/server/reports/company';
 import type { ContactRow } from './contacts';
 import type { InvoiceDetail } from './invoices';
@@ -312,6 +313,74 @@ function drawDocumentPdf(doc: PDFKit.PDFDocument, company: InvoiceCompanyData, m
 		return h;
 	};
 
+	/** Catatan berformat: bungkus kata demi kata dengan font per gaya; daftar diberi penanda di lajur kiri. */
+	type Seg = { text: string; font: string; u: boolean; s: boolean };
+	const richLayout = (input: string, width: number, size: number) => {
+		const LIST_INDENT = 14;
+		const GAP = 3;
+		const fontOf = (r: { b?: boolean; i?: boolean }) => (r.b && r.i ? BOLD_ITALIC : r.b ? BOLD : r.i ? ITALIC : REG);
+		const wrap = (runs: Run[], w: number): Seg[][] => {
+			const lines: Seg[][] = [[]];
+			let x = 0;
+			const newLine = () => {
+				const last = lines[lines.length - 1];
+				if (last.length > 0 && /^ +$/.test(last[last.length - 1].text)) last.pop();
+				lines.push([]);
+				x = 0;
+			};
+			for (const r of runs) {
+				if ('br' in r) {
+					newLine();
+					continue;
+				}
+				const font = fontOf(r);
+				for (const tok of r.t.split(/( )/)) {
+					if (tok === '') continue;
+					const tw = doc.font(font).fontSize(size).widthOfString(tok);
+					const line = lines[lines.length - 1];
+					if (tok === ' ' && line.length === 0) continue;
+					if (tok !== ' ' && x + tw > w && line.length > 0) newLine();
+					const cur = lines[lines.length - 1];
+					const prev = cur[cur.length - 1];
+					if (prev && prev.font === font && prev.u === !!r.u && prev.s === !!r.s) prev.text += tok;
+					else cur.push({ text: tok, font, u: !!r.u, s: !!r.s });
+					x += tw;
+				}
+			}
+			return lines;
+		};
+		const lh = lineH(REG, size);
+		type Row = { lines: Seg[][]; marker: string | null; indent: number; gapBefore: number };
+		const rows: Row[] = [];
+		for (const b of parseNotes(input)) {
+			const gapBefore = rows.length > 0 ? GAP : 0;
+			if (b.kind === 'p') {
+				rows.push({ lines: wrap(b.runs, width), marker: null, indent: 0, gapBefore });
+			} else {
+				b.items.forEach((it, n) =>
+					rows.push({ lines: wrap(it, width - LIST_INDENT), marker: b.kind === 'ol' ? `${n + 1}.` : '\u2022', indent: LIST_INDENT, gapBefore: n === 0 ? gapBefore : 1 })
+				);
+			}
+		}
+		const height = rows.reduce((a, r) => a + r.gapBefore + r.lines.length * lh, 0);
+		const draw = (x: number, y: number) => {
+			let cy = y;
+			for (const r of rows) {
+				cy += r.gapBefore;
+				if (r.marker) line(r.marker, x, cy, { size });
+				for (const segs of r.lines) {
+					let cx = x + r.indent;
+					for (const sg of segs) {
+						doc.font(sg.font).fontSize(size).fillColor(TEXT).text(sg.text, cx, cy, { lineBreak: false, underline: sg.u, strike: sg.s });
+						cx += doc.font(sg.font).fontSize(size).widthOfString(sg.text);
+					}
+					cy += lh;
+				}
+			}
+		};
+		return { height, draw };
+	};
+
 	/** Label dwibahasa: bagian Indonesia (tegak) diikuti "/ English" miring abu-abu, sejajar baseline. */
 	const biLabel = (id: string, en: string, x: number, y: number, o: { font?: string; size: number; enSize: number; color?: string }) => {
 		const font = o.font ?? BOLD;
@@ -569,12 +638,9 @@ function drawDocumentPdf(doc: PDFKit.PDFDocument, company: InvoiceCompanyData, m
 	}
 
 	if (m.notes) {
-		const notes = m.notes;
-		blocks.push({
-			gap: 12,
-			height: heightOf(notes, REG, 8.5, W),
-			draw: (by) => para(notes, L, by, W, { size: 8.5 })
-		});
+		const notes = richLayout(m.notes, W, 8.5);
+		// Catatan tanpa teks (hanya spasi/format kosong) tidak mendapat blok.
+		if (notes.height > 0) blocks.push({ gap: 12, height: notes.height, draw: (by) => notes.draw(L, by) });
 	}
 
 	let signatureBlock: Block | null = null;

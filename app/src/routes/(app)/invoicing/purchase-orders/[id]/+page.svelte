@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { notesHtml } from '$lib/rich-text';
 	import SignerPdfButton from '$lib/components/SignerPdfButton.svelte';
 	import { goto } from '$app/navigation';
 	import { apiFetch, ClientApiError } from '$lib/api-client';
@@ -105,7 +106,7 @@
 </div>
 
 {#if data.po.notes}
-	<p class="mt-4 text-sm whitespace-pre-line text-muted-foreground">{data.po.notes}</p>
+	<div class="rich-notes mt-4 text-sm text-muted-foreground">{@html notesHtml(data.po.notes)}</div>
 {/if}
 
 <DeleteDocumentDialog bind:open={deleteOpen} title="Hapus purchase order" name={data.po.poNo} {busy} onconfirm={doDelete} />

@@ -263,3 +263,18 @@ test('invoice PDF carries no receipt markings', async () => {
 	expect(text).not.toContain('Acknowledged by');
 	expect(text).toContain('Approved by,');
 });
+
+test('rich notes: paragraphs, numbered and bullet lists are printed with their markers', async () => {
+	const { fetchPdf } = await setup({
+		invoice: { notes: '<div>Syarat pembayaran:</div><ol><li>Transfer <b>maksimal</b> 7 hari</li><li>Sertakan nomor invoice</li></ol><ul><li>Denda <i>1%</i></li></ul>' }
+	});
+	const { text } = await parse(await fetchPdf());
+	expect(text).toContain('Syarat pembayaran:');
+	expect(text).toContain('1.');
+	expect(text).toContain('Transfer maksimal 7 hari');
+	expect(text).toContain('2.');
+	expect(text).toContain('Sertakan nomor invoice');
+	expect(text).toContain('•');
+	expect(text).toContain('Denda 1%');
+	expect(text).not.toContain('<');
+});

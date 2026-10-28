@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { CURRENCIES } from '../currency';
-import { isoDate, moneyString, optionalText, requiredId, requiredText } from './common';
+import { isoDate, moneyString, optionalText, requiredId, requiredText, richNotes } from './common';
 
 const positiveAmount = moneyString.refine((v) => Number(v) > 0, 'Jumlah harus lebih dari 0');
 
@@ -23,7 +23,7 @@ export const CreatePurchaseOrderInput = z.object({
 		.optional(),
 	subject: optionalText('Perihal', 200),
 	currency: z.enum(CURRENCIES, { error: 'Mata uang tidak valid' }).optional(),
-	notes: optionalText('Catatan', 500),
+	notes: richNotes('Catatan', 8000),
 	lines: z.array(POLineInput).min(1, 'Isi minimal satu baris')
 });
 export type CreatePurchaseOrderInput = z.infer<typeof CreatePurchaseOrderInput>;

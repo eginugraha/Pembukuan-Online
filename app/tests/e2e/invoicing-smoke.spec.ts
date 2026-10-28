@@ -68,6 +68,13 @@ test('create a contact, then create, edit, and delete an invoice without touchin
 	await page.getByLabel('Catatan (opsional)').fill('Baris satu');
 	await page.getByLabel('Catatan (opsional)').press('Enter');
 	await page.getByLabel('Catatan (opsional)').pressSequentially('Baris dua');
+	// Format: tebal lewat toolbar, lalu daftar poin.
+	await page.getByRole('button', { name: /^Tebal/ }).click();
+	await page.keyboard.type(' tebal');
+	await page.getByRole('button', { name: /^Tebal/ }).click();
+	await page.getByLabel('Catatan (opsional)').press('Enter');
+	await page.getByRole('button', { name: 'Daftar poin' }).click();
+	await page.keyboard.type('butir satu');
 	await page.getByLabel('Keterangan baris 1').fill('Jasa konsultasi E2E');
 	await page.getByLabel('Kuantitas baris 1').fill('1');
 	await page.getByLabel('Harga satuan baris 1').fill('1000000');
@@ -76,7 +83,10 @@ test('create a contact, then create, edit, and delete an invoice without touchin
 	await expect(page.getByRole('heading', { name: /^001\/E2E-PLG\/INV\/[IVX]+\/\d{4}$/ })).toBeVisible();
 	await expect(page.getByText('Perihal E2E')).toBeVisible();
 	// Catatan multi-baris: Enter menambah baris, bukan mengirim form.
-	await expect(page.getByText(/Baris satu\s+Baris dua/)).toBeVisible();
+	await expect(page.locator('.rich-notes p', { hasText: 'Baris satu' })).toBeVisible();
+	await expect(page.locator('.rich-notes p', { hasText: 'Baris dua' })).toBeVisible();
+	await expect(page.locator('.rich-notes strong')).toHaveText('tebal');
+	await expect(page.locator('.rich-notes ul li')).toHaveText('butir satu');
 	await expect(page.getByText('Attn: Budi Santoso, Manajer Keuangan')).toBeVisible();
 
 	// --- Ubah: ganti keterangan baris, nomor tetap ---
