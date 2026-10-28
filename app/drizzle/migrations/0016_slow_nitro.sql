@@ -1,0 +1,1 @@
+ALTER TABLE "statement_uploads" ADD COLUMN "has_pdf" boolean DEFAULT false NOT NULL;

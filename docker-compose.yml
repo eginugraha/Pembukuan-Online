@@ -52,11 +52,15 @@ services:
       SIDECAR_URL: http://sidecar:8000
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+      UPLOAD_DIR: /app/data/uploads
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@jurnalku.local}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+    volumes:
+      - uploads:/app/data/uploads
     ports:
       - "3000:3000"
 
 volumes:
   pgdata:
   ollama:
+  uploads:

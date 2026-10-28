@@ -31,3 +31,6 @@ playwright-report/
 # Superpowers scratch (brainstorm mockups, plan ledgers)
 .superpowers/
 .worktrees/
+
+# PDF eStatement yang tersimpan
+app/data/

@@ -232,6 +232,7 @@ export const statementUploads = pgTable(
 		balanceWarning: text('balance_warning'),
 		errorMessage: text('error_message'),
 		aiStatus: text('ai_status'),
+		hasPdf: boolean('has_pdf').notNull().default(false),
 		uploadedAt: timestamp('uploaded_at', { withTimezone: true }).notNull().defaultNow()
 	},
 	(t) => [index('statement_uploads_company_account_idx').on(t.companyId, t.accountNo)]

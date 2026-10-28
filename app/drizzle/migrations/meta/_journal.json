@@ -113,6 +113,13 @@
       "when": 1793058596523,
       "tag": "0015_warm_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793163001305,
+      "tag": "0016_slow_nitro",
+      "breakpoints": true
     }
   ]
 }

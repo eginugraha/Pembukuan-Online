@@ -7,6 +7,7 @@ import { db } from '../db';
 import { companies, journalEntries, statementUploads, transactions } from '../db/schema';
 import { balanceAtStartOf } from '../ledger/balance';
 import type { ParsedStatement } from './sidecar-client';
+import { removeStatementPdf, saveStatementPdf } from './pdf-store';
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -117,10 +118,18 @@ export async function createUpload(
 	await validateFile(input.file);
 	const company = await db.query.companies.findFirst({ where: eq(companies.id, input.companyId) });
 	if (!company) throw notFound('Perusahaan');
-	const parsed = await deps.parse(input.file); // PDF hanya diteruskan dari memori (D12)
+	const parsed = await deps.parse(input.file); // PDF diteruskan dari memori ke sidecar; salinannya disimpan setelah upload berhasil (untuk preview)
 	const accountNo = normalizeAccountNo(parsed.account_no);
 	const balanceWarning = await openingBalanceWarning(company, parsed);
-	return insertAndEnqueue(company, { userId: input.userId, filename: input.file.name, bank: 'BCA' }, parsed, accountNo, balanceWarning, deps.enqueue);
+	const result = await insertAndEnqueue(company, { userId: input.userId, filename: input.file.name, bank: 'BCA' }, parsed, accountNo, balanceWarning, deps.enqueue);
+	// Gagal menyimpan PDF tidak menggagalkan upload; baris hanya tanpa preview.
+	try {
+		await saveStatementPdf(company.id, result.id, new Uint8Array(await input.file.arrayBuffer()));
+		await db.update(statementUploads).set({ hasPdf: true }).where(eq(statementUploads.id, result.id));
+	} catch (e) {
+		console.error('Gagal menyimpan PDF eStatement', e);
+	}
+	return result;
 }
 
 export interface ManualRow {
@@ -176,6 +185,7 @@ export async function listUploads(companyId: string) {
 			status: statementUploads.status,
 			aiStatus: statementUploads.aiStatus,
 			balanceWarning: statementUploads.balanceWarning,
+			hasPdf: statementUploads.hasPdf,
 			uploadedAt: statementUploads.uploadedAt,
 			total: sql<number>`count(${transactions.id})::int`,
 			pending: sql<number>`(count(${transactions.id}) filter (where ${transactions.isConfirmed} = false))::int`
@@ -209,6 +219,7 @@ export async function deleteUpload(companyId: string, uploadId: string): Promise
 		await assertPeriodOpen(tx, companyId, dated.map((r) => r.d));
 		await tx.delete(statementUploads).where(eq(statementUploads.id, uploadId));
 	});
+	await removeStatementPdf(companyId, uploadId).catch((e) => console.error('Gagal menghapus PDF eStatement', e));
 }
 
 export async function retryCategorization(
