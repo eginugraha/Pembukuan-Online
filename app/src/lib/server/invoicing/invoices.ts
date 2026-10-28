@@ -54,8 +54,8 @@ export interface InvoiceDetail {
 	lines: InvoiceLineRow[];
 }
 
-/** Jumlah per baris, subtotal, PPN, dan total dihitung di server; klien hanya menampilkan pratinjau. */
-function computeTotals(input: CreateInvoiceInput) {
+/** Jumlah per baris, subtotal, PPN, dan total dihitung di server; klien hanya menampilkan pratinjau. Dipakai juga oleh penawaran. */
+export function computeTotals(input: Pick<CreateInvoiceInput, 'lines' | 'discount' | 'taxRate'>) {
 	const lines = input.lines.map((l) => ({ ...l, amount: toMoney(D(l.quantity).times(l.unitPrice)) }));
 	const subtotal = sumMoney(lines.map((l) => l.amount));
 	const discount = toMoney(input.discount || '0');
