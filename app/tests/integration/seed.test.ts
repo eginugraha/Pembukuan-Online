@@ -42,14 +42,14 @@ test('seedCompany is idempotent', async () => {
 });
 
 test('runSeed creates super admin + demo company once', async () => {
-	process.env.SEED_ADMIN_EMAIL = 'Admin@Jurnalku.Local';
+	process.env.SEED_ADMIN_EMAIL = 'Admin@Pembukuan.Local';
 	process.env.SEED_ADMIN_PASSWORD = 'rahasia-sekali';
 	const first = await runSeed();
 	const second = await runSeed();
 	expect(second).toEqual(first);
 	const users = await db.select().from(user);
 	expect(users).toHaveLength(1);
-	expect(users[0].email).toBe('admin@jurnalku.local');
+	expect(users[0].email).toBe('admin@pembukuan.local');
 	expect(users[0].isSuperAdmin).toBe(true);
 	const [cred] = await db.select().from(authAccount).where(eq(authAccount.userId, users[0].id));
 	expect(cred.providerId).toBe('credential');

@@ -7,7 +7,7 @@ import { createUserWithPassword, findUserByEmail } from '../src/lib/server/users
 const DEMO_COMPANY = 'PT Demo Perusahaan';
 
 export async function runSeed(): Promise<{ adminId: string; companyId: string }> {
-	const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@jurnalku.local';
+	const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@pembukuan.local';
 	const password = process.env.SEED_ADMIN_PASSWORD;
 	if (!password || password.length < 8) {
 		throw new Error('SEED_ADMIN_PASSWORD wajib diisi (minimal 8 karakter)');

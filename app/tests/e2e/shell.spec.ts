@@ -5,7 +5,7 @@ test.use({ viewport: { width: 390, height: 844 } });
 
 test.beforeEach(async ({ page }) => {
 	await page.goto('/login');
-	await page.getByLabel('Email').fill('admin@jurnalku.local');
+	await page.getByLabel('Email').fill('admin@pembukuan.local');
 	await page.getByLabel('Password').fill(E2E_PASSWORD);
 	await page.getByRole('button', { name: 'Masuk' }).click();
 	await expect(page).toHaveURL(/\/dashboard$/);

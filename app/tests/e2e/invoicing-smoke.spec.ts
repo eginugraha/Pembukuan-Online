@@ -19,7 +19,7 @@ async function setCompanyCode(page: import('@playwright/test').Page) {
 
 test('create a contact, then create, edit, and delete an invoice without touching the journal', async ({ page }) => {
 	await page.goto('/login');
-	await page.getByLabel('Email').fill('admin@jurnalku.local');
+	await page.getByLabel('Email').fill('admin@pembukuan.local');
 	await page.getByLabel('Password').fill(E2E_PASSWORD);
 	await page.getByRole('button', { name: 'Masuk' }).click();
 	await expect(page).toHaveURL(/\/dashboard$/);
@@ -133,7 +133,7 @@ test('create a contact, then create, edit, and delete an invoice without touchin
 
 test('create, edit, and delete a purchase order', async ({ page }) => {
 	await page.goto('/login');
-	await page.getByLabel('Email').fill('admin@jurnalku.local');
+	await page.getByLabel('Email').fill('admin@pembukuan.local');
 	await page.getByLabel('Password').fill(E2E_PASSWORD);
 	await page.getByRole('button', { name: 'Masuk' }).click();
 	await expect(page).toHaveURL(/\/dashboard$/);

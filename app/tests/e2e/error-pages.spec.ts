@@ -3,7 +3,7 @@ import { E2E_PASSWORD } from '../../playwright.config';
 
 async function login(page: import('@playwright/test').Page) {
 	await page.goto('/login');
-	await page.getByLabel('Email').fill('admin@jurnalku.local');
+	await page.getByLabel('Email').fill('admin@pembukuan.local');
 	await page.getByLabel('Password').fill(E2E_PASSWORD);
 	await page.getByRole('button', { name: 'Masuk' }).click();
 	await expect(page).toHaveURL(/\/dashboard$/);

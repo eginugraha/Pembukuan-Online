@@ -1,1 +1,1 @@
-CREATE DATABASE jurnalku_test OWNER jurnalku;
+CREATE DATABASE pembukuan_test OWNER pembukuan;

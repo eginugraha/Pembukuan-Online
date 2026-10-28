@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { E2E_PASSWORD } from '../../playwright.config';
 
-const EMAIL = 'uji-sistem@jurnalku.local';
+const EMAIL = 'uji-sistem@pembukuan.local';
 
 test.beforeEach(async ({ page }) => {
 	await page.goto('/login');
-	await page.getByLabel('Email').fill('admin@jurnalku.local');
+	await page.getByLabel('Email').fill('admin@pembukuan.local');
 	await page.getByLabel('Password').fill(E2E_PASSWORD);
 	await page.getByRole('button', { name: 'Masuk' }).click();
 	await expect(page).toHaveURL(/\/dashboard$/);
@@ -30,7 +30,7 @@ test('super admin creates, edits, assigns, and deletes a user', async ({ page })
 	await expect(page.getByRole('link', { name: 'Semua Pengguna' })).toBeVisible();
 
 	// Menghapus diri sendiri tidak diizinkan.
-	await expect(page.getByRole('button', { name: 'Hapus admin@jurnalku.local' })).toBeDisabled();
+	await expect(page.getByRole('button', { name: 'Hapus admin@pembukuan.local' })).toBeDisabled();
 
 	await page.getByLabel('Nama', { exact: true }).first().fill('Uji Sistem');
 	await page.getByLabel('Email', { exact: true }).fill(EMAIL);

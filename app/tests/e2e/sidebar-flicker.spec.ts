@@ -5,7 +5,7 @@ import { E2E_PASSWORD } from '../../playwright.config';
 // kehilangan :hover di tengah navigasi (latar menu menyala → padam → menyala = berkedip).
 test('clicking a sidebar link keeps it hovered and never covers the page with a view transition', async ({ page }) => {
 	await page.goto('/login');
-	await page.getByLabel('Email').fill('admin@jurnalku.local');
+	await page.getByLabel('Email').fill('admin@pembukuan.local');
 	await page.getByLabel('Password').fill(E2E_PASSWORD);
 	await page.getByRole('button', { name: 'Masuk' }).click();
 	await expect(page).toHaveURL(/\/dashboard$/);
@@ -36,7 +36,7 @@ test('clicking a sidebar link keeps it hovered and never covers the page with a 
 // sekejap), dan konten baru masuk dari opacity 0 setelah konten lama hilang (frame kosong).
 test('navigating keeps the clicked menu highlighted and never blanks the content', async ({ page }) => {
 	await page.goto('/login');
-	await page.getByLabel('Email').fill('admin@jurnalku.local');
+	await page.getByLabel('Email').fill('admin@pembukuan.local');
 	await page.getByLabel('Password').fill(E2E_PASSWORD);
 	await page.getByRole('button', { name: 'Masuk' }).click();
 	await expect(page).toHaveURL(/\/dashboard$/);

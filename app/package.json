@@ -1,19 +1,19 @@
 {
-  "name": "jurnalku-app",
+  "name": "pembukuan-app",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "bun --bun vite dev",
+    "dev": "bun --env-file=../.env --bun vite dev",
     "build": "bun --bun vite build",
     "preview": "bun ./build/index.js",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "test": "svelte-kit sync && bun test tests/unit tests/integration",
-    "test:unit": "svelte-kit sync && bun test tests/unit",
+    "test": "svelte-kit sync && bun --env-file=../.env test tests/unit tests/integration",
+    "test:unit": "svelte-kit sync && bun --env-file=../.env test tests/unit",
     "test:e2e": "playwright test",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "bun run src/lib/server/db/migrate.ts",
-    "db:seed": "bun run seeds/index.ts"
+    "db:migrate": "bun --env-file=../.env run src/lib/server/db/migrate.ts",
+    "db:seed": "bun --env-file=../.env run seeds/index.ts"
   },
   "dependencies": {
     "@better-auth/core": "1.7.6",

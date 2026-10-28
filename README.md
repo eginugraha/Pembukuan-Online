@@ -2,7 +2,7 @@
 
 Pembukuan otomatis dari eStatement BCA (PDF): parse → kategorisasi (rule + AI lokal) → jurnal double-entry → Buku Besar → Neraca Saldo. Open source, self-hosted, multi-perusahaan, multi-user dengan RBAC.
 
-AI berjalan **lokal** lewat Ollama (`qwen2.5:7b`). Data transaksi tidak pernah dikirim ke layanan pihak ketiga, dan file PDF tidak disimpan setelah diproses.
+AI berjalan **lokal** lewat Ollama (`qwen2.5:7b`). Data transaksi tidak pernah dikirim ke layanan pihak ketiga, dan file PDF eStatement hanya disimpan di server Anda sendiri (volume `uploads`) untuk fitur preview.
 
 ## Menjalankan dengan Docker
 
@@ -19,9 +19,8 @@ Buka http://localhost:3000 lalu login dengan `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PA
 Prasyarat: Bun 1.3, Python 3.12+, Docker.
 
 ```bash
-docker compose up -d db sidecar ollama
+cp .env.example .env          # satu-satunya file env (dibaca Docker dan skrip app); isi BETTER_AUTH_SECRET dan SEED_ADMIN_PASSWORD
 cd app
-cp .env.example .env          # isi BETTER_AUTH_SECRET dan SEED_ADMIN_PASSWORD
 bun install
 bun run db:migrate && bun run db:seed
 bun run dev                   # http://localhost:5173
@@ -33,7 +32,7 @@ bun run dev                   # http://localhost:5173
 # Sidecar (parser PDF)
 cd sidecar && python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt && .venv/bin/pytest
 
-# App: unit + integration (butuh Postgres dari docker compose; memakai DB jurnalku_test)
+# App: unit + integration (butuh Postgres dari docker compose; memakai DB pembukuan_test)
 cd app && bun run test
 
 # E2E (butuh `docker compose up -d db sidecar`)

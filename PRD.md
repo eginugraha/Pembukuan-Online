@@ -1,4 +1,4 @@
-# PRD — Jurnalku: AI-Powered eStatement Bookkeeping App
+# PRD — Pembukuan: AI-Powered eStatement Bookkeeping App
 
 > Open source. Self-hosted via Docker. Multi-company. Multi-user + RBAC.
 > GitHub: `github.com/jurnalku/jurnalku`

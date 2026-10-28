@@ -10,8 +10,8 @@ const login = async (page: import('@playwright/test').Page, email: string, passw
 
 test('change password from the profile page, then log in with the new one', async ({ page, context }) => {
 	// Pengguna khusus agar admin e2e (dipakai test paralel) tidak berubah.
-	const email = `ganti-${Date.now()}@jurnalku.local`;
-	await login(page, 'admin@jurnalku.local', E2E_PASSWORD);
+	const email = `ganti-${Date.now()}@pembukuan.local`;
+	await login(page, 'admin@pembukuan.local', E2E_PASSWORD);
 	await expect(page).toHaveURL(/\/dashboard$/);
 	await page.goto('/settings/users');
 	await page.getByLabel('Email', { exact: true }).fill(email);

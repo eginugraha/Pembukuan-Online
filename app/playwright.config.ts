@@ -1,12 +1,12 @@
 import { defineConfig } from '@playwright/test';
 
 export const FIXTURE_PDF = 'tests/e2e/.tmp/statement-sintetis.pdf';
-export const E2E_CHARTS_EMAIL = 'grafik@jurnalku.local';
+export const E2E_CHARTS_EMAIL = 'grafik@pembukuan.local';
 export const E2E_PASSWORD = 'e2e-password-123';
 const PORT = 4173;
 
 export const E2E_ENV: Record<string, string> = {
-	DATABASE_URL: process.env.TEST_DATABASE_URL ?? 'postgres://jurnalku:jurnalku@localhost:5432/jurnalku_test',
+	DATABASE_URL: process.env.TEST_DATABASE_URL ?? 'postgres://pembukuan:pembukuan@localhost:5432/pembukuan_test',
 	BETTER_AUTH_SECRET: 'e2e-secret-0123456789-e2e-secret-0123456789',
 	BETTER_AUTH_URL: `http://localhost:${PORT}`,
 	ORIGIN: `http://localhost:${PORT}`,
@@ -15,7 +15,7 @@ export const E2E_ENV: Record<string, string> = {
 	SIDECAR_URL: 'http://localhost:8000',
 	OLLAMA_URL: 'http://localhost:11999',
 	OLLAMA_MODEL: 'stub',
-	SEED_ADMIN_EMAIL: 'admin@jurnalku.local',
+	SEED_ADMIN_EMAIL: 'admin@pembukuan.local',
 	SEED_ADMIN_PASSWORD: E2E_PASSWORD
 };
 

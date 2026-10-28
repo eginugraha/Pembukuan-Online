@@ -3,7 +3,7 @@ import { E2E_PASSWORD } from '../../playwright.config';
 
 async function login(page: Page) {
 	await page.goto('/login');
-	await page.getByLabel('Email').fill('admin@jurnalku.local');
+	await page.getByLabel('Email').fill('admin@pembukuan.local');
 	await page.getByLabel('Password').fill(E2E_PASSWORD);
 	await page.getByRole('button', { name: 'Masuk' }).click();
 	await expect(page).toHaveURL(/\/dashboard$/);
@@ -70,7 +70,7 @@ test('rule and profile forms show field errors', async ({ page }) => {
 test('login works when fields are filled without input events (browser/password-manager autofill)', async ({ page }) => {
 	await page.goto('/login');
 	await page.evaluate((pw) => {
-		(document.getElementById('email') as HTMLInputElement).value = 'admin@jurnalku.local';
+		(document.getElementById('email') as HTMLInputElement).value = 'admin@pembukuan.local';
 		(document.getElementById('password') as HTMLInputElement).value = pw;
 	}, E2E_PASSWORD);
 	await page.getByRole('button', { name: 'Masuk' }).click();

@@ -3,7 +3,7 @@ import { E2E_PASSWORD, FIXTURE_PDF } from '../../playwright.config';
 
 test('login → upload → review → journal → balanced trial balance', async ({ page }) => {
 	await page.goto('/login');
-	await page.getByLabel('Email').fill('admin@jurnalku.local');
+	await page.getByLabel('Email').fill('admin@pembukuan.local');
 	await page.getByLabel('Password').fill(E2E_PASSWORD);
 	await page.getByRole('button', { name: 'Masuk' }).click();
 	await expect(page).toHaveURL(/\/dashboard$/);

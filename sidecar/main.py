@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 
 from bca_parser import ParseError, parse_bca
 
-app = FastAPI(title="jurnalku-sidecar")
+app = FastAPI(title="pembukuan-sidecar")
 
 
 @app.get("/health")
