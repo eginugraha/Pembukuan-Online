@@ -34,12 +34,13 @@ const CARD_STROKE = '#eeeeee';
 const REG = 'Helvetica';
 const BOLD = 'Helvetica-Bold';
 const ITALIC = 'Helvetica-Oblique';
+const BOLD_ITALIC = 'Helvetica-BoldOblique';
 
 /** Lebar kolom kanan atas (INVOICE, nomor/tanggal) dan kolom "BILL TO". */
 const RIGHT_COL_W = 190;
 const CELL_PAD = 5;
 /** Kotak maksimum logo; logo tidak harus persegi, jadi digambar `fit` di dalam kotak ini. */
-const LOGO_BOX = { w: 150, h: 40 };
+const LOGO_BOX = { w: 100, h: 28 };
 const SIGNATURE_BOX = { w: 130, h: 46 };
 
 /** Stempel LUNAS dari `.paid` di mockup stempel: huruf 64px, jarak huruf 8px, bingkai 5px, sudut 10px,
@@ -451,7 +452,7 @@ function drawDocumentPdf(doc: PDFKit.PDFDocument, company: InvoiceCompanyData, m
 			line(en, c.x, y + CELL_PAD + lineH(BOLD, 9), { font: ITALIC, size: 7, color: TH_EN, width: c.w, align });
 		};
 		th('Keterangan', 'Description', cols.desc, 'left');
-		th('Jumlah', 'Quantity', cols.qty, 'left');
+		th('Jumlah', 'Quantity', cols.qty, 'right');
 		th(`Harga (${unit})`, `Price (${unit})`, cols.price, 'right');
 		th(`Jumlah Harga (${unit})`, `Total Price (${unit})`, cols.total, 'right');
 		y += headerH;
@@ -475,7 +476,7 @@ function drawDocumentPdf(doc: PDFKit.PDFDocument, company: InvoiceCompanyData, m
 		}
 		const ty = y + CELL_PAD;
 		para(l.description, cols.desc.x, ty, cols.desc.w, { size: CELL });
-		line(formatPlain(l.quantity), cols.qty.x, ty, { size: CELL, width: cols.qty.w });
+		line(formatPlain(l.quantity), cols.qty.x, ty, { size: CELL, width: cols.qty.w, align: 'right' });
 		line(money(l.unitPrice), cols.price.x, ty, { size: CELL, width: cols.price.w, align: 'right' });
 		line(money(l.amount), cols.total.x, ty, { size: CELL, width: cols.total.w, align: 'right' });
 		y += h;
@@ -513,13 +514,16 @@ function drawDocumentPdf(doc: PDFKit.PDFDocument, company: InvoiceCompanyData, m
 	{
 		const words = terbilang(m.total, m.currency);
 		const headH = lineH(BOLD, 10) + 3;
-		const wordsH = heightOf(words, REG, 11, W);
+		// Teks tebal-miring dengan garis aksen di kiri, supaya terbaca sebagai kutipan nominal, bukan isi dokumen.
+		const WORDS_INDENT = 10;
+		const wordsH = heightOf(words, BOLD_ITALIC, 9.5, W - WORDS_INDENT);
 		blocks.push({
 			gap: 14,
 			height: headH + wordsH,
 			draw: (by) => {
 				biLabel('TERBILANG', 'Amount in Words', L, by, { size: 10, enSize: 8.5 });
-				para(words, L, by + headH, W, { size: 11 });
+				doc.rect(L, by + headH, 2, wordsH).fill(RULE_HEAD);
+				para(words, L + WORDS_INDENT, by + headH, W - WORDS_INDENT, { font: BOLD_ITALIC, size: 9.5 });
 			}
 		});
 	}
