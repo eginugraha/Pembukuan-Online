@@ -70,7 +70,7 @@ test('another company cannot get, update, or delete it', async () => {
 	await expect(deletePurchaseOrder(other.companyId, id)).rejects.toMatchObject({ status: 404 });
 });
 
-test('keeps working after its contact is deleted; switching to a deleted contact is rejected', async () => {
+test('keeps working after its contact is deleted; switching to another contact is rejected', async () => {
 	const { companyId, userId, contactId } = await setup();
 	const { id: otherContact } = await createContact(companyId, { kind: 'VENDOR', name: 'PT Lain' });
 	const { id } = await createPurchaseOrder(companyId, userId, { contactId, issueDate: '2026-10-01', lines: [line('A')] });
@@ -78,7 +78,7 @@ test('keeps working after its contact is deleted; switching to a deleted contact
 	await deleteContact(companyId, otherContact);
 	await updatePurchaseOrder(companyId, id, { contactId, issueDate: '2026-10-01', notes: 'tetap boleh', lines: [line('A')] });
 	expect((await listPurchaseOrders(companyId))[0].contactName).toBe('PT Pemasok');
-	await expect(updatePurchaseOrder(companyId, id, { contactId: otherContact, issueDate: '2026-10-01', lines: [line('A')] })).rejects.toMatchObject({ status: 404 });
+	await expect(updatePurchaseOrder(companyId, id, { contactId: otherContact, issueDate: '2026-10-01', lines: [line('A')] })).rejects.toMatchObject({ status: 422, code: 'contact_locked' });
 });
 
 test('a customer-only contact cannot be used on a PO', async () => {
@@ -94,4 +94,15 @@ test('tax rate empty/0 gives 0.00 tax, 100 gives tax equal to subtotal', async (
 	expect((await make()).taxAmount).toBe('0.00');
 	expect((await make('0')).taxAmount).toBe('0.00');
 	expect(await make('100')).toMatchObject({ taxAmount: '250.00', total: '500.00' });
+});
+
+test('update rejects a different active contact with 422 contact_locked and keeps the original', async () => {
+	const { companyId, userId, contactId } = await setup();
+	const { id: otherContact } = await createContact(companyId, { kind: 'VENDOR', name: 'PT Lain', code: 'LAN' });
+	const { id } = await createPurchaseOrder(companyId, userId, { contactId, issueDate: '2026-10-01', lines: [line('A')] });
+	await expect(updatePurchaseOrder(companyId, id, { contactId: otherContact, issueDate: '2026-10-01', lines: [line('A')] })).rejects.toMatchObject({
+		status: 422,
+		code: 'contact_locked'
+	});
+	expect((await getPurchaseOrder(companyId, id)).contactId).toBe(contactId);
 });

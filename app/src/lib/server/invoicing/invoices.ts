@@ -1,7 +1,7 @@
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { D, sumMoney, toMoney } from '../../money';
 import { CreateInvoiceInput, InvoiceLineInput, UpdateInvoiceInput } from '../../schemas/invoice';
-import { assertContact } from './contacts';
+import { assertContact, contactLocked } from './contacts';
 import { ApiError, notFound } from '../api';
 import { db, type Tx } from '../db';
 import { contacts, invoiceLines, invoices, paymentReceipts } from '../db/schema';
@@ -113,20 +113,19 @@ export async function createInvoice(companyId: string, userId: string, input: Cr
 	});
 }
 
-/** Ubah menimpa header dan seluruh baris; nomor tetap. Kontak hanya divalidasi ulang bila diganti. */
+/** Ubah menimpa header dan seluruh baris; nomor dan kontak tetap (kontak lain ditolak `contact_locked`). */
 export async function updateInvoice(companyId: string, invoiceId: string, input: UpdateInvoiceInput): Promise<void> {
 	return db.transaction(async (tx) => {
 		const current = await tx.query.invoices.findFirst({
 			where: and(eq(invoices.id, invoiceId), eq(invoices.companyId, companyId), isNull(invoices.deletedAt))
 		});
 		if (!current) throw notFound('Invoice');
-		if (input.contactId !== current.contactId) await assertContact(tx, companyId, input.contactId, 'CUSTOMER');
+		if (input.contactId !== current.contactId) throw contactLocked();
 
 		const totals = computeTotals(input);
 		await tx
 			.update(invoices)
 			.set({
-				contactId: input.contactId,
 				subject: input.subject || null,
 				// Tidak dikirim = mata uang lama dipertahankan.
 				...(input.currency ? { currency: input.currency } : {}),

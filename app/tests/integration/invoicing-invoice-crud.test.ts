@@ -60,7 +60,7 @@ test('another company cannot get, update, or delete it', async () => {
 	await expect(deleteInvoice(other.companyId, id)).rejects.toMatchObject({ status: 404 });
 });
 
-test('keeps working after its contact is deleted; switching to a deleted contact is rejected', async () => {
+test('keeps working after its contact is deleted; switching to another contact is rejected', async () => {
 	const { companyId, userId, contactId } = await setup();
 	const { id: otherContact } = await createContact(companyId, { kind: 'CUSTOMER', name: 'PT Lain', code: 'LAN' });
 	const { id } = await createInvoice(companyId, userId, { contactId, issueDate: '2026-10-01', lines: [line('A')] });
@@ -68,7 +68,7 @@ test('keeps working after its contact is deleted; switching to a deleted contact
 	await deleteContact(companyId, otherContact);
 	await updateInvoice(companyId, id, { contactId, issueDate: '2026-10-01', notes: 'tetap boleh', lines: [line('A')] });
 	expect((await listInvoices(companyId))[0].contactName).toBe('PT Pelanggan');
-	await expect(updateInvoice(companyId, id, { contactId: otherContact, issueDate: '2026-10-01', lines: [line('A')] })).rejects.toMatchObject({ status: 404 });
+	await expect(updateInvoice(companyId, id, { contactId: otherContact, issueDate: '2026-10-01', lines: [line('A')] })).rejects.toMatchObject({ status: 422, code: 'contact_locked' });
 });
 
 test('a vendor-only contact cannot be used on an invoice', async () => {
@@ -146,4 +146,15 @@ test('list marks hasReceipt only for invoices with an active receipt', async () 
 	expect((await listInvoices(companyId)).map((r) => [r.id, r.hasReceipt])).toEqual([[a, true], [b, false]]);
 	await deletePaymentReceipt(companyId, a);
 	expect((await listInvoices(companyId)).map((r) => r.hasReceipt)).toEqual([false, false]);
+});
+
+test('update rejects a different active contact with 422 contact_locked and keeps the original', async () => {
+	const { companyId, userId, contactId } = await setup();
+	const { id: otherContact } = await createContact(companyId, { kind: 'CUSTOMER', name: 'PT Lain', code: 'LAN' });
+	const { id } = await createInvoice(companyId, userId, { contactId, issueDate: '2026-10-01', lines: [line('A')] });
+	await expect(updateInvoice(companyId, id, { contactId: otherContact, issueDate: '2026-10-01', lines: [line('A')] })).rejects.toMatchObject({
+		status: 422,
+		code: 'contact_locked'
+	});
+	expect((await getInvoice(companyId, id)).contactId).toBe(contactId);
 });

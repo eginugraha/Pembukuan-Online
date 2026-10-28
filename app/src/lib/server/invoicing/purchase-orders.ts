@@ -1,7 +1,7 @@
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import { D, sumMoney, toMoney } from '../../money';
 import { CreatePurchaseOrderInput, POLineInput, UpdatePurchaseOrderInput } from '../../schemas/purchase-order';
-import { assertContact } from './contacts';
+import { assertContact, contactLocked } from './contacts';
 import { notFound } from '../api';
 import { db, type Tx } from '../db';
 import { contacts, purchaseOrderLines, purchaseOrders } from '../db/schema';
@@ -105,20 +105,19 @@ export async function createPurchaseOrder(companyId: string, userId: string, inp
 	});
 }
 
-/** Ubah menimpa header dan seluruh baris; nomor tetap. Kontak hanya divalidasi ulang bila diganti. */
+/** Ubah menimpa header dan seluruh baris; nomor dan kontak tetap (kontak lain ditolak `contact_locked`). */
 export async function updatePurchaseOrder(companyId: string, poId: string, input: UpdatePurchaseOrderInput): Promise<void> {
 	return db.transaction(async (tx) => {
 		const current = await tx.query.purchaseOrders.findFirst({
 			where: and(eq(purchaseOrders.id, poId), eq(purchaseOrders.companyId, companyId), isNull(purchaseOrders.deletedAt))
 		});
 		if (!current) throw notFound('PO');
-		if (input.contactId !== current.contactId) await assertContact(tx, companyId, input.contactId, 'VENDOR');
+		if (input.contactId !== current.contactId) throw contactLocked();
 
 		const totals = computeTotals(input);
 		await tx
 			.update(purchaseOrders)
 			.set({
-				contactId: input.contactId,
 				subject: input.subject || null,
 				...(input.currency ? { currency: input.currency } : {}),
 				issueDate: input.issueDate,

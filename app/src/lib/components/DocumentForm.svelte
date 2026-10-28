@@ -29,7 +29,8 @@
 		companyCode = null,
 		canEditCompany = false,
 		docId,
-		initial
+		initial,
+		contactLocked = !!docId
 	}: {
 		kind: 'invoice' | 'po';
 		contacts: { id: string; name: string; code?: string | null }[];
@@ -37,6 +38,8 @@
 		canEditCompany?: boolean;
 		docId?: string;
 		initial?: Initial;
+		/** Pelanggan/pemasok tidak bisa diganti (kodenya ada di nomor dokumen); default saat mengubah. */
+		contactLocked?: boolean;
 	} = $props();
 
 	// Jenis dokumen dan nilai awal bersifat tetap selama komponen hidup (rute berganti = komponen baru).
@@ -126,8 +129,9 @@
 	<Card.Content class="pt-6">
 		<form class="space-y-6" onsubmit={submit} novalidate>
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-				<FormField id="doc-contact" label={COPY.contact} error={form.error('contactId')}>
+				<FormField id="doc-contact" label={COPY.contact} error={form.error('contactId')} hint={contactLocked ? `${COPY.contact} tidak bisa diganti` : undefined}>
 					<SearchSelect
+						disabled={contactLocked}
 						bind:value={form.values.contactId}
 						options={contactOptions}
 						placeholder={COPY.contactPlaceholder}
