@@ -350,24 +350,36 @@ function drawDocumentPdf(doc: PDFKit.PDFDocument, company: InvoiceCompanyData, m
 			return lines;
 		};
 		const lh = lineH(REG, size);
-		type Row = { lines: Seg[][]; marker: string | null; indent: number; gapBefore: number };
+		type Row = { lines: Seg[][]; marker: string | null; markerX: number; indent: number; gapBefore: number };
 		const rows: Row[] = [];
 		for (const b of parseNotes(input)) {
 			const gapBefore = rows.length > 0 ? GAP : 0;
 			if (b.kind === 'p') {
-				rows.push({ lines: wrap(b.runs, width), marker: null, indent: 0, gapBefore });
-			} else {
-				b.items.forEach((it, n) =>
-					rows.push({ lines: wrap(it, width - LIST_INDENT), marker: b.kind === 'ol' ? `${n + 1}.` : '\u2022', indent: LIST_INDENT, gapBefore: n === 0 ? gapBefore : 1 })
-				);
+				const indent = b.indent * LIST_INDENT;
+				rows.push({ lines: wrap(b.runs, width - indent), marker: null, markerX: 0, indent, gapBefore });
+				continue;
 			}
+			// Nomor per tingkat: naik di tingkat yang sama, mulai dari 1 lagi setelah kembali dari tingkat yang lebih dalam.
+			const counters: number[] = [];
+			b.items.forEach((it, n) => {
+				counters.length = Math.min(counters.length, it.level + 1);
+				counters[it.level] = it.ordered ? (counters[it.level] ?? 0) + 1 : 0;
+				const indent = (it.level + 1) * LIST_INDENT;
+				rows.push({
+					lines: wrap(it.runs, width - indent),
+					marker: it.ordered ? `${counters[it.level]}.` : it.level % 2 === 0 ? '\u2022' : '\u2013',
+					markerX: it.level * LIST_INDENT,
+					indent,
+					gapBefore: n === 0 ? gapBefore : 1
+				});
+			});
 		}
 		const height = rows.reduce((a, r) => a + r.gapBefore + r.lines.length * lh, 0);
 		const draw = (x: number, y: number) => {
 			let cy = y;
 			for (const r of rows) {
 				cy += r.gapBefore;
-				if (r.marker) line(r.marker, x, cy, { size });
+				if (r.marker) line(r.marker, x + r.markerX, cy, { size });
 				for (const segs of r.lines) {
 					let cx = x + r.indent;
 					for (const sg of segs) {

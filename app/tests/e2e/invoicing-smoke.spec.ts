@@ -75,6 +75,9 @@ test('create a contact, then create, edit, and delete an invoice without touchin
 	await page.getByLabel('Catatan (opsional)').press('Enter');
 	await page.getByRole('button', { name: 'Daftar poin' }).click();
 	await page.keyboard.type('butir satu');
+	await page.getByLabel('Catatan (opsional)').press('Enter');
+	await page.keyboard.type('butir anak');
+	await page.getByRole('button', { name: 'Tambah indentasi' }).click();
 	await page.getByLabel('Keterangan baris 1').fill('Jasa konsultasi E2E');
 	await page.getByLabel('Kuantitas baris 1').fill('1');
 	await page.getByLabel('Harga satuan baris 1').fill('1000000');
@@ -86,7 +89,9 @@ test('create a contact, then create, edit, and delete an invoice without touchin
 	await expect(page.locator('.rich-notes p', { hasText: 'Baris satu' })).toBeVisible();
 	await expect(page.locator('.rich-notes p', { hasText: 'Baris dua' })).toBeVisible();
 	await expect(page.locator('.rich-notes strong')).toHaveText('tebal');
-	await expect(page.locator('.rich-notes ul li')).toHaveText('butir satu');
+	await expect(page.locator('.rich-notes > ul > li').first()).toContainText('butir satu');
+	// Indentasi: butir kedua menjadi anak butir pertama.
+	await expect(page.locator('.rich-notes ul ul li')).toHaveText('butir anak');
 	await expect(page.getByText('Attn: Budi Santoso, Manajer Keuangan')).toBeVisible();
 
 	// --- Ubah: ganti keterangan baris, nomor tetap ---

@@ -41,4 +41,22 @@ describe('rich-text', () => {
 	test('br penutup dari browser dibuang, baris kosong di tengah dipertahankan', () => {
 		expect(notesHtml('<div>a<br></div><div><br></div><div>b</div>')).toBe('<p>a</p><p><br></p><p>b</p>');
 	});
+
+	test('daftar bersarang (hasil indent browser) dipertahankan', () => {
+		const nested = '<ol><li>satu<ul><li>a</li><li>b</li></ul></li><li>dua</li></ol>';
+		expect(notesHtml(nested)).toBe(nested);
+		// Gaya Chrome: ul langsung di dalam ul.
+		expect(notesHtml('<ul><li>x</li><ul><li>y</li></ul></ul>')).toBe('<ul><li>x<ul><li>y</li></ul></li></ul>');
+	});
+
+	test('paragraf menjorok memakai blockquote, atribut dibuang', () => {
+		const out = notesHtml('<div>a</div><blockquote style="margin:0 0 0 40px;border:none"><div>b</div><blockquote><div>c</div></blockquote></blockquote>');
+		expect(out).toBe('<p>a</p><blockquote><p>b</p></blockquote><blockquote><blockquote><p>c</p></blockquote></blockquote>');
+		expect(notesHtml(out)).toBe(out);
+	});
+
+	test('kedalaman indentasi dibatasi', () => {
+		const deep = '<blockquote>'.repeat(12) + '<div>x</div>' + '</blockquote>'.repeat(12);
+		expect((notesHtml(deep).match(/<blockquote>/g) ?? []).length).toBe(5);
+	});
 });

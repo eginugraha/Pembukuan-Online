@@ -6,6 +6,8 @@
 	import Strikethrough from '@lucide/svelte/icons/strikethrough';
 	import ListOrdered from '@lucide/svelte/icons/list-ordered';
 	import List from '@lucide/svelte/icons/list';
+	import IndentIncrease from '@lucide/svelte/icons/list-indent-increase';
+	import IndentDecrease from '@lucide/svelte/icons/list-indent-decrease';
 	import { notesHtml } from '$lib/rich-text';
 
 	let {
@@ -28,7 +30,9 @@
 		{ cmd: 'underline', label: 'Garis bawah (Ctrl+U)', icon: Underline },
 		{ cmd: 'strikeThrough', label: 'Coret', icon: Strikethrough },
 		{ cmd: 'insertOrderedList', label: 'Daftar bernomor', icon: ListOrdered },
-		{ cmd: 'insertUnorderedList', label: 'Daftar poin', icon: List }
+		{ cmd: 'insertUnorderedList', label: 'Daftar poin', icon: List },
+		{ cmd: 'outdent', label: 'Kurangi indentasi', icon: IndentDecrease },
+		{ cmd: 'indent', label: 'Tambah indentasi', icon: IndentIncrease }
 	] as const;
 
 	let el = $state<HTMLDivElement>();
@@ -46,7 +50,8 @@
 	function refreshActive() {
 		if (!el || !el.contains(document.getSelection()?.anchorNode ?? null)) return;
 		const next: Record<string, boolean> = {};
-		for (const t of TOOLS) next[t.cmd] = document.queryCommandState(t.cmd);
+		// Indentasi bukan keadaan yang bisa ditoggle, jadi tidak ikut disorot.
+		for (const t of TOOLS) if (t.cmd !== 'indent' && t.cmd !== 'outdent') next[t.cmd] = document.queryCommandState(t.cmd);
 		active = next;
 	}
 

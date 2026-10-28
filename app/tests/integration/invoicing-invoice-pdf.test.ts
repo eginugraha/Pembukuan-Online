@@ -278,3 +278,14 @@ test('rich notes: paragraphs, numbered and bullet lists are printed with their m
 	expect(text).toContain('Denda 1%');
 	expect(text).not.toContain('<');
 });
+
+test('rich notes: nested list restarts numbering and indented paragraphs are printed', async () => {
+	const { fetchPdf } = await setup({
+		invoice: { notes: '<ol><li>Pertama<ol><li>Anak satu</li><li>Anak dua</li></ol></li><li>Kedua</li></ol><blockquote><div>Paragraf menjorok</div></blockquote>' }
+	});
+	const { text } = await parse(await fetchPdf());
+	for (const s of ['Pertama', 'Anak satu', 'Anak dua', 'Kedua', 'Paragraf menjorok']) expect(text).toContain(s);
+	expect(text).toMatch(/1\.\s*Pertama/);
+	expect(text).toMatch(/2\.\s*Anak dua/);
+	expect(text).toMatch(/2\.\s*Kedua/);
+});
