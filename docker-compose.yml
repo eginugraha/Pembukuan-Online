@@ -56,7 +56,7 @@ services:
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@pembukuan.local}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
     volumes:
-      - uploads:/app/data/uploads
+      - ./uploads:/app/data/uploads
     ports:
       - "3000:3000"
 
