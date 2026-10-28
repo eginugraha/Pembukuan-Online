@@ -168,3 +168,14 @@ test('another company cannot read or change it', async () => {
 	await expect(approveQuotation(other.companyId, userId, id)).rejects.toMatchObject({ status: 404 });
 	await expect(deleteQuotation(other.companyId, id)).rejects.toMatchObject({ status: 404 });
 });
+
+test('history rows carry their own currency when a revision changes it', async () => {
+	const { companyId, userId, contactId } = await setup();
+	const { id: r0 } = await createQuotation(companyId, userId, input(contactId));
+	const { id: r1 } = await reviseQuotation(companyId, userId, r0, input(contactId, { currency: 'USD' }));
+	const h = (await getQuotation(companyId, r1)).history;
+	expect(h.map((v) => [v.quotationNo, v.currency])).toEqual([
+		['001/UJI-PLG/QUO/X/2026-R1', 'USD'],
+		['001/UJI-PLG/QUO/X/2026', 'IDR']
+	]);
+});

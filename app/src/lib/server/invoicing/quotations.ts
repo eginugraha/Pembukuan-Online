@@ -40,6 +40,8 @@ export interface QuotationHistoryRow {
 	quotationNo: string;
 	issueDate: string;
 	total: string;
+	/** Mata uang versi itu sendiri: revisi boleh mengganti mata uang. */
+	currency: string;
 	status: QuotationStatus;
 }
 
@@ -260,7 +262,7 @@ export async function getQuotation(companyId: string, quotationId: string): Prom
 	const [lines, versions] = await Promise.all([
 		db.select().from(quotationLines).where(eq(quotationLines.quotationId, quotationId)).orderBy(asc(quotationLines.lineNo)),
 		db
-			.select({ id: quotations.id, revision: quotations.revision, issueDate: quotations.issueDate, total: quotations.total, approvedAt: quotations.approvedAt, validUntil: quotations.validUntil })
+			.select({ id: quotations.id, revision: quotations.revision, issueDate: quotations.issueDate, total: quotations.total, currency: quotations.currency, approvedAt: quotations.approvedAt, validUntil: quotations.validUntil })
 			.from(quotations)
 			.where(and(eq(quotations.companyId, companyId), eq(quotations.baseNo, row.baseNo), isNull(quotations.deletedAt)))
 			.orderBy(desc(quotations.revision))
@@ -272,6 +274,7 @@ export async function getQuotation(companyId: string, quotationId: string): Prom
 		quotationNo: quotationNo(row.baseNo, v.revision),
 		issueDate: v.issueDate,
 		total: v.total,
+		currency: v.currency,
 		status: quotationStatus({ approvedAt: v.approvedAt, validUntil: v.validUntil, isLatest: v.revision === latestRevision }, today)
 	}));
 	const isLatest = row.revision === latestRevision;

@@ -147,7 +147,7 @@
 								{/if}
 							</Table.Cell>
 							<Table.Cell>{formatDate(h.issueDate)}</Table.Cell>
-							<Table.Cell class="text-right tabular-nums">{formatAmount(h.total, q.currency)}</Table.Cell>
+							<Table.Cell class="text-right tabular-nums">{formatAmount(h.total, h.currency)}</Table.Cell>
 							<Table.Cell class="w-32 text-right"><QuotationStatusBadge status={h.status} /></Table.Cell>
 						</Table.Row>
 					{/each}
