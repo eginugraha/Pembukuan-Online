@@ -19,6 +19,8 @@ services:
       VIRTUAL_HOST: ${APP_DOMAIN:?APP_DOMAIN wajib diisi di .env}
       VIRTUAL_PORT: "3000"
       LETSENCRYPT_HOST: ${APP_DOMAIN}
+      # Di belakang Cloudflare mode Flexible isi `noredirect` di .env, kalau tidak redirect HTTPS berputar tanpa henti.
+      HTTPS_METHOD: ${HTTPS_METHOD:-redirect}
     networks:
       - default
       - proxy
