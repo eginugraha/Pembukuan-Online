@@ -14,6 +14,12 @@ docker compose exec app bun run db:seed
 
 Buka http://localhost:3000 lalu login dengan `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`.
 
+### Produksi
+
+- Dengan `nginxproxy/nginx-proxy` + `acme-companion`: isi `APP_DOMAIN`, `PROXY_NETWORK`, dan `APP_ORIGIN=https://domain-anda` di `.env`, salin dua file di `deploy/nginx-proxy/` (lihat README di sana), lalu jalankan `docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build`. App tidak membuka port ke host; sertifikat HTTPS diurus acme-companion.
+- Ganti `POSTGRES_PASSWORD`, `BETTER_AUTH_SECRET`, dan `SEED_ADMIN_PASSWORD` dengan nilai acak yang kuat.
+- Backup database dan volume `uploads` (PDF eStatement asli).
+
 ## Pengembangan
 
 Prasyarat: Bun 1.3, Python 3.12+, Docker.

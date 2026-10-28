@@ -10,6 +10,6 @@ export const GET: RequestHandler = (event) =>
 		const signer = await getSigner(ctx.companyId, parseId(event.params.id, 'Penandatangan'));
 		if (!signer.content || !signer.mime) throw notFound('Gambar');
 		return new Response(new Blob([new Uint8Array(signer.content)]), {
-			headers: { 'content-type': signer.mime, 'cache-control': 'private, no-cache' }
+			headers: { 'content-type': signer.mime, 'cache-control': 'private, no-cache', 'x-content-type-options': 'nosniff' }
 		});
 	});

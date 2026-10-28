@@ -41,7 +41,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// URL yang tidak cocok dengan rute mana pun (route.id null) jatuh ke halaman 404, bukan redirect ke login.
 	if (!event.locals.ctx && !isPublic && event.route.id !== null) redirect(303, '/login');
 
-	return svelteKitHandler({ event, resolve, auth, building });
+	const response = await svelteKitHandler({ event, resolve, auth, building });
+	// Aplikasi privat: jangan diindeks mesin pencari (berlaku juga untuk PDF dan respons API).
+	response.headers.set('x-robots-tag', 'noindex, nofollow, noarchive');
+	return response;
 };
 
 export const handleError: HandleServerError = ({ error, status }) => {

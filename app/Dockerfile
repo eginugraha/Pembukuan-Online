@@ -15,5 +15,8 @@ COPY --from=build /app/drizzle ./drizzle
 COPY --from=build /app/src/lib ./src/lib
 COPY --from=build /app/seeds ./seeds
 COPY --from=build /app/tsconfig.json ./tsconfig.json
+# Jalan sebagai user non-root; folder PDF eStatement (volume `uploads`) harus milik user itu.
+RUN mkdir -p /app/data/uploads && chown -R bun:bun /app/data
+USER bun
 EXPOSE 3000
 CMD ["sh", "-c", "bun run src/lib/server/db/migrate.ts && exec bun ./build/index.js"]

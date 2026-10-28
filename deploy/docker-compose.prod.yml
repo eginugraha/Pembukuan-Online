@@ -1,0 +1,22 @@
+# Override produksi untuk server yang memakai nginxproxy/nginx-proxy + acme-companion:
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
+#
+# nginx-proxy membuat vhost dan sertifikat HTTPS sendiri dari environment container ini
+# (VIRTUAL_HOST / LETSENCRYPT_HOST), jadi tidak ada file nginx yang perlu ditulis untuk routing.
+# Isi APP_DOMAIN dan PROXY_NETWORK di .env (PROXY_NETWORK = jaringan Docker milik nginx-proxy).
+# App tidak membuka port ke host; hanya terjangkau lewat jaringan itu.
+services:
+  app:
+    ports: !reset []
+    environment:
+      VIRTUAL_HOST: ${APP_DOMAIN:?APP_DOMAIN wajib diisi di .env}
+      VIRTUAL_PORT: "3000"
+      LETSENCRYPT_HOST: ${APP_DOMAIN}
+    networks:
+      - default
+      - proxy
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:?PROXY_NETWORK wajib diisi di .env}

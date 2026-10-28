@@ -15,7 +15,8 @@ export const GET: RequestHandler = (event) =>
 			headers: {
 				'content-type': 'application/pdf',
 				'content-disposition': `inline; filename="${upload.id}.pdf"`,
-				'cache-control': 'private, no-store'
+				'cache-control': 'private, no-store',
+				'x-content-type-options': 'nosniff'
 			}
 		});
 	});
