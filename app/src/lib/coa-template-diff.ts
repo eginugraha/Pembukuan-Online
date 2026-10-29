@@ -126,7 +126,8 @@ export function diffTemplate(target: CoaTemplateId, current: CompanyAccountSnap[
 		.filter((a) => !tpl.has(a.code) && a.isActive)
 		.sort(byCode)
 		.map((a) => {
-			const children = current.filter((x) => x.parentCode === a.code);
+			// hanya anak aktif: anak nonaktif tidak muncul di daftar missing sehingga tidak bisa diputuskan
+			const children = current.filter((x) => x.parentCode === a.code && x.isActive);
 			return {
 				accountId: a.id,
 				code: a.code,

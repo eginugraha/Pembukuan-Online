@@ -146,12 +146,14 @@ test('rename blocked when balance differs and journals exist', () => {
 	snap.find((a) => a.code === '4-1003')!.journalLines = 1;
 	const d = diffTemplate('it', snap, IT_COA);
 	expect(() => buildChangePlan(d, { conflicts: allRename(d), missing: {}, skip: [] })).toThrow(
-		/rename_not_allowed|saldo/i
+		expect.objectContaining({ code: 'rename_not_allowed' })
 	);
 });
 test('child addition requires parent', () => {
 	const d = diffTemplate('it', snapFrom(DEFAULT_COA), IT_COA);
-	expect(() => buildChangePlan(d, { conflicts: allRename(d), missing: {}, skip: ['1-3100'] })).toThrow(PlanError);
+	expect(() => buildChangePlan(d, { conflicts: allRename(d), missing: {}, skip: ['1-3100'] })).toThrow(
+		expect.objectContaining({ code: 'parent_skipped' })
+	);
 	const ok = buildChangePlan(d, {
 		conflicts: allRename(d),
 		missing: {},
@@ -172,7 +174,9 @@ test('deactivate guards', () => {
 	const snap = snapFrom(IT_COA);
 	snap.push({ ...snap.find((a) => a.code === '1-1002')!, id: 'bank2', code: '1-1099', isBankAccount: true });
 	const d = diffTemplate('it', snap, IT_COA);
-	expect(() => buildChangePlan(d, { conflicts: {}, missing: { bank2: 'deactivate' }, skip: [] })).toThrow(PlanError);
+	expect(() => buildChangePlan(d, { conflicts: {}, missing: { bank2: 'deactivate' }, skip: [] })).toThrow(
+		expect.objectContaining({ code: 'bank_account' })
+	);
 });
 test('deactivate blocked by active children, ok when children deactivate too', () => {
 	const snap = snapFrom(IT_COA);
@@ -181,7 +185,9 @@ test('deactivate blocked by active children, ok when children deactivate too', (
 	});
 	snap.push({ ...mk('hp', '1-9000', null), hasChildren: true, hasActiveChildren: true }, mk('hc', '1-9001', '1-9000'));
 	const d = diffTemplate('it', snap, IT_COA);
-	expect(() => buildChangePlan(d, { conflicts: {}, missing: { hp: 'deactivate' }, skip: [] })).toThrow(PlanError);
+	expect(() => buildChangePlan(d, { conflicts: {}, missing: { hp: 'deactivate' }, skip: [] })).toThrow(
+		expect.objectContaining({ code: 'active_children' })
+	);
 	const ok = buildChangePlan(d, { conflicts: {}, missing: { hp: 'deactivate', hc: 'deactivate' }, skip: [] });
 	expect(ok.deactivate.sort()).toEqual(['hc', 'hp']);
 });
@@ -194,4 +200,28 @@ test('inactive conflict renamed is reactivated', () => {
 });
 test('ChangeTemplateInput rejects unknown template', () => {
 	expect(ChangeTemplateInput.safeParse({ target: 'pabrik', fingerprint: 'x', conflicts: {}, missing: {} }).success).toBe(false);
+});
+test('inactive child does not block deactivating parent', () => {
+	const snap = snapFrom(IT_COA);
+	const mk = (id: string, code: string, parentCode: string | null, isActive = true): CompanyAccountSnap => ({
+		...snap[0], id, code, parentCode, isActive, isBankAccount: false, hasChildren: false, hasActiveChildren: false
+	});
+	snap.push(
+		{ ...mk('hp', '1-9000', null), hasChildren: true, hasActiveChildren: true },
+		mk('ha', '1-9001', '1-9000'),
+		mk('hi', '1-9002', '1-9000', false)
+	);
+	const d = diffTemplate('it', snap, IT_COA);
+	const p = buildChangePlan(d, { conflicts: {}, missing: { hp: 'deactivate', ha: 'deactivate' }, skip: [] });
+	expect(p.deactivate.sort()).toEqual(['ha', 'hp']);
+});
+test('blocked addition maps to null even when not skipped', () => {
+	const snap = snapFrom(DEFAULT_COA);
+	snap.find((a) => a.code === '1-3000')!.inUse = true; // placeholder, replaced below
+	const d = diffTemplate('it', snap, IT_COA);
+	const b = { ...d, additions: d.additions.map((a, i) => (i === 0 ? { ...a, blocked: 'parent_in_use' as const } : a)) };
+	const first = b.additions[0];
+	const p = buildChangePlan(b, { conflicts: allRename(b), missing: {}, skip: [] });
+	expect(p.codeMap[first.templateCode]).toBeNull();
+	expect(p.creates.some((c) => c.code === first.code)).toBe(false);
 });
