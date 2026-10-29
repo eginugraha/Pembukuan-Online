@@ -17,6 +17,8 @@ test('admin previews and applies; accountant is 403; other company is 404', asyn
 	const prev = await call(GET, fakeEvent({ ctx: await contextFor(admin), path, params: { id: companyId } }));
 	expect(prev.status).toBe(200);
 	expect(prev.body.diff.conflicts).toHaveLength(25);
+	expect(Array.isArray(prev.body.pendingRules)).toBe(true);
+	expect(prev.body.pendingRules.length).toBeGreaterThan(0);
 	expect((await call(GET, fakeEvent({ ctx: await contextFor(acc), path, params: { id: companyId } }))).status).toBe(403);
 	const body = { target: 'it', fingerprint: prev.body.fingerprint, conflicts: allRename(prev.body.diff), missing: {}, skip: [] };
 	const res = await call(POST, fakeEvent({ ctx: await contextFor(admin), method: 'POST', body, params: { id: companyId } }));

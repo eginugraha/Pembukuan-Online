@@ -1,5 +1,5 @@
 import { beforeEach, expect, test } from 'bun:test';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '../../src/lib/server/db';
 import { accounts, categoryRules, journalEntries, journalLines } from '../../src/lib/server/db/schema';
 import { applyTemplateChange, loadSnapshot, previewTemplateChange } from '../../src/lib/server/company/change-template';
@@ -129,3 +129,72 @@ test('rule whose account is a skipped addition is not inserted', async () => {
 	expect(after.some((r) => r.keywordPattern === 'FIGMA')).toBe(false);
 	expect(after.some((r) => r.keywordPattern === 'ALFAMART')).toBe(true);
 });
+
+test('preview pendingRules: template rules the company lacks (case-insensitive keyword + direction)', async () => {
+	const { companyId } = await makeCompany();
+	const have = new Set((await rulesOf(companyId)).map((r) => `${r.keywordPattern.toLowerCase()}|${r.direction}`));
+	const { pendingRules } = await previewTemplateChange(companyId, 'it');
+	expect(pendingRules.length).toBeGreaterThan(0);
+	for (const r of pendingRules) expect(have.has(`${r.keyword.toLowerCase()}|${r.direction}`)).toBe(false);
+});
+
+test('concurrent manual account create on a kept code → 409, not 500', async () => {
+	const { companyId } = await makeCompany();
+	const { diff, fingerprint } = await previewTemplateChange(companyId, 'it');
+	const newCode = diff.conflicts.find((c) => c.code === '1-2101')!.newCodeIfKept!;
+	const conflicts = { ...allRename(diff), '1-2101': { action: 'keep' as const, reactivate: false } };
+	// Insert akun (belum commit) memegang FOR KEY SHARE di baris companies, jadi apply tertahan di
+	// `for update`, lalu melihat akun baru → fingerprint berbeda → 409.
+	let result!: Promise<unknown>;
+	await db.transaction(async (tx) => {
+		await tx.insert(accounts).values({ companyId, code: newCode, name: 'Manual', type: 'ASSET', normalBal: 'DEBIT' });
+		result = applyTemplateChange(companyId, { target: 'it', fingerprint, conflicts, missing: {}, skip: [] }).then(
+			() => null,
+			(e) => e
+		);
+		for (let i = 0; i < 100; i++) {
+			const [w] = await db.execute<{ n: number }>(sql`select count(*)::int as n from pg_locks where not granted`);
+			if (Number(w.n) > 0) return;
+			await new Promise((r) => setTimeout(r, 20));
+		}
+		throw new Error('apply tidak tertahan di kunci');
+	});
+	expect(await result).toMatchObject({ status: 409, code: 'coa_changed' });
+});
+
+/** Trigger sementara: insert akun dengan kode `code` gagal dengan SQLSTATE `errcode` (simulasi gagal di tengah apply). */
+async function withFailingInsert(code: string, errcode: string, fn: () => Promise<void>) {
+	await db.execute(sql.raw(`
+		create or replace function test_fail_account_insert() returns trigger language plpgsql as $$
+		begin
+			if new.code = '${code}' then raise exception 'gagal disimulasikan' using errcode = '${errcode}'; end if;
+			return new;
+		end $$;
+		create trigger test_fail_account_insert before insert on accounts
+			for each row execute function test_fail_account_insert();
+	`));
+	try {
+		await fn();
+	} finally {
+		await db.execute(sql.raw('drop trigger if exists test_fail_account_insert on accounts; drop function if exists test_fail_account_insert();'));
+	}
+}
+
+for (const [label, errcode, expected] of [
+	['unique violation maps to 409', '23505', { status: 409, code: 'coa_changed' }],
+	['other DB error propagates', 'P0001', { cause: { code: 'P0001' } }]
+] as const) {
+	test(`mid-write failure rolls everything back (${label})`, async () => {
+		const { companyId } = await makeCompany();
+		const { diff, fingerprint } = await previewTemplateChange(companyId, 'it');
+		const rulesBefore = (await rulesOf(companyId)).length;
+		// 1-3100 dibuat setelah rename, reaktivasi, dan akun baru berkode lebih kecil
+		await withFailingInsert('1-3100', errcode, async () => {
+			await expect(
+				applyTemplateChange(companyId, { target: 'it', fingerprint, conflicts: allRename(diff), missing: {}, skip: [] })
+			).rejects.toMatchObject(expected);
+		});
+		expect((await loadSnapshot(db, companyId)).fingerprint).toBe(fingerprint);
+		expect((await rulesOf(companyId)).length).toBe(rulesBefore);
+	});
+}

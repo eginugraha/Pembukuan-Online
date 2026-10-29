@@ -1,10 +1,19 @@
 import { createHash } from 'node:crypto';
 import { eq, sql } from 'drizzle-orm';
 import type { CoaTemplateId } from '../../coa-templates';
-import { buildChangePlan, diffTemplate, PlanError, type CompanyAccountSnap, type TemplateDiff } from '../../coa-template-diff';
+import {
+	buildChangePlan,
+	diffTemplate,
+	PlanError,
+	rulesToAdd,
+	type CompanyAccountSnap,
+	type TemplateDiff,
+	type TemplateRule
+} from '../../coa-template-diff';
 import type { ChangeTemplateInput } from '../../schemas/company';
 import { ApiError } from '../api';
 import { db, type Executor } from '../db';
+import { isUniqueViolation } from '../db/errors';
 import { accounts, categoryRules } from '../db/schema';
 import { COA_TEMPLATE_DATA } from './templates';
 
@@ -70,12 +79,28 @@ export async function loadSnapshot(
 	return { accounts: snaps, fingerprint };
 }
 
+/** Rule template yang keyword (tanpa beda huruf) + arahnya belum dimiliki perusahaan. */
+async function pendingRules(ex: Executor, companyId: string, target: CoaTemplateId): Promise<TemplateRule[]> {
+	const existing = await ex
+		.select({ k: categoryRules.keywordPattern, d: categoryRules.direction })
+		.from(categoryRules)
+		.where(eq(categoryRules.companyId, companyId));
+	const have = new Set(existing.map((r) => `${r.k.toLowerCase()}|${r.d ?? ''}`));
+	return COA_TEMPLATE_DATA[target].rules
+		.filter((r) => !have.has(`${r.keyword.toLowerCase()}|${r.direction}`))
+		.map((r) => ({ keyword: r.keyword, direction: r.direction, account: r.account }));
+}
+
 export async function previewTemplateChange(
 	companyId: string,
 	target: CoaTemplateId
-): Promise<{ diff: TemplateDiff; fingerprint: string }> {
+): Promise<{ diff: TemplateDiff; fingerprint: string; pendingRules: TemplateRule[] }> {
 	const snap = await loadSnapshot(db, companyId);
-	return { diff: diffTemplate(target, snap.accounts, COA_TEMPLATE_DATA[target].coa), fingerprint: snap.fingerprint };
+	return {
+		diff: diffTemplate(target, snap.accounts, COA_TEMPLATE_DATA[target].coa),
+		fingerprint: snap.fingerprint,
+		pendingRules: await pendingRules(db, companyId, target)
+	};
 }
 
 export interface ApplySummary {
@@ -86,14 +111,26 @@ export interface ApplySummary {
 	rulesAdded: number;
 }
 
+const STALE_MESSAGE = 'Bagan akun berubah sejak review dibuka. Muat ulang halaman.';
+
 export async function applyTemplateChange(companyId: string, input: ChangeTemplateInput): Promise<ApplySummary> {
+	try {
+		return await applyInTx(companyId, input);
+	} catch (e) {
+		// kode akun bentrok dengan akun yang dibuat bersamaan (tidak terkunci oleh fingerprint)
+		if (isUniqueViolation(e)) throw new ApiError(409, 'coa_changed', STALE_MESSAGE);
+		throw e;
+	}
+}
+
+function applyInTx(companyId: string, input: ChangeTemplateInput): Promise<ApplySummary> {
 	return db.transaction(async (tx) => {
 		await tx.execute(sql`select id from companies where id = ${companyId} for update`);
 		const snap = await loadSnapshot(tx, companyId);
 		if (snap.fingerprint !== input.fingerprint) {
-			throw new ApiError(409, 'coa_changed', 'Bagan akun berubah sejak review dibuka. Muat ulang halaman.');
+			throw new ApiError(409, 'coa_changed', STALE_MESSAGE);
 		}
-		const { coa, rules } = COA_TEMPLATE_DATA[input.target];
+		const { coa } = COA_TEMPLATE_DATA[input.target];
 		const diff = diffTemplate(input.target, snap.accounts, coa);
 		let plan;
 		try {
@@ -139,31 +176,17 @@ export async function applyTemplateChange(companyId: string, input: ChangeTempla
 				.where(eq(accounts.id, r.accountId));
 		}
 
-		// Rule template: tambahkan yang belum ada, hanya ke akun aktif
-		const activeById = new Map(
-			(await tx.select({ id: accounts.id, code: accounts.code, isActive: accounts.isActive }).from(accounts).where(eq(accounts.companyId, companyId))).map(
-				(a) => [a.code, a]
-			)
-		);
-		const existing = await tx
-			.select({ k: categoryRules.keywordPattern, d: categoryRules.direction })
-			.from(categoryRules)
-			.where(eq(categoryRules.companyId, companyId));
-		const seen = new Set(existing.map((r) => `${r.k.toLowerCase()}|${r.d ?? ''}`));
+		// Rule template: tambahkan yang belum ada, hanya ke akun aktif (aturan sama dengan ringkasan di klien)
 		let rulesAdded = 0;
-		for (const r of rules) {
-			const key = `${r.keyword.toLowerCase()}|${r.direction}`;
-			if (seen.has(key)) continue;
-			const code = r.account in plan.codeMap ? plan.codeMap[r.account] : r.account;
-			const acc = code ? activeById.get(code) : undefined;
-			if (!acc || !acc.isActive) continue;
+		for (const r of rulesToAdd(diff, plan, await pendingRules(tx, companyId, input.target))) {
+			const accountId = idByCode.get(r.code);
+			if (!accountId) continue;
 			const inserted = await tx
 				.insert(categoryRules)
-				.values({ companyId, keywordPattern: r.keyword, accountId: acc.id, direction: r.direction, priority: 0, source: 'SYSTEM' })
+				.values({ companyId, keywordPattern: r.keyword, accountId, direction: r.direction, priority: 0, source: 'SYSTEM' })
 				.onConflictDoNothing()
 				.returning({ id: categoryRules.id });
 			rulesAdded += inserted.length;
-			seen.add(key);
 		}
 
 		return {
