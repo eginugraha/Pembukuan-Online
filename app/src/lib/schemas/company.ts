@@ -31,3 +31,15 @@ export type UpdateCompanyInput = z.infer<typeof UpdateCompanyInput>;
 
 export const DeleteCompanyInput = z.object({ confirmName: z.string() });
 export type DeleteCompanyInput = z.infer<typeof DeleteCompanyInput>;
+
+export const ChangeTemplateInput = z.object({
+	target: z.enum(COA_TEMPLATE_IDS, { error: 'Template bagan akun tidak valid' }),
+	fingerprint: z.string().min(1),
+	conflicts: z.record(
+		z.string(),
+		z.object({ action: z.enum(['rename', 'keep']), reactivate: z.boolean().default(false) })
+	),
+	missing: z.record(z.string(), z.enum(['keep', 'deactivate'])), // key = accountId
+	skip: z.array(z.string()).default([]) // templateCode dari additions yang dilewati
+});
+export type ChangeTemplateInput = z.infer<typeof ChangeTemplateInput>;

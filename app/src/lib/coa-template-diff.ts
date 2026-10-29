@@ -1,5 +1,6 @@
 import type { CoaSeed } from './server/company/coa-data';
 import type { CoaTemplateId } from './coa-templates';
+import type { ChangeTemplateInput } from './schemas/company';
 
 type AccountType = CoaSeed['type'];
 type NormalBal = CoaSeed['normalBal'];
@@ -176,4 +177,111 @@ export function diffTemplate(target: CoaTemplateId, current: CompanyAccountSnap[
 		additions,
 		accounts: [...current].sort(byCode).map((a) => ({ code: a.code, name: a.name, isActive: a.isActive }))
 	};
+}
+
+export class PlanError extends Error {
+	constructor(
+		public code: string,
+		message: string
+	) {
+		super(message);
+		this.name = 'PlanError';
+	}
+}
+
+interface PlannedAccount {
+	code: string;
+	name: string;
+	type: AccountType;
+	normalBal: NormalBal;
+	parentCode: string | null;
+}
+
+export interface ChangePlan {
+	renames: (PlannedAccount & { accountId: string })[];
+	reactivate: string[];
+	deactivate: string[];
+	creates: PlannedAccount[]; // induk dulu
+	codeMap: Record<string, string | null>; // templateCode → kode setelah apply; null = dilewati
+	duplicateNames: string[];
+}
+
+export function buildChangePlan(
+	diff: TemplateDiff,
+	decisions: Pick<ChangeTemplateInput, 'conflicts' | 'missing' | 'skip'>
+): ChangePlan {
+	const skip = new Set(decisions.skip);
+	const renames: ChangePlan['renames'] = [];
+	const reactivate: string[] = [];
+	const deactivate: string[] = [];
+	const codeMap: Record<string, string | null> = {};
+	const keptLeaf = new Set<string>(); // templateCode yang di-keep dan membuat akun baru
+
+	for (const c of diff.conflicts) {
+		const d = decisions.conflicts[c.code];
+		if (!d) throw new PlanError('incomplete', 'Masih ada akun bentrok yang belum diputuskan');
+		codeMap[c.code] = c.code;
+		if (d.action === 'rename') {
+			if (!c.renameAllowed)
+				throw new PlanError(
+					'rename_not_allowed',
+					`Akun ${c.code} tidak bisa diganti: tipe/saldo normal berbeda dan sudah punya jurnal`
+				);
+			if (c.nameDiffers) renames.push({ accountId: c.accountId, ...c.target, code: c.code });
+			if (!c.current.isActive) reactivate.push(c.accountId);
+		} else {
+			if (d.reactivate && !c.current.isActive) reactivate.push(c.accountId);
+			if (c.nameDiffers && !c.isHeader) keptLeaf.add(c.code);
+		}
+	}
+
+	const creates: PlannedAccount[] = [];
+	const createdNew = new Set<string>();
+	const skippedNew = new Set<string>();
+	for (const a of diff.additions) {
+		const create = a.source === 'kept' ? keptLeaf.has(a.templateCode) : true;
+		if (!create) continue;
+		if (a.blocked || skip.has(a.templateCode)) {
+			codeMap[a.templateCode] = null;
+			if (a.source === 'new') skippedNew.add(a.code);
+			continue;
+		}
+		if (a.parentCode && skippedNew.has(a.parentCode))
+			throw new PlanError('parent_skipped', `Akun ${a.code} butuh induk ${a.parentCode} yang dilewati`);
+		creates.push({ code: a.code, name: a.name, type: a.type, normalBal: a.normalBal, parentCode: a.parentCode });
+		codeMap[a.templateCode] = a.code;
+		if (a.source === 'new') createdNew.add(a.code);
+	}
+
+	const toDeactivate = new Set(
+		diff.missing.filter((m) => decisions.missing[m.accountId] === 'deactivate').map((m) => m.accountId)
+	);
+	for (const m of diff.missing) {
+		if (!toDeactivate.has(m.accountId)) continue;
+		if (m.isBankAccount) throw new PlanError('bank_account', `Akun bank ${m.code} tidak bisa dinonaktifkan`);
+		if (m.hasActiveChildren && m.childIds.some((id) => !toDeactivate.has(id)))
+			throw new PlanError('active_children', `Akun ${m.code} masih punya akun anak aktif`);
+		deactivate.push(m.accountId);
+	}
+
+	// Nama aktif setelah apply
+	const state = new Map(diff.accounts.map((a) => [a.code, { name: a.name, active: a.isActive }]));
+	for (const r of renames) state.get(r.code)!.name = r.name;
+	for (const c of diff.conflicts) if (reactivate.includes(c.accountId)) state.get(c.code)!.active = true;
+	for (const m of diff.missing) if (toDeactivate.has(m.accountId)) state.get(m.code)!.active = false;
+	for (const c of creates) state.set(c.code, { name: c.name, active: true });
+	const counts = new Map<string, { n: number; name: string }>();
+	for (const a of state.values()) {
+		if (!a.active) continue;
+		const k = a.name.trim().toLowerCase();
+		const e = counts.get(k);
+		if (e) e.n++;
+		else counts.set(k, { n: 1, name: a.name.trim() });
+	}
+	const duplicateNames = [...counts.values()]
+		.filter((e) => e.n > 1)
+		.map((e) => e.name)
+		.sort((a, b) => a.localeCompare(b));
+
+	return { renames, reactivate, deactivate, creates, codeMap, duplicateNames };
 }
