@@ -167,6 +167,9 @@ export function diffTemplate(target: CoaTemplateId, current: CompanyAccountSnap[
 		emitted.add(a.code);
 		const p = a.parentCode && pendingCodes.has(a.parentCode) ? pending.find((x) => x.code === a.parentCode) : undefined;
 		if (p) emit(p);
+		// induk tertahan → anaknya ikut tertahan (turun ke seluruh cabang)
+		// (objek `pending` dibuat di fungsi ini, aman dimutasi; induk selalu selesai lebih dulu)
+		if (p?.blocked && !a.blocked) a.blocked = p.blocked;
 		additions.push(a);
 	};
 	pending.forEach(emit);
@@ -236,6 +239,16 @@ export function buildChangePlan(
 		}
 	}
 
+	const toDeactivate = new Set(
+		diff.missing.filter((m) => decisions.missing[m.accountId] === 'deactivate').map((m) => m.accountId)
+	);
+	// Akun perusahaan yang sudah ada: aktif setelah apply?
+	const existing = new Map(diff.accounts.map((a) => [a.code, a.isActive]));
+	const reactivatedCodes = new Set(diff.conflicts.filter((c) => reactivate.includes(c.accountId)).map((c) => c.code));
+	const deactivatedCodes = new Set(diff.missing.filter((m) => toDeactivate.has(m.accountId)).map((m) => m.code));
+	const inactiveAfter = (code: string) =>
+		existing.has(code) && (deactivatedCodes.has(code) || (!existing.get(code) && !reactivatedCodes.has(code)));
+
 	const creates: PlannedAccount[] = [];
 	const createdNew = new Set<string>();
 	const skippedNew = new Set<string>();
@@ -249,6 +262,11 @@ export function buildChangePlan(
 		}
 		if (a.parentCode && skippedNew.has(a.parentCode))
 			throw new PlanError('parent_skipped', `Akun ${a.code} butuh induk ${a.parentCode} yang dilewati`);
+		if (a.parentCode && inactiveAfter(a.parentCode))
+			throw new PlanError(
+				'parent_inactive',
+				`Akun induk ${a.parentCode} nonaktif; aktifkan kembali atau lewati akun barunya`
+			);
 		creates.push({ code: a.code, name: a.name, type: a.type, normalBal: a.normalBal, parentCode: a.parentCode });
 		codeMap[a.templateCode] = a.code;
 		if (a.source === 'new') createdNew.add(a.code);
@@ -259,9 +277,6 @@ export function buildChangePlan(
 			throw new PlanError('parent_skipped', `Akun ${r.code} butuh induk ${r.parentCode} yang dilewati`);
 	}
 
-	const toDeactivate = new Set(
-		diff.missing.filter((m) => decisions.missing[m.accountId] === 'deactivate').map((m) => m.accountId)
-	);
 	for (const m of diff.missing) {
 		if (!toDeactivate.has(m.accountId)) continue;
 		if (m.isBankAccount) throw new PlanError('bank_account', `Akun bank ${m.code} tidak bisa dinonaktifkan`);
@@ -290,4 +305,32 @@ export function buildChangePlan(
 		.sort((a, b) => a.localeCompare(b));
 
 	return { renames, reactivate, deactivate, creates, codeMap, duplicateNames };
+}
+
+export interface TemplateRule {
+	keyword: string;
+	direction: 'DB' | 'CR';
+	account: string; // kode template
+}
+
+/**
+ * Rule template yang benar-benar ditambahkan saat apply: akunnya (lewat codeMap; null = dilewati)
+ * aktif setelah plan dijalankan, satu rule per keyword+arah. Dipakai ringkasan (klien) dan apply (server).
+ */
+export function rulesToAdd(diff: TemplateDiff, plan: ChangePlan, pending: TemplateRule[]): (TemplateRule & { code: string })[] {
+	const active = new Set(diff.accounts.filter((a) => a.isActive).map((a) => a.code));
+	for (const c of diff.conflicts) if (plan.reactivate.includes(c.accountId)) active.add(c.code);
+	for (const m of diff.missing) if (plan.deactivate.includes(m.accountId)) active.delete(m.code);
+	for (const c of plan.creates) active.add(c.code);
+	const seen = new Set<string>();
+	const out: (TemplateRule & { code: string })[] = [];
+	for (const r of pending) {
+		const key = `${r.keyword.toLowerCase()}|${r.direction}`;
+		if (seen.has(key)) continue;
+		const code = r.account in plan.codeMap ? plan.codeMap[r.account] : r.account;
+		if (!code || !active.has(code)) continue;
+		seen.add(key);
+		out.push({ ...r, code });
+	}
+	return out;
 }

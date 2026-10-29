@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import {
 	buildChangePlan,
+	rulesToAdd,
 	diffTemplate,
 	nextFreeCode,
 	PlanError,
@@ -217,7 +218,6 @@ test('inactive child does not block deactivating parent', () => {
 });
 test('blocked addition maps to null even when not skipped', () => {
 	const snap = snapFrom(DEFAULT_COA);
-	snap.find((a) => a.code === '1-3000')!.inUse = true; // placeholder, replaced below
 	const d = diffTemplate('it', snap, IT_COA);
 	const b = { ...d, additions: d.additions.map((a, i) => (i === 0 ? { ...a, blocked: 'parent_in_use' as const } : a)) };
 	const first = b.additions[0];
@@ -241,4 +241,64 @@ test('rename whose target parent is a skipped addition is rejected', () => {
 		expect.objectContaining({ code: 'parent_skipped' })
 	);
 	expect(buildChangePlan(d, { conflicts, missing: {}, skip: [] }).renames.length).toBe(1);
+});
+
+// Perusahaan punya 1-1000 sebagai leaf terpakai; template menjadikannya induk 1-1100 → 1-1101.
+const usedLeafTpl: CoaSeed[] = [
+	{ code: '1-0000', name: 'Aset', type: 'ASSET', normalBal: 'DEBIT' },
+	{ code: '1-1000', name: 'Kas', type: 'ASSET', normalBal: 'DEBIT', parent: '1-0000' },
+	{ code: '1-1100', name: 'Sub Baru', type: 'ASSET', normalBal: 'DEBIT', parent: '1-1000' },
+	{ code: '1-1101', name: 'Cucu Baru', type: 'ASSET', normalBal: 'DEBIT', parent: '1-1100' }
+];
+function usedLeafSnap(extra: CoaSeed[] = []): CompanyAccountSnap[] {
+	const snap = snapFrom([...usedLeafTpl.slice(0, 2), ...extra]);
+	snap.find((a) => a.code === '1-1000')!.inUse = true;
+	return snap;
+}
+test('blocked status propagates to descendants of a blocked addition', () => {
+	const d = diffTemplate('it', usedLeafSnap(), usedLeafTpl);
+	expect(d.additions.map((a) => [a.code, a.blocked])).toEqual([
+		['1-1100', 'parent_in_use'],
+		['1-1101', 'parent_in_use']
+	]);
+	const p = buildChangePlan(d, { conflicts: {}, missing: {}, skip: [] });
+	expect(p.creates).toEqual([]);
+	expect(p.codeMap).toEqual({ '1-1100': null, '1-1101': null });
+});
+test('rename whose target parent is a blocked addition is rejected', () => {
+	const d = diffTemplate('it', usedLeafSnap([{ code: '1-1101', name: 'Lama', type: 'ASSET', normalBal: 'DEBIT', parent: '1-0000' }]), usedLeafTpl);
+	expect(d.additions.find((a) => a.code === '1-1100')!.blocked).toBe('parent_in_use');
+	expect(() =>
+		buildChangePlan(d, { conflicts: { '1-1101': { action: 'rename', reactivate: false } }, missing: {}, skip: [] })
+	).toThrow(expect.objectContaining({ code: 'parent_skipped' }));
+});
+test('create under a parent that stays inactive is rejected', () => {
+	const snap = snapFrom(DEFAULT_COA);
+	snap.find((a) => a.code === '1-3000')!.isActive = false;
+	const d = diffTemplate('it', snap, IT_COA);
+	expect(d.additions.find((a) => a.code === '1-3100')!.parentCode).toBe('1-3000');
+	const conflicts = (reactivate: boolean) => ({ ...allRename(d), '1-3000': { action: 'keep' as const, reactivate } });
+	expect(() => buildChangePlan(d, { conflicts: conflicts(false), missing: {}, skip: [] })).toThrow(
+		expect.objectContaining({ code: 'parent_inactive', message: expect.stringContaining('1-3000') })
+	);
+	expect(buildChangePlan(d, { conflicts: conflicts(true), missing: {}, skip: [] }).creates.some((c) => c.code === '1-3100')).toBe(true);
+	// melewati akun barunya juga lolos
+	const skip = ['1-3003', '1-3100', '1-3101', '1-3102', '1-3103'];
+	expect(() => buildChangePlan(d, { conflicts: conflicts(false), missing: {}, skip })).not.toThrow();
+});
+test('rulesToAdd: resolves via codeMap, skips skipped/inactive targets, one per keyword+direction', () => {
+	const d = diffTemplate('it', snapFrom(DEFAULT_COA), IT_COA);
+	const p = buildChangePlan(d, {
+		conflicts: { ...allRename(d), '5-1003': { action: 'keep', reactivate: false } },
+		missing: {},
+		skip: ['5-2014']
+	});
+	const kept = p.codeMap['5-1003']!;
+	const out = rulesToAdd(d, p, [
+		{ keyword: 'A', direction: 'DB', account: '5-1003' },
+		{ keyword: 'a', direction: 'DB', account: '1-1001' },
+		{ keyword: 'B', direction: 'DB', account: '5-2014' },
+		{ keyword: 'C', direction: 'CR', account: '9-9999' }
+	]);
+	expect(out).toEqual([{ keyword: 'A', direction: 'DB', account: '5-1003', code: kept }]);
 });
