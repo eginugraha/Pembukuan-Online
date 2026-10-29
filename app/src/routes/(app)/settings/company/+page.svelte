@@ -159,6 +159,8 @@
 		}
 	}
 
+	let targetTemplate = $state('');
+
 	const deleteForm = new FormState(DeleteCompanyInput, { confirmName: '' });
 	let deleteOpen = $state(false);
 	let deleteBusy = $state(false);
@@ -323,6 +325,21 @@
 			</FormField>
 			<Button type="submit">Simpan</Button>
 		</form>
+	</Card.Content>
+</Card.Root>
+
+<Card.Root class="mt-6 max-w-xl">
+	<Card.Header>
+		<Card.Title>Template bagan akun</Card.Title>
+		<Card.Description>Sesuaikan bagan akun dengan template lain. Setiap perubahan ditinjau dulu sebelum diterapkan; jurnal yang sudah ada tidak diubah.</Card.Description>
+	</Card.Header>
+	<Card.Content>
+		<div class="grid items-start gap-3 sm:grid-cols-[1fr_auto]">
+			<FormField id="coa-target" label="Template tujuan">
+				<SimpleSelect id="coa-target" bind:value={targetTemplate} placeholder="Pilih template…" options={COA_TEMPLATES.map((t) => ({ value: t.id, label: t.label }))} />
+			</FormField>
+			<Button class="sm:mt-[22px]" disabled={!targetTemplate} onclick={() => goto(`/settings/company/coa-template?target=${targetTemplate}`)}>Ganti template bagan akun</Button>
+		</div>
 	</Card.Content>
 </Card.Root>
 

@@ -2,6 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export const FIXTURE_PDF = 'tests/e2e/.tmp/statement-sintetis.pdf';
 export const E2E_CHARTS_EMAIL = 'grafik@pembukuan.local';
+export const E2E_TEMPLATE_EMAIL = 'template@pembukuan.local';
 export const E2E_PASSWORD = 'e2e-password-123';
 const PORT = 4173;
 
