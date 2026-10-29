@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { diffTemplate, type CompanyAccountSnap } from '../../src/lib/coa-template-diff';
+import { diffTemplate, nextFreeCode, type CompanyAccountSnap } from '../../src/lib/coa-template-diff';
 import { DEFAULT_COA, type CoaSeed } from '../../src/lib/server/company/coa-data';
 import { IT_COA } from '../../src/lib/server/company/coa-it';
 
@@ -84,4 +84,26 @@ test('addition under used leaf is blocked', () => {
 test('identical CoA yields empty diff', () => {
 	const d = diffTemplate('general', snapFrom(DEFAULT_COA), DEFAULT_COA);
 	expect([d.conflicts, d.missing, d.additions].map((x) => x.length)).toEqual([0, 0, 0]);
+});
+test('kept addition carries the template account, not the current one', () => {
+	const d = diffTemplate('it', snapFrom(DEFAULT_COA), IT_COA);
+	expect(d.additions.find((a) => a.source === 'kept' && a.templateCode === '1-2101')).toMatchObject({
+		code: '1-2106',
+		name: 'Komputer & Laptop',
+		parentCode: '1-2100'
+	});
+	expect(d.additions.find((a) => a.source === 'kept' && a.templateCode === '4-1003')).toMatchObject({
+		type: 'REVENUE',
+		normalBal: 'CREDIT',
+		name: 'Pendapatan Maintenance & Support'
+	});
+});
+test('nextFreeCode increments past taken codes and pads', () => {
+	expect(nextFreeCode(['1-2101', '1-2103'], new Set(['1-2104']))).toBe('1-2105');
+	expect(nextFreeCode(['4-0008'], new Set())).toBe('4-0009');
+});
+test('inactive accounts are excluded from missing', () => {
+	const snap = snapFrom(DEFAULT_COA);
+	snap.find((a) => a.code === '1-2105')!.isActive = false;
+	expect(diffTemplate('it', snap, IT_COA).missing).toEqual([]);
 });

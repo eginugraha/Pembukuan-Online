@@ -91,20 +91,21 @@ export function diffTemplate(target: CoaTemplateId, current: CompanyAccountSnap[
 		let newCodeIfKept: string | null = null;
 		if (nameDiffers && !isHeader) {
 			const siblings = [
-				...current.filter((x) => x.parentCode === a.parentCode).map((x) => x.code),
-				...coa.filter((x) => (x.parent ?? null) === a.parentCode).map((x) => x.code)
+				...current.filter((x) => x.parentCode === tParent).map((x) => x.code),
+				...coa.filter((x) => (x.parent ?? null) === tParent).map((x) => x.code)
 			];
+			const keptParent = tParent ? cur.get(tParent) : undefined;
 			newCodeIfKept = nextFreeCode(siblings, taken);
 			taken.add(newCodeIfKept);
 			kept.push({
 				templateCode: a.code,
 				code: newCodeIfKept,
-				name: a.name,
-				type: a.type,
-				normalBal: a.normalBal,
-				parentCode: a.parentCode,
+				name: t.name,
+				type: t.type,
+				normalBal: t.normalBal,
+				parentCode: tParent,
 				source: 'kept',
-				blocked: null
+				blocked: keptParent && !keptParent.hasChildren && keptParent.inUse ? 'parent_in_use' : null
 			});
 		}
 		conflicts.push({
