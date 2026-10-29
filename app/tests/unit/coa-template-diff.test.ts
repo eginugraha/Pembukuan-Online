@@ -225,3 +225,20 @@ test('blocked addition maps to null even when not skipped', () => {
 	expect(p.codeMap[first.templateCode]).toBeNull();
 	expect(p.creates.some((c) => c.code === first.code)).toBe(false);
 });
+test('rename whose target parent is a skipped addition is rejected', () => {
+	const tpl: CoaSeed[] = [
+		{ code: '1-0000', name: 'Aset', type: 'ASSET', normalBal: 'DEBIT' },
+		{ code: '1-1000', name: 'Header Baru', type: 'ASSET', normalBal: 'DEBIT', parent: '1-0000' },
+		{ code: '1-1001', name: 'Baru', type: 'ASSET', normalBal: 'DEBIT', parent: '1-1000' }
+	];
+	const cur: CoaSeed[] = [
+		{ code: '1-0000', name: 'Aset', type: 'ASSET', normalBal: 'DEBIT' },
+		{ code: '1-1001', name: 'Lama', type: 'ASSET', normalBal: 'DEBIT', parent: '1-0000' }
+	];
+	const d = diffTemplate('it', snapFrom(cur), tpl);
+	const conflicts = { '1-1001': { action: 'rename' as const, reactivate: false } };
+	expect(() => buildChangePlan(d, { conflicts, missing: {}, skip: ['1-1000'] })).toThrow(
+		expect.objectContaining({ code: 'parent_skipped' })
+	);
+	expect(buildChangePlan(d, { conflicts, missing: {}, skip: [] }).renames.length).toBe(1);
+});

@@ -104,3 +104,28 @@ test('apply twice (IT → IT) is a no-op', async () => {
 	const s = await applyTemplateChange(companyId, { target: 'it', fingerprint, conflicts: {}, missing: {}, skip: [] });
 	expect(s).toEqual({ renamed: 0, created: 0, deactivated: 0, reactivated: 0, rulesAdded: 0 });
 });
+
+test('rule for a kept conflict lands on the newly created code', async () => {
+	const { companyId } = await makeCompany();
+	const before = new Set((await rulesOf(companyId)).map((r) => `${r.keywordPattern.toLowerCase()}|${r.direction}`));
+	const { diff, fingerprint } = await previewTemplateChange(companyId, 'it');
+	const newCode = diff.conflicts.find((c) => c.code === '5-1003')!.newCodeIfKept!;
+	expect(newCode).toBeTruthy();
+	const conflicts = { ...allRename(diff), '5-1003': { action: 'keep' as const, reactivate: false } };
+	await applyTemplateChange(companyId, { target: 'it', fingerprint, conflicts, missing: {}, skip: [] });
+	const newId = await accountIdByCode(companyId, newCode);
+	const fresh = COA_TEMPLATE_DATA.it.rules.filter((r) => r.account === '5-1003' && !before.has(`${r.keyword.toLowerCase()}|${r.direction}`));
+	expect(fresh.length).toBeGreaterThan(0);
+	const after = await rulesOf(companyId);
+	for (const r of fresh) expect(after.find((x) => x.keywordPattern === r.keyword)!.accountId).toBe(newId);
+});
+
+test('rule whose account is a skipped addition is not inserted', async () => {
+	const { companyId } = await makeCompany();
+	const { diff, fingerprint } = await previewTemplateChange(companyId, 'it');
+	await applyTemplateChange(companyId, { target: 'it', fingerprint, conflicts: allRename(diff), missing: {}, skip: ['5-2014'] });
+	const after = await rulesOf(companyId);
+	expect(after.some((r) => r.keywordPattern === 'GITHUB')).toBe(false);
+	expect(after.some((r) => r.keywordPattern === 'FIGMA')).toBe(false);
+	expect(after.some((r) => r.keywordPattern === 'ALFAMART')).toBe(true);
+});

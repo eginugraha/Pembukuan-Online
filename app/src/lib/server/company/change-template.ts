@@ -104,6 +104,12 @@ export async function applyTemplateChange(companyId: string, input: ChangeTempla
 		}
 
 		const idByCode = new Map(snap.accounts.map((a) => [a.code, a.id]));
+		const parentId = (code: string | null, child: string): string | null => {
+			if (!code) return null;
+			const id = idByCode.get(code);
+			if (!id) throw new ApiError(422, 'parent_missing', `Induk ${code} untuk akun ${child} tidak ditemukan`);
+			return id;
+		};
 
 		// Nama/tipe dulu; parentId setelah akun baru ada (induk bisa akun yang baru dibuat)
 		for (const r of plan.renames) {
@@ -121,7 +127,7 @@ export async function applyTemplateChange(companyId: string, input: ChangeTempla
 					name: c.name,
 					type: c.type,
 					normalBal: c.normalBal,
-					parentId: c.parentCode ? (idByCode.get(c.parentCode) ?? null) : null
+					parentId: parentId(c.parentCode, c.code)
 				})
 				.returning({ id: accounts.id });
 			idByCode.set(c.code, row.id);
@@ -129,7 +135,7 @@ export async function applyTemplateChange(companyId: string, input: ChangeTempla
 		for (const r of plan.renames) {
 			await tx
 				.update(accounts)
-				.set({ parentId: r.parentCode ? (idByCode.get(r.parentCode) ?? null) : null })
+				.set({ parentId: parentId(r.parentCode, r.code) })
 				.where(eq(accounts.id, r.accountId));
 		}
 

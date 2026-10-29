@@ -254,6 +254,11 @@ export function buildChangePlan(
 		if (a.source === 'new') createdNew.add(a.code);
 	}
 
+	for (const r of renames) {
+		if (r.parentCode && skippedNew.has(r.parentCode))
+			throw new PlanError('parent_skipped', `Akun ${r.code} butuh induk ${r.parentCode} yang dilewati`);
+	}
+
 	const toDeactivate = new Set(
 		diff.missing.filter((m) => decisions.missing[m.accountId] === 'deactivate').map((m) => m.accountId)
 	);
