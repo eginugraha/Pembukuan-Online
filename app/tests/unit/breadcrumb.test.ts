@@ -11,7 +11,7 @@ describe('buildBreadcrumb', () => {
 		expect(r.map((x) => x.href)).toEqual(['/dashboard', undefined, undefined]);
 	});
 	test('settings', () => expect(labels('/settings/closing')).toEqual(['Dashboard', 'Pengaturan', 'Tutup Buku']));
-	test('group without label', () => expect(labels('/review')).toEqual(['Dashboard', 'Review & Konfirmasi']));
+	test('review under eStatement', () => expect(labels('/review')).toEqual(['Dashboard', 'eStatement', 'Review & Konfirmasi']));
 	test('longest match', () => expect(labels('/uploads/new')).toEqual(['Dashboard', 'eStatement', 'Upload Baru']));
 	test('detail with crumb', () => {
 		const r = buildBreadcrumb('/uploads/abc', NAV, 'BCA Jan.pdf');
