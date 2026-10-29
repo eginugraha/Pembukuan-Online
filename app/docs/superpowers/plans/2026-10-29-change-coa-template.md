@@ -105,6 +105,8 @@ Aturan pengelompokan (dari spec):
 - `blocked: 'parent_in_use'` bila `parentCode` menunjuk akun perusahaan yang leaf dan `inUse`.
 - Semua list diurutkan berdasarkan kode. Additions diurutkan supaya induk selalu sebelum anak.
 
+`newCodeIfKept` dihitung untuk setiap leaf conflict secara berurutan berdasarkan kode, terlepas dari keputusan pengguna, supaya kode di kartu tidak berubah-ubah saat pengguna mengklik.
+
 `nextFreeCode`: kode berformat `D-DDDD`. Ambil suffix numerik terbesar dari `siblingCodes`, lalu naikkan 1 sampai tidak ada di `taken`. Hasilnya dipad 4 digit. `siblingCodes` = anak akun perusahaan dengan `parentCode` sama + anak template dengan `parent` sama. `taken` = semua kode perusahaan (aktif/nonaktif) ∪ semua kode template ∪ kode baru yang sudah dibagikan sebelumnya (urut kode).
 
 - [ ] **Step 1: Tulis test yang gagal.** Helper `snapFrom(DEFAULT_COA)` di file test membangun `CompanyAccountSnap[]` dari seed (id = `id-${code}`, `journalLines: 0`, `inUse: false`, `isBankAccount: code === '1-1002'`, `hasChildren` dari seed).
