@@ -7,7 +7,8 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { apiFetch, ClientApiError } from '$lib/api-client';
-	import { buildChangePlan, PlanError, type AdditionItem, type ChangePlan } from '$lib/coa-template-diff';
+	import { buildChangePlan, PlanError, rulesToAdd, type AdditionItem, type ChangePlan } from '$lib/coa-template-diff';
+	import { TYPE_LABEL } from '$lib/account-options';
 	import { cn } from '$lib/utils';
 
 	let { data } = $props();
@@ -59,6 +60,7 @@
 			throw e;
 		}
 	});
+	const rulesAdded = $derived(plan.ok ? rulesToAdd(data.diff, plan.plan, data.pendingRules).length : 0);
 	const dupSet = $derived(new Set(plan.ok ? plan.plan.duplicateNames.map((n) => n.trim().toLowerCase()) : []));
 	const isDup = (name: string) => dupSet.has(name.trim().toLowerCase());
 
@@ -109,7 +111,8 @@
 			success = `Template bagan akun diganti: ${summaryText(s)}${s.rulesAdded ? `, ${s.rulesAdded} rule ditambahkan` : ''}.`;
 			setTimeout(() => goto('/settings/accounts'), 1500);
 		} catch (err) {
-			if (err instanceof ClientApiError && err.status === 409) stale = true;
+			// 409/422: kondisi di server berubah selama review (mis. jurnal baru) → muat ulang
+			if (err instanceof ClientApiError && (err.status === 409 || err.status === 422)) stale = true;
 			errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan';
 			busy = false;
 		}
@@ -136,7 +139,7 @@
 
 <nav class="mb-4 flex flex-wrap gap-2" aria-label="Langkah">
 	{#each steps as label, i (i)}
-		<Button size="sm" variant={step === i ? 'default' : 'outline'} aria-current={step === i ? 'step' : undefined} onclick={() => (step = i)}>{label}</Button>
+		<Button size="sm" variant={step === i ? 'default' : 'outline'} aria-current={step === i ? 'step' : undefined} disabled={i > 0 && unresolved > 0} onclick={() => (step = i)}>{label}</Button>
 	{/each}
 </nav>
 
@@ -155,6 +158,9 @@
 					</div>
 					{#if c.nameDiffers}
 						<p class="mt-1">Sekarang: <strong>{c.current.name}</strong> → Template: <strong>{c.target.name}</strong></p>
+						{#if c.current.type !== c.target.type}<p class="text-xs text-muted-foreground">Tipe: {TYPE_LABEL[c.current.type]} → {TYPE_LABEL[c.target.type]}</p>{/if}
+						{#if c.current.normalBal !== c.target.normalBal}<p class="text-xs text-muted-foreground">Saldo normal: {c.current.normalBal} → {c.target.normalBal}</p>{/if}
+						{#if c.current.parentCode !== c.target.parentCode}<p class="text-xs text-muted-foreground">Induk: {c.current.parentCode ?? '—'} → {c.target.parentCode ?? '—'}</p>{/if}
 						<div class="mt-2 space-y-1">
 							<label class={cn('flex items-start gap-2', !c.renameAllowed && 'opacity-60')}>
 								<input type="radio" class="mt-1 accent-primary" name="conflict-{c.code}" value="rename" bind:group={d.action} disabled={!c.renameAllowed} />
@@ -230,7 +236,7 @@
 		{:else}
 			{#if plan.ok}
 				<p class="text-sm">
-					{summaryText({ renamed: plan.plan.renames.length, created: plan.plan.creates.length, deactivated: plan.plan.deactivate.length, reactivated: plan.plan.reactivate.length })}
+					{summaryText({ renamed: plan.plan.renames.length, created: plan.plan.creates.length, deactivated: plan.plan.deactivate.length, reactivated: plan.plan.reactivate.length })}, {rulesAdded} aturan kategorisasi ditambahkan
 				</p>
 				{#if plan.plan.duplicateNames.length}
 					<p role="status" class="flex gap-2 rounded-xl bg-amber-500/10 p-3 text-sm">

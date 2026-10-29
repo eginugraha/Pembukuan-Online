@@ -1,6 +1,6 @@
 import type { SearchOption } from '$lib/components/SearchSelect.svelte';
 
-const TYPE_LABEL = { ASSET: 'Aset', LIABILITY: 'Liabilitas', EQUITY: 'Ekuitas', REVENUE: 'Pendapatan', EXPENSE: 'Beban' } as const;
+export const TYPE_LABEL = { ASSET: 'Aset', LIABILITY: 'Liabilitas', EQUITY: 'Ekuitas', REVENUE: 'Pendapatan', EXPENSE: 'Beban' } as const;
 const TYPE_ORDER = Object.keys(TYPE_LABEL);
 
 /** Daftar akun → opsi dropdown, dikelompokkan per tipe akun (urutan Aset → Beban), lalu per kode. */

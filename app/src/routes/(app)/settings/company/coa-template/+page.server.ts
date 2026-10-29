@@ -9,10 +9,11 @@ export const load: PageServerLoad = async (event) => {
 	const target = event.url.searchParams.get('target');
 	if (!target || !(COA_TEMPLATE_IDS as readonly string[]).includes(target)) error(400, 'Template bagan akun tidak valid');
 	const id = target as CoaTemplateId;
-	const { diff, fingerprint } = await previewTemplateChange(ctx.companyId, id);
+	const { diff, fingerprint, pendingRules } = await previewTemplateChange(ctx.companyId, id);
 	return {
 		diff,
 		fingerprint,
+		pendingRules,
 		target: id,
 		targetLabel: COA_TEMPLATES.find((t) => t.id === id)!.label,
 		companyId: ctx.companyId

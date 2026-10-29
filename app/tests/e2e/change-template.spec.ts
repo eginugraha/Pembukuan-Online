@@ -19,14 +19,18 @@ test('switch a General company to the IT template by renaming every conflict', a
 
 	const next = page.getByRole('button', { name: /^Lanjut/ });
 	await expect(next).toBeDisabled();
+	const tab2 = page.getByRole('button', { name: /^2\. Tidak ada di template/ });
+	await expect(tab2).toBeDisabled();
 	const renames = page.getByLabel(/Ganti nama/);
 	const n = await renames.count();
 	expect(n).toBe(25);
 	for (let i = 0; i < n; i++) await renames.nth(i).check();
 	await expect(page.getByText('0 dari 25 belum dipilih')).toBeVisible();
+	await expect(tab2).toBeEnabled();
 
 	for (let i = 0; i < 3; i++) await next.click();
 	await expect(page.getByText(/25 akun diganti nama/)).toBeVisible();
+	await expect(page.getByText(/[1-9]\d* aturan kategorisasi ditambahkan/)).toBeVisible();
 	await page.getByRole('button', { name: 'Terapkan' }).click();
 
 	await expect(page).toHaveURL(/\/settings\/accounts$/);
