@@ -447,6 +447,44 @@ export const paymentReceiptLines = pgTable('payment_receipt_lines', {
 	amount: money('amount').notNull()
 });
 
+// AR/AP: setiap entri selalu punya >=1 baris termin; entri "tanpa termin" memakai satu termin implisit (hasTerms=false).
+export const arApKind = pgEnum('ar_ap_kind', ['AR', 'AP']);
+
+export const arApEntries = pgTable('ar_ap_entries', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+	kind: arApKind('kind').notNull(),
+	contactId: uuid('contact_id').notNull().references(() => contacts.id),
+	title: text('title').notNull(),
+	total: money('total').notNull(),
+	currency: varchar('currency', { length: 3 }).notNull().default('IDR'),
+	hasTerms: boolean('has_terms').notNull().default(false),
+	deletedAt: timestamp('deleted_at', { withTimezone: true }),
+	createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
+	createdAt: createdAt()
+});
+
+export const arApTerms = pgTable(
+	'ar_ap_terms',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		entryId: uuid('entry_id').notNull().references(() => arApEntries.id, { onDelete: 'cascade' }),
+		termNo: integer('term_no').notNull(),
+		name: text('name'),
+		percent: numeric('percent', { precision: 5, scale: 2 }).notNull(),
+		amount: money('amount').notNull(),
+		paid: boolean('paid').notNull().default(false),
+		invoiceId: uuid('invoice_id').references(() => invoices.id),
+		purchaseOrderId: uuid('purchase_order_id').references(() => purchaseOrders.id)
+	},
+	(t) => [
+		unique('ar_ap_terms_entry_no_uq').on(t.entryId, t.termNo),
+		uniqueIndex('ar_ap_terms_invoice_uq').on(t.invoiceId).where(sql`${t.invoiceId} IS NOT NULL`),
+		uniqueIndex('ar_ap_terms_po_uq').on(t.purchaseOrderId).where(sql`${t.purchaseOrderId} IS NOT NULL`),
+		check('ar_ap_terms_one_doc_ck', sql`${t.invoiceId} IS NULL OR ${t.purchaseOrderId} IS NULL`)
+	]
+);
+
 export const purchaseOrders = pgTable(
 	'purchase_orders',
 	{
