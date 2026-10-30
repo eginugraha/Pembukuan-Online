@@ -33,3 +33,14 @@ test('title and kind are required', () => {
 	expect(e.title).toBeDefined();
 	expect(e.kind).toBeDefined();
 });
+
+test('documentId must be a uuid; empty string becomes null', () => {
+	const t = (documentId: unknown) => ({ ...term('DP'), documentId });
+	expect(fieldErrors(CreateArApInput, { ...base, documentId: UUID })).toEqual({});
+	expect(fieldErrors(CreateArApInput, { ...base, documentId: 'bukan-uuid' }).documentId).toBe('Dokumen tidak valid');
+	expect(fieldErrors(CreateArApInput, { ...base, terms: [t('bukan-uuid'), term('Lunas')] })).not.toEqual({});
+	expect(fieldErrors(CreateArApInput, { ...base, terms: [t(UUID), term('Lunas')] })).toEqual({});
+	const r = CreateArApInput.parse({ ...base, documentId: '', terms: [t(''), term('Lunas')] });
+	expect(r.documentId).toBeNull();
+	expect(r.terms[0].documentId).toBeNull();
+});

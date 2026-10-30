@@ -9,13 +9,18 @@ const percentString = z
 	.regex(/^\d{1,3}(\.\d{1,2})?$/, 'Persentase tidak valid')
 	.refine((v) => Number(v) > 0 && Number(v) <= 100, 'Persentase harus antara 0 dan 100');
 
+const documentIdField = z.preprocess(
+	(v) => (typeof v === 'string' && v.trim() === '' ? null : v),
+	z.uuid({ error: 'Dokumen tidak valid' }).nullable().optional()
+);
+
 export const ArApTermInput = z
 	.object({
 		name: requiredText('Nama termin', 100),
 		percent: percentString.optional(),
 		amount: positiveAmount.optional(),
 		paid: z.boolean(),
-		documentId: z.string().nullable().optional()
+		documentId: documentIdField
 	})
 	.refine((t) => t.percent !== undefined || t.amount !== undefined, {
 		path: ['percent'],
@@ -30,7 +35,7 @@ export const CreateArApInput = z.object({
 	total: positiveAmount,
 	currency: z.enum(CURRENCIES, { error: 'Mata uang tidak valid' }),
 	paid: z.boolean(),
-	documentId: z.string().nullable().optional(),
+	documentId: documentIdField,
 	terms: z
 		.array(ArApTermInput)
 		.refine((t) => t.length === 0 || t.length >= 2, 'Termin minimal 2 atau kosongkan')
