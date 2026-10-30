@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray, isNull, ne, notExists, sql } from 'drizzle-orm';
+import { z } from 'zod';
 import { computeStatus, resolveTermAmounts, sumUnpaid, type ArApStatus } from '../../arap-terms';
 import { sumMoney, toMoney } from '../../money';
 import { CreateArApInput, UpdateArApInput } from '../../schemas/ar-ap';
@@ -376,4 +377,12 @@ export async function linkDocumentToTerm(tx: Tx, companyId: string, termId: stri
 		if (isLinkViolation(e)) throw documentAlreadyLinked();
 		throw e;
 	}
+}
+
+/** Baca `?termId=` dari URL pembuatan invoice/PO; `undefined` bila tidak ada, 400 bila bukan UUID. */
+export function parseTermId(url: URL): string | undefined {
+	const termId = url.searchParams.get('termId');
+	if (termId === null) return undefined;
+	if (!z.uuid().safeParse(termId).success) throw new ApiError(400, 'validation_error', 'Termin tidak valid', undefined, { field: 'termId' });
+	return termId;
 }
