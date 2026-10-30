@@ -44,7 +44,7 @@ const ACTION_MIN_ROLE: Record<DashboardAction['kind'], Role> = {
 	balance_warning: 'viewer'
 };
 
-async function bankBalance(companyId: string, today: string): Promise<DashboardView['bank']> {
+export async function bankBalance(companyId: string, today: string): Promise<DashboardView['bank']> {
 	const company = await db.query.companies.findFirst({ where: eq(companies.id, companyId) });
 	if (!company?.bankAccountId) return null;
 	const account = await db.query.accounts.findFirst({ where: eq(accounts.id, company.bankAccountId) });
