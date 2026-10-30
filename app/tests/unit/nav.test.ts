@@ -47,3 +47,10 @@ test('system users page is only for super admins, with or without a company', ()
 	expect(hrefs('admin', true)).toContain('/settings/system-users');
 	expect(hrefs(null, true)).toContain('/settings/system-users');
 });
+
+test('AR/AP menu is visible to viewer and its sub-paths are guarded', () => {
+	const hrefs = visibleNav('viewer').flatMap((g) => g.items.map((i) => i.href));
+	expect(hrefs).toContain('/invoicing/ar-ap');
+	expect(minRoleForPath('/invoicing/ar-ap')).toBe('viewer');
+	expect(minRoleForPath('/invoicing/ar-ap/new')).toBe('viewer');
+});

@@ -18,6 +18,7 @@ describe('buildBreadcrumb', () => {
 		expect(r.map((x) => x.label)).toEqual(['Dashboard', 'eStatement', 'Riwayat Upload', 'BCA Jan.pdf']);
 		expect(r[2].href).toBe('/uploads');
 	});
+	test('ar-ap under Invoicing', () => expect(labels('/invoicing/ar-ap')).toEqual(['Dashboard', 'Invoicing', 'Piutang & Hutang']));
 	test('profile', () => expect(labels('/profile')).toEqual(['Dashboard', 'Profil Saya']));
 	test('dashboard', () => expect(buildBreadcrumb('/dashboard', NAV)).toEqual([{ label: 'Dashboard' }]));
 	test('unknown', () => expect(labels('/tidak-dikenal')).toEqual(['Dashboard']));

@@ -44,7 +44,8 @@ export const NAV: NavGroup[] = [
 			{ label: 'Kontak', href: '/invoicing/contacts', min: 'viewer', icon: 'contacts' },
 			{ label: 'Penawaran', href: '/invoicing/quotations', min: 'viewer', icon: 'quotation' },
 			{ label: 'Invoice', href: '/invoicing/invoices', min: 'viewer', icon: 'invoice' },
-			{ label: 'Purchase Order', href: '/invoicing/purchase-orders', min: 'viewer', icon: 'po' }
+			{ label: 'Purchase Order', href: '/invoicing/purchase-orders', min: 'viewer', icon: 'po' },
+			{ label: 'Piutang & Hutang', href: '/invoicing/ar-ap', min: 'viewer', icon: 'arap' }
 		]
 	},
 	{
