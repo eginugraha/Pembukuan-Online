@@ -315,19 +315,26 @@ export async function setTermPaid(companyId: string, entryId: string, termId: st
 
 /**
  * Dokumen yang bisa dipilih: belum dihapus dan belum terhubung ke termin mana pun, kecuali termin
- * `includeTermId` (supaya dokumen termin yang sedang diedit tetap muncul).
+ * `includeTermId` (supaya dokumen termin yang sedang diedit tetap muncul) atau termin mana pun milik entri
+ * `includeEntryId` (form ubah entri: dokumen semua terminnya tetap bisa dipilih).
  */
 export async function listLinkableDocuments(
 	companyId: string,
 	kind: Kind,
-	opts: { includeTermId?: string } = {}
+	opts: { includeTermId?: string; includeEntryId?: string } = {}
 ): Promise<{ id: string; no: string; contactName: string; currency: string; total: string }[]> {
 	const otherTerm = (col: typeof arApTerms.invoiceId | typeof arApTerms.purchaseOrderId, docId: typeof invoices.id | typeof purchaseOrders.id) =>
 		notExists(
 			db
 				.select({ one: sql`1` })
 				.from(arApTerms)
-				.where(and(eq(col, docId), opts.includeTermId ? ne(arApTerms.id, opts.includeTermId) : undefined))
+				.where(
+					and(
+						eq(col, docId),
+						opts.includeTermId ? ne(arApTerms.id, opts.includeTermId) : undefined,
+						opts.includeEntryId ? ne(arApTerms.entryId, opts.includeEntryId) : undefined
+					)
+				)
 		);
 	if (kind === 'AR') {
 		return db

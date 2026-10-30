@@ -238,3 +238,18 @@ test('another company cannot get, update, delete, or set paid; foreign contactId
 	expect(await listArAp(other.companyId, 'AR')).toEqual([]);
 	expect((await getArAp(companyId, id)).terms[0].paid).toBe(false);
 });
+
+test('listLinkableDocuments includeEntryId keeps documents of all terms of that entry, still excludes other entries', async () => {
+	const { companyId, userId, customerId } = await setup();
+	const [inv1, inv2, inv3, free] = [
+		await makeInvoice(companyId, userId, customerId),
+		await makeInvoice(companyId, userId, customerId),
+		await makeInvoice(companyId, userId, customerId),
+		await makeInvoice(companyId, userId, customerId)
+	];
+	const x = await createArAp(companyId, userId, input(customerId, { terms: threeTerms([false, false, false], [inv1.id, inv2.id, null]) }));
+	await createArAp(companyId, userId, input(customerId, { documentId: inv3.id }));
+	const ids = async (opts?: { includeEntryId?: string }) => (await listLinkableDocuments(companyId, 'AR', opts)).map((d) => d.id).sort();
+	expect(await ids()).toEqual([free.id]);
+	expect(await ids({ includeEntryId: x.id })).toEqual([inv1.id, inv2.id, free.id].sort());
+});
