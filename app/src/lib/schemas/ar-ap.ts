@@ -45,3 +45,6 @@ export type CreateArApInput = z.infer<typeof CreateArApInput>;
 /** Ubah menimpa seluruh data; `kind` diabaikan tetapi wajib cocok di service. */
 export const UpdateArApInput = CreateArApInput;
 export type UpdateArApInput = CreateArApInput;
+
+export const SetTermPaidInput = z.object({ paid: z.boolean({ error: 'Status bayar tidak valid' }) });
+export type SetTermPaidInput = z.infer<typeof SetTermPaidInput>;
