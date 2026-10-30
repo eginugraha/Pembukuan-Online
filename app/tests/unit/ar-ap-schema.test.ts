@@ -1,0 +1,35 @@
+import { expect, test } from 'bun:test';
+import { fieldErrors } from '$lib/forms/validation';
+import { CreateArApInput } from '$lib/schemas/ar-ap';
+
+const UUID = '00000000-0000-4000-8000-000000000000';
+const base = { kind: 'AR', contactId: UUID, title: 'Proyek A', total: '1000', currency: 'IDR', paid: false, terms: [] };
+const term = (n: string) => ({ name: n, percent: '50', paid: false });
+
+test('no terms is valid', () => {
+	expect(fieldErrors(CreateArApInput, base)).toEqual({});
+});
+
+test('a single term is rejected, two are accepted', () => {
+	expect(fieldErrors(CreateArApInput, { ...base, terms: [term('DP')] }).terms).toBeDefined();
+	expect(fieldErrors(CreateArApInput, { ...base, terms: [term('DP'), term('Pelunasan')] })).toEqual({});
+});
+
+test('zero total is rejected', () => {
+	expect(fieldErrors(CreateArApInput, { ...base, total: '0' }).total).toBeDefined();
+});
+
+test('unsupported currency is rejected', () => {
+	expect(fieldErrors(CreateArApInput, { ...base, currency: 'EUR' }).currency).toBe('Mata uang tidak valid');
+});
+
+test('a term needs percent or amount', () => {
+	const e = fieldErrors(CreateArApInput, { ...base, terms: [{ name: 'DP', paid: false }, term('Lunas')] });
+	expect(Object.keys(e).length).toBeGreaterThan(0);
+});
+
+test('title and kind are required', () => {
+	const e = fieldErrors(CreateArApInput, { ...base, title: '', kind: 'X' });
+	expect(e.title).toBeDefined();
+	expect(e.kind).toBeDefined();
+});
