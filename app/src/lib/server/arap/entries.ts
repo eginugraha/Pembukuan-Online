@@ -151,7 +151,7 @@ export async function createArAp(companyId: string, userId: string, input: Creat
 export async function updateArAp(companyId: string, id: string, input: UpdateArApInput): Promise<void> {
 	return withLinkGuard(async (tx) => {
 		const [current] = await tx
-			.select({ id: arApEntries.id, kind: arApEntries.kind, contactId: arApEntries.contactId })
+			.select({ id: arApEntries.id, kind: arApEntries.kind, contactId: arApEntries.contactId, hasTerms: arApEntries.hasTerms })
 			.from(arApEntries)
 			.where(and(eq(arApEntries.id, id), eq(arApEntries.companyId, companyId), isNull(arApEntries.deletedAt)))
 			.limit(1)
@@ -163,12 +163,20 @@ export async function updateArAp(companyId: string, id: string, input: UpdateArA
 		// Kontak lama tetap boleh dipakai walau sudah dinonaktifkan/dihapus; kontak baru harus valid.
 		if (input.contactId !== current.contactId) await assertContact(tx, companyId, input.contactId, contactKind(current.kind));
 
+		// Bertermin -> tanpa termin: status lunas ditentukan server (lunas hanya bila semua termin lama lunas),
+		// `input.paid` dari klien diabaikan pada transisi ini saja.
+		let effective = input;
+		if (current.hasTerms && input.terms.length === 0) {
+			const old = await tx.select({ paid: arApTerms.paid }).from(arApTerms).where(eq(arApTerms.entryId, id));
+			effective = { ...input, paid: old.length > 0 && old.every((t) => t.paid) };
+		}
+
 		await tx
 			.update(arApEntries)
 			.set({ contactId: input.contactId, title: input.title, total: input.total, currency: input.currency, hasTerms: input.terms.length > 0 })
 			.where(eq(arApEntries.id, id));
 		await tx.delete(arApTerms).where(eq(arApTerms.entryId, id));
-		await insertTerms(tx, companyId, id, current.kind, input);
+		await insertTerms(tx, companyId, id, current.kind, effective);
 	});
 }
 

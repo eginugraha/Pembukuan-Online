@@ -161,10 +161,12 @@ test('updateArAp switches between terms and no terms, keeps sent links, and reje
 	const { companyId, userId, customerId } = await setup();
 	const { id } = await createArAp(companyId, userId, input(customerId, { terms: threeTerms([true, false, false]) }));
 
-	await updateArAp(companyId, id, input(customerId, { terms: [], paid: false }));
+	// Bertermin -> tanpa termin dengan hanya DP lunas: `paid:true` dari klien diabaikan.
+	await updateArAp(companyId, id, input(customerId, { terms: [], paid: true }));
 	let entry = await getArAp(companyId, id);
 	expect(entry).toMatchObject({ hasTerms: false, status: 'UNPAID', termCount: 1 });
 
+	// Tanpa termin -> tanpa termin: `paid` dari klien dipakai.
 	await updateArAp(companyId, id, input(customerId, { terms: [], paid: true }));
 	expect((await getArAp(companyId, id)).status).toBe('PAID');
 
@@ -180,6 +182,13 @@ test('updateArAp switches between terms and no terms, keeps sent links, and reje
 	expect((await getArAp(companyId, id)).terms[0].document?.id).toBe(inv.id);
 
 	await expect(updateArAp(companyId, id, input(customerId, { kind: 'AP' }))).rejects.toMatchObject({ status: 400 });
+});
+
+test('switching a fully paid termed entry to no terms stays PAID even if the client sends paid:false', async () => {
+	const { companyId, userId, customerId } = await setup();
+	const { id } = await createArAp(companyId, userId, input(customerId, { terms: threeTerms([true, true, true]) }));
+	await updateArAp(companyId, id, input(customerId, { terms: [], paid: false }));
+	expect(await getArAp(companyId, id)).toMatchObject({ hasTerms: false, status: 'PAID', termCount: 1 });
 });
 
 test('setTermPaid toggles paid and status follows; foreign terms give 404', async () => {
