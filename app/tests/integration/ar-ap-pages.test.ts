@@ -1,12 +1,15 @@
 import { beforeEach, expect, test } from 'bun:test';
 import { db } from '../../src/lib/server/db';
 import { contacts } from '../../src/lib/server/db/schema';
-import { createArAp } from '../../src/lib/server/arap/entries';
+import { createArAp, deleteArAp, getArAp } from '../../src/lib/server/arap/entries';
 import { createInvoice } from '../../src/lib/server/invoicing/invoices';
 import { createPurchaseOrder } from '../../src/lib/server/invoicing/purchase-orders';
 import { load as listLoad } from '../../src/routes/(app)/invoicing/ar-ap/+page.server';
 import { load as newLoad } from '../../src/routes/(app)/invoicing/ar-ap/new/+page.server';
 import { load as editLoad } from '../../src/routes/(app)/invoicing/ar-ap/[id]/edit/+page.server';
+import { load as detailLoad } from '../../src/routes/(app)/invoicing/ar-ap/[id]/+page.server';
+import { load as invoiceNewLoad } from '../../src/routes/(app)/invoicing/invoices/new/+page.server';
+import { load as poNewLoad } from '../../src/routes/(app)/invoicing/purchase-orders/new/+page.server';
 import { addMember, contextFor, makeCompany, makeUser } from './factory';
 import { fakeEvent } from './event';
 import { resetDb } from './db';
@@ -129,4 +132,97 @@ test('viewer is rejected by new and edit loaders', async () => {
 	const { id } = await createArAp(s.companyId, s.acc.id, { ...s.base, kind: 'AR', contactId: s.customer.id } as never);
 	await expect(s.runNew(s.viewer, '/invoicing/ar-ap/new')).rejects.toMatchObject({ status: 403 });
 	await expect(s.runEdit(s.viewer, id)).rejects.toMatchObject({ status: 403 });
+});
+
+// --- Task 10: detail page and create-invoice/PO shortcuts ---
+
+// SvelteKit HttpError (punya body), bukan ApiError mentah yang di halaman akan jadi 500.
+const PAGE_404 = { status: 404, body: { message: 'Termin tidak ditemukan' } };
+type Prefill = { contactId: string; currency: string; title: string; amount: string; entryId: string; kind: string; linked: boolean };
+type NewDocData = { contacts: { id: string }[]; prefill: Prefill | null; termId: string | null };
+
+async function termSetup() {
+	const s = await formSetup();
+	const terms = [
+		{ name: 'DP', percent: '30', paid: false, documentId: null },
+		{ name: 'Pelunasan', percent: '70', paid: false, documentId: null }
+	];
+	const ar = await createArAp(s.companyId, s.acc.id, { ...s.base, kind: 'AR', title: 'Proyek A', currency: 'USD', contactId: s.customer.id, terms } as never);
+	const ap = await createArAp(s.companyId, s.acc.id, { ...s.base, kind: 'AP', title: 'Beli B', contactId: s.vendor.id, terms: [] } as never);
+	const arTerms = (await getArAp(s.companyId, ar.id)).terms;
+	const apTerms = (await getArAp(s.companyId, ap.id)).terms;
+	const ev = async (who: typeof s.acc, path: string, companyId = s.companyId) => fakeEvent({ ctx: await contextFor(who, companyId), path }) as never;
+	const runInv = async (who: typeof s.acc, path: string) => (await invoiceNewLoad(await ev(who, path))) as unknown as NewDocData;
+	const runPo = async (who: typeof s.acc, path: string) => (await poNewLoad(await ev(who, path))) as unknown as NewDocData;
+	const runDetail = async (who: typeof s.acc, id: string) =>
+		(await detailLoad(fakeEvent({ ctx: await contextFor(who, s.companyId), path: `/invoicing/ar-ap/${id}`, params: { id } }) as never)) as unknown as {
+			entry: { id: string; terms: { id: string; document: { id: string } | null }[] };
+			canWrite: boolean;
+		};
+	return { ...s, ar, ap, arTerms, apTerms, runInv, runPo, runDetail };
+}
+
+test('detail loader: returns entry with terms and linked document; canWrite by role', async () => {
+	const s = await termSetup();
+	const inv = await createInvoice(s.companyId, s.acc.id, { contactId: s.customer.id, issueDate: '2026-10-01', lines: [{ description: 'DP', quantity: '1', unitPrice: '300' }] }, { linkTermId: s.arTerms[0].id });
+	const a = await s.runDetail(s.acc, s.ar.id);
+	const v = await s.runDetail(s.viewer, s.ar.id);
+	expect(a.entry.id).toBe(s.ar.id);
+	expect(a.entry.terms.map((t) => t.document?.id ?? null)).toEqual([inv.id, null]);
+	expect([v.canWrite, a.canWrite]).toEqual([false, true]);
+});
+
+test('detail loader: 404 for missing or non-UUID id', async () => {
+	const s = await termSetup();
+	await expect(s.runDetail(s.acc, crypto.randomUUID())).rejects.toMatchObject({ status: 404, body: { message: expect.any(String) } });
+	await expect(s.runDetail(s.acc, 'bukan-uuid')).rejects.toMatchObject({ status: 404, body: { message: expect.any(String) } });
+});
+
+test('invoices/new?termId=<AR term> returns prefill and termId; without termId prefill is null', async () => {
+	const s = await termSetup();
+	const t = s.arTerms[1];
+	const r = await s.runInv(s.acc, `/invoicing/invoices/new?termId=${t.id}`);
+	expect(r.termId).toBe(t.id);
+	expect(r.prefill).toEqual({ contactId: s.customer.id, currency: 'USD', title: 'Proyek A', amount: t.amount, entryId: s.ar.id, kind: 'AR', linked: false });
+	expect(r.prefill!.amount).toBe('700000.00');
+	const plain = await s.runInv(s.acc, '/invoicing/invoices/new');
+	expect([plain.prefill, plain.termId]).toEqual([null, null]);
+	expect(plain.contacts.length).toBeGreaterThan(0);
+});
+
+test('purchase-orders/new?termId=<AP term> returns prefill', async () => {
+	const s = await termSetup();
+	const t = s.apTerms[0];
+	const r = await s.runPo(s.acc, `/invoicing/purchase-orders/new?termId=${t.id}`);
+	expect(r.termId).toBe(t.id);
+	expect(r.prefill).toMatchObject({ contactId: s.vendor.id, currency: 'IDR', title: 'Beli B', amount: '1000000.00', entryId: s.ap.id, kind: 'AP' });
+});
+
+test('kind mismatch, other company, missing and non-UUID termId are 404', async () => {
+	const s = await termSetup();
+	await expect(s.runInv(s.acc, `/invoicing/invoices/new?termId=${s.apTerms[0].id}`)).rejects.toMatchObject(PAGE_404);
+	await expect(s.runPo(s.acc, `/invoicing/purchase-orders/new?termId=${s.arTerms[0].id}`)).rejects.toMatchObject(PAGE_404);
+	await expect(s.runInv(s.acc, `/invoicing/invoices/new?termId=${crypto.randomUUID()}`)).rejects.toMatchObject(PAGE_404);
+	await expect(s.runInv(s.acc, '/invoicing/invoices/new?termId=bukan-uuid')).rejects.toMatchObject(PAGE_404);
+	const other = await makeCompany();
+	await addMember(s.acc.id, other.companyId, 'accountant');
+	const ev = fakeEvent({ ctx: await contextFor(s.acc, other.companyId), path: `/invoicing/invoices/new?termId=${s.arTerms[0].id}` });
+	await expect(invoiceNewLoad(ev as never)).rejects.toMatchObject(PAGE_404);
+});
+
+test('term of a deleted entry is 404', async () => {
+	const s = await termSetup();
+	await deleteArAp(s.companyId, s.ar.id);
+	await expect(s.runInv(s.acc, `/invoicing/invoices/new?termId=${s.arTerms[0].id}`)).rejects.toMatchObject({ status: 404 });
+});
+
+test('term with an active linked document redirects to the AR/AP detail page', async () => {
+	const s = await termSetup();
+	await createInvoice(s.companyId, s.acc.id, { contactId: s.customer.id, issueDate: '2026-10-01', lines: [{ description: 'DP', quantity: '1', unitPrice: '300' }] }, { linkTermId: s.arTerms[0].id });
+	await expect(s.runInv(s.acc, `/invoicing/invoices/new?termId=${s.arTerms[0].id}`)).rejects.toMatchObject({ status: 303, location: `/invoicing/ar-ap/${s.ar.id}` });
+});
+
+test('viewer cannot reach new-invoice prefill', async () => {
+	const s = await termSetup();
+	await expect(s.runInv(s.viewer, `/invoicing/invoices/new?termId=${s.arTerms[0].id}`)).rejects.toMatchObject({ status: 403 });
 });

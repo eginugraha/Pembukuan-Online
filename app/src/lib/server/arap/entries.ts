@@ -393,3 +393,38 @@ export function parseTermId(url: URL): string | undefined {
 	if (!z.uuid().safeParse(termId).success) throw new ApiError(400, 'validation_error', 'Termin tidak valid', undefined, { field: 'termId' });
 	return termId;
 }
+
+export interface TermPrefill {
+	entryId: string;
+	kind: Kind;
+	contactId: string;
+	currency: string;
+	title: string;
+	amount: string;
+	/** `true` bila termin sudah terhubung ke dokumen aktif (belum dihapus). */
+	linked: boolean;
+}
+
+/** Nilai awal form invoice/PO yang dibuat dari termin. 404 bila termin bukan milik perusahaan atau entrinya sudah dihapus. */
+export async function getTermPrefill(companyId: string, termId: string): Promise<TermPrefill> {
+	const [row] = await db
+		.select({
+			entryId: arApEntries.id,
+			kind: arApEntries.kind,
+			contactId: arApEntries.contactId,
+			currency: arApEntries.currency,
+			title: arApEntries.title,
+			amount: arApTerms.amount,
+			invId: invoices.id,
+			poId: purchaseOrders.id
+		})
+		.from(arApTerms)
+		.innerJoin(arApEntries, eq(arApEntries.id, arApTerms.entryId))
+		.leftJoin(invoices, and(eq(invoices.id, arApTerms.invoiceId), isNull(invoices.deletedAt)))
+		.leftJoin(purchaseOrders, and(eq(purchaseOrders.id, arApTerms.purchaseOrderId), isNull(purchaseOrders.deletedAt)))
+		.where(and(eq(arApTerms.id, termId), eq(arApEntries.companyId, companyId), isNull(arApEntries.deletedAt)))
+		.limit(1);
+	if (!row) throw notFound('Termin');
+	const { invId, poId, ...rest } = row;
+	return { ...rest, linked: (row.kind === 'AR' ? invId : poId) !== null };
+}
