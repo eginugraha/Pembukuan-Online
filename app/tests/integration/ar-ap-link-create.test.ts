@@ -95,12 +95,21 @@ test('kind mismatch is rejected and leaves no document', async () => {
 	const s = await setup();
 	const [ap] = await s.entry('AP', s.vendorId);
 	const [ar] = await s.entry('AR', s.customerId);
-	await expect(createInvoice(s.companyId, s.userId, inv(s.customerId), { linkTermId: ap })).rejects.toBeDefined();
-	await expect(createPurchaseOrder(s.companyId, s.userId, { contactId: s.vendorId, issueDate: '2026-10-01', lines }, { linkTermId: ar })).rejects.toBeDefined();
+	const termNotFound = { status: 404, code: 'not_found', message: 'Termin tidak ditemukan' };
+	await expect(createInvoice(s.companyId, s.userId, inv(s.customerId), { linkTermId: ap })).rejects.toMatchObject(termNotFound);
+	await expect(createPurchaseOrder(s.companyId, s.userId, { contactId: s.vendorId, issueDate: '2026-10-01', lines }, { linkTermId: ar })).rejects.toMatchObject(termNotFound);
 	expect(await db.select().from(invoices)).toHaveLength(0);
 	expect(await db.select().from(purchaseOrders)).toHaveLength(0);
 	expect((await termRow(ap)).invoiceId).toBeNull();
 	expect((await termRow(ar)).purchaseOrderId).toBeNull();
+
+	// Link gagal membatalkan nomor dokumen: invoice/PO sukses berikutnya tetap bernomor urut 001.
+	const okInv = await createInvoice(s.companyId, s.userId, inv(s.customerId), { linkTermId: ar });
+	const [invRow] = await db.select().from(invoices).where(eq(invoices.id, okInv.id));
+	expect(invRow.invoiceNo.startsWith('001/')).toBe(true);
+	const okPo = await createPurchaseOrder(s.companyId, s.userId, { contactId: s.vendorId, issueDate: '2026-10-01', lines }, { linkTermId: ap });
+	const [poRow] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, okPo.id));
+	expect(poRow.poNo.startsWith('001/')).toBe(true);
 });
 
 test('without linkTermId behavior is unchanged', async () => {

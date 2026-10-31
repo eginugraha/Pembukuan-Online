@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { computeStatus, resolveTermAmounts, sumUnpaid, toSnapshot } from '$lib/arap-terms';
+import { computeStatus, reopenAsPercent, resolveTermAmounts, safeResolve, sumUnpaid, toSnapshot } from '$lib/arap-terms';
 import { sumMoney } from '$lib/money';
 
 test('splits by percent', () => {
@@ -60,4 +60,22 @@ test('toSnapshot uses the effective document id and keeps id/paid', () => {
 		{ id: ID1, paid: true, documentId: DOC },
 		{ id: ID2, paid: false, documentId: null }
 	]);
+});
+
+test('safeResolve skips malformed or empty values without an error', () => {
+	expect(safeResolve('1000', [{ percent: '50' }, { percent: 'abc' }])).toEqual({ amounts: null, error: null });
+	expect(safeResolve('1000', [{ percent: '50' }, { amount: '' }])).toEqual({ amounts: null, error: null });
+	expect(safeResolve('1000', [{ percent: '50' }, {}])).toEqual({ amounts: null, error: null });
+	expect(safeResolve('1000', [{ amount: '1e3' }, { percent: '50' }])).toEqual({ amounts: null, error: null });
+});
+
+test('safeResolve resolves valid rows and reports domain errors as plain messages', () => {
+	expect(safeResolve('1000', [{ percent: '50' }, { amount: '500' }])).toEqual({ amounts: ['500.00', '500.00'], error: null });
+	expect(safeResolve('1000', [{ amount: '10' }, { amount: '20' }])).toEqual({ amounts: null, error: 'Jumlah termin harus sama dengan total' });
+});
+
+test('reopenAsPercent: true when stored percents sum to exactly 100, false otherwise', () => {
+	expect(reopenAsPercent([{ percent: '33.33' }, { percent: '33.33' }, { percent: '33.34' }])).toBe(true);
+	expect(reopenAsPercent([{ percent: '33.33' }, { percent: '33.33' }, { percent: '33.33' }])).toBe(false);
+	expect(reopenAsPercent([{ percent: '100.00' }, { percent: '0.00' }])).toBe(false);
 });

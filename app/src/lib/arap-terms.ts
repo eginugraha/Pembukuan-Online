@@ -59,3 +59,26 @@ export interface TermSnapshot {
 export function toSnapshot(terms: { id: string; paid: boolean; document: { id: string } | null }[]): TermSnapshot[] {
 	return terms.map((t) => ({ id: t.id, paid: t.paid, documentId: t.document?.id ?? null }));
 }
+
+const NUMBER_RE = /^\d+(\.\d+)?$/;
+
+/**
+ * Pratinjau nominal termin tanpa melempar: nilai kosong/tidak berbentuk angka tidak dihitung (validasi baris
+ * yang melaporkannya), sedangkan kesalahan aturan termin dikembalikan sebagai pesan.
+ */
+export function safeResolve(
+	total: string,
+	terms: { percent?: string; amount?: string }[]
+): { amounts: string[] | null; error: string | null } {
+	if (!terms.every((t) => NUMBER_RE.test(t.percent ?? t.amount ?? ''))) return { amounts: null, error: null };
+	try {
+		return { amounts: resolveTermAmounts(total, terms).map((a) => a.amount), error: null };
+	} catch (e) {
+		return { amounts: null, error: (e as Error).message };
+	}
+}
+
+/** Termin tersimpan dibuka ulang sebagai persen bila semua persennya positif dan berjumlah tepat 100. */
+export function reopenAsPercent(terms: { percent: string }[]): boolean {
+	return terms.length > 0 && terms.every((t) => D(t.percent).gt(0)) && sumMoney(terms.map((t) => t.percent)).eq(100);
+}

@@ -103,7 +103,7 @@ export async function createPurchaseOrder(companyId: string, userId: string, inp
 			.returning({ id: purchaseOrders.id });
 		await insertLines(tx, row.id, totals.lines);
 		// Satu transaksi dengan dokumen: bila tautan gagal, dokumen dan nomornya ikut batal.
-		if (opts.linkTermId) await linkDocumentToTerm(tx, companyId, opts.linkTermId, row.id);
+		if (opts.linkTermId) await linkDocumentToTerm(tx, companyId, opts.linkTermId, row.id, 'AP');
 		return { id: row.id };
 	});
 }

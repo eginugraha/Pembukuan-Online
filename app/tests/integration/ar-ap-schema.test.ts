@@ -25,6 +25,17 @@ async function setup() {
 		.returning();
 	return { companyId, contactId, invoiceId, entryId: entry.id, userId: u.id };
 }
+/** Kode SQLSTATE dan nama constraint dari rantai `cause` (dibaca seperti `isUniqueViolation`). */
+function violatedConstraint(e: unknown): { code: unknown; constraint: unknown } | null {
+	let cur: unknown = e;
+	for (let depth = 0; cur && depth < 5; depth++) {
+		if (typeof cur === 'object' && 'constraint_name' in cur) {
+			return { code: (cur as { code?: unknown }).code, constraint: (cur as { constraint_name: unknown }).constraint_name };
+		}
+		cur = typeof cur === 'object' && 'cause' in cur ? (cur as { cause: unknown }).cause : null;
+	}
+	return null;
+}
 const term = (entryId: string, termNo: number, extra: Partial<typeof arApTerms.$inferInsert> = {}) => ({
 	entryId,
 	termNo,
@@ -57,7 +68,7 @@ test('a term cannot link both an invoice and a purchase order', async () => {
 	} catch (e) {
 		err = e;
 	}
-	expect(err).toBeDefined();
+	expect(violatedConstraint(err)).toEqual({ code: '23514', constraint: 'ar_ap_terms_one_doc_ck' });
 	expect(isUniqueViolation(err)).toBe(false);
 });
 

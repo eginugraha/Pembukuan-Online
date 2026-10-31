@@ -10,6 +10,7 @@ export interface ArApSummary {
 	ar: Record<Currency, string>;
 	ap: Record<Currency, string>;
 	bank: { name: string; balance: string } | null;
+	/** IDR = saldo bank + AR - AP (tanpa saldo bank bila `bank === null`); USD selalu tanpa saldo bank. */
 	net: Record<Currency, string>;
 }
 

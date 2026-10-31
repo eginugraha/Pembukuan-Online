@@ -385,13 +385,14 @@ export async function listLinkableDocuments(
 
 /**
  * Hubungkan dokumen ke termin di dalam transaksi pemanggil (dipakai saat membuat invoice/PO dari termin).
- * Jenis dokumen mengikuti entri induk. 404 bila termin/dokumen bukan milik perusahaan ini; 409
+ * Jenis dokumen mengikuti entri induk; `expectedKind` (dari createInvoice/createPurchaseOrder) membuat termin
+ * berjenis lain dibaca sebagai 404 "Termin tidak ditemukan". 404 bila termin/dokumen bukan milik perusahaan ini; 409
  * `term_already_linked` bila termin sudah punya dokumen aktif lain (tautan ke dokumen terhapus boleh ditimpa).
  *
  * Unique violation dipetakan ke 409 `document_already_linked` lalu dilempar ulang: transaksi pemanggil sudah
  * batal di Postgres, jadi pemanggil tidak boleh menelan error ini dan melanjutkan transaksi.
  */
-export async function linkDocumentToTerm(tx: Tx, companyId: string, termId: string, documentId: string): Promise<void> {
+export async function linkDocumentToTerm(tx: Tx, companyId: string, termId: string, documentId: string, expectedKind?: Kind): Promise<void> {
 	// Urutan kunci sama dengan `updateArAp` (entri lalu termin) supaya tidak deadlock. Termin dibaca ulang setelah
 	// kunci entri didapat: pernyataan baru melihat data yang sudah commit, jadi termin yang baru saja diganti oleh
 	// `updateArAp` terbaca hilang (404), bukan diperbarui diam-diam tanpa efek.
@@ -404,6 +405,8 @@ export async function linkDocumentToTerm(tx: Tx, companyId: string, termId: stri
 		.limit(1)
 		.for('update');
 	if (!entry) throw notFound('Termin');
+	// Termin AP untuk invoice (atau AR untuk PO) diperlakukan sebagai termin yang tidak ada.
+	if (expectedKind && entry.kind !== expectedKind) throw notFound('Termin');
 	const [term] = await tx
 		.select({ invoiceId: arApTerms.invoiceId, purchaseOrderId: arApTerms.purchaseOrderId })
 		.from(arApTerms)

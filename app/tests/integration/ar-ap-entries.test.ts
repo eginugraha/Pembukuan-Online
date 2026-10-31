@@ -402,3 +402,16 @@ test('concurrency (forced interleave): updateArAp waits for an uncommitted link 
 	expect(await upd).toMatchObject(stale);
 	expect((await rawTerms(id))[1].invoiceId).toBe(inv.id);
 });
+
+test('createArAp rejects a document of another company with 400 invalid_document', async () => {
+	const { companyId, userId, customerId } = await setup();
+	const other = await makeCompany('PT Lain');
+	const { id: otherCustomer } = await makeContact(other.companyId, 'CUSTOMER', { code: 'LAN' });
+	const otherInv = await makeInvoice(other.companyId, userId, otherCustomer);
+	await expect(createArAp(companyId, userId, input(customerId, { documentId: otherInv.id }))).rejects.toMatchObject({ status: 400, code: 'invalid_document' });
+	await expect(createArAp(companyId, userId, input(customerId, { terms: threeTerms([false, false, false], [otherInv.id, null, null]) }))).rejects.toMatchObject({
+		status: 400,
+		code: 'invalid_document'
+	});
+	expect(await listArAp(companyId, 'AR')).toEqual([]);
+});

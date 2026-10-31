@@ -94,7 +94,7 @@
 	{@render card('Total Piutang', [{ text: formatAmount(s.ar.IDR, 'IDR') }, ...(showUsd ? [{ text: formatAmount(s.ar.USD, 'USD') }] : [])])}
 	{@render card('Total Hutang', [{ text: formatAmount(s.ap.IDR, 'IDR') }, ...(showUsd ? [{ text: formatAmount(s.ap.USD, 'USD') }] : [])])}
 	{@render card('Balance Perusahaan', [{ text: s.bank ? formatAmount(s.bank.balance, 'IDR') : '—' }])}
-	{@render card('Posisi Bersih', [{ text: formatAmount(s.net.IDR, 'IDR') }, ...(showUsd ? [{ text: formatAmount(s.net.USD, 'USD'), note: 'tanpa balance' }] : [])])}
+	{@render card('Posisi Bersih', [{ text: formatAmount(s.net.IDR, 'IDR'), note: s.bank ? undefined : 'tanpa balance' }, ...(showUsd ? [{ text: formatAmount(s.net.USD, 'USD'), note: 'tanpa balance' }] : [])])}
 </div>
 
 <div class="mb-4 flex flex-wrap items-center justify-between gap-3">

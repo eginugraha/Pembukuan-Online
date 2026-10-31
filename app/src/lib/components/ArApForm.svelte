@@ -10,7 +10,7 @@
 	import { fieldErrors } from '$lib/forms/validation';
 	import { FormState } from '$lib/forms/form-state.svelte';
 	import { ArApTermInput, CreateArApInput } from '$lib/schemas/ar-ap';
-	import { resolveTermAmounts, toSnapshot } from '$lib/arap-terms';
+	import { reopenAsPercent, safeResolve, toSnapshot } from '$lib/arap-terms';
 	import FormField from '$lib/components/FormField.svelte';
 	import SimpleSelect from '$lib/components/SimpleSelect.svelte';
 	import SearchSelect from '$lib/components/SearchSelect.svelte';
@@ -56,17 +56,21 @@
 	let errorMessage = $state<string | null>(null);
 	let busy = $state(false);
 
-	/** Termin tersimpan dibuka sebagai persen bila persennya menghasilkan nominal yang sama persis; selain itu nominal. */
-	function rowFromTerm(t: Entry['terms'][number], total: string): Row {
+	/**
+	 * Termin tersimpan dibuka sebagai persen bila semua persennya berjumlah tepat 100 (termasuk sisa pembulatan
+	 * yang diserap termin terakhir, mis. 33.33/33.33/33.34) atau bila persennya menghasilkan nominal yang sama
+	 * persis; selain itu nominal.
+	 */
+	function rowFromTerm(t: Entry['terms'][number], total: string, allPercent: boolean): Row {
 		const fromPercent = toMoney(D(total).times(t.percent).div(100));
-		const asPercent = fromPercent === toMoney(t.amount);
+		const asPercent = allPercent || fromPercent === toMoney(t.amount);
 		return { name: t.name ?? '', mode: asPercent ? 'percent' : 'amount', value: asPercent ? D(t.percent).toString() : D(t.amount).toString(), paid: t.paid, documentId: t.document?.id ?? '' };
 	}
 
 	// svelte-ignore state_referenced_locally
 	let useTerms = $state(entry?.hasTerms ?? false);
 	// svelte-ignore state_referenced_locally
-	let rows = $state<Row[]>(entry?.hasTerms ? entry.terms.map((t) => rowFromTerm(t, entry.total)) : []);
+	let rows = $state<Row[]>(entry?.hasTerms ? entry.terms.map((t) => rowFromTerm(t, entry.total, reopenAsPercent(entry.terms))) : []);
 	// Entri tanpa termin: termin implisit tunggal membawa status lunas dan dokumen.
 	// svelte-ignore state_referenced_locally
 	let paid = $state(entry && !entry.hasTerms ? (entry.terms[0]?.paid ?? false) : false);
@@ -124,13 +128,10 @@
 	const preview = $derived.by(() => {
 		if (!useTerms || !totalValid) return null;
 		const total = form.values.total.trim();
-		let amounts: (string | null)[] = rows.map(rowAmount);
-		let error: string | null = null;
-		try {
-			amounts = resolveTermAmounts(total, rows.map((r) => termInput(r))).map((a) => a.amount);
-		} catch (e) {
-			error = (e as Error).message;
-		}
+		// Nilai kosong/bukan angka tidak dihitung (validasi baris yang melaporkannya), jadi tidak ada `[DecimalError]`.
+		const resolved = safeResolve(total, rows.map((r) => termInput(r)));
+		const amounts: (string | null)[] = resolved.amounts ?? rows.map(rowAmount);
+		const error = resolved.error;
 		const sum = toMoney(sumMoney(amounts.filter((a): a is string => a !== null)));
 		return { amounts, sum, remaining: toMoney(D(total).minus(sum)), error };
 	});
@@ -255,7 +256,12 @@
 					</FormField>
 					<div class="space-y-1.5 sm:mt-7">
 						<label class="flex items-center gap-2 text-sm">
-							<input type="checkbox" role="switch" class="size-4 accent-primary" bind:checked={paid} disabled={wasTerms} />
+							{#if wasTerms}
+								<!-- Yang akan disimpan server: lunas hanya bila semua termin lunas. -->
+								<input type="checkbox" role="switch" class="size-4 accent-primary" checked={rows.length > 0 && rows.every((r) => r.paid)} disabled />
+							{:else}
+								<input type="checkbox" role="switch" class="size-4 accent-primary" bind:checked={paid} />
+							{/if}
 							Sudah lunas
 						</label>
 						{#if wasTerms}

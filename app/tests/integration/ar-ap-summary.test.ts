@@ -91,3 +91,18 @@ test('marking terms paid lowers AR but leaves bank balance unchanged', async () 
 	expect(before.ar.IDR).toBe('70000000.00');
 	expect(after.bank?.balance).toBe(before.bank?.balance);
 });
+
+test('another company\'s entries do not appear in this company\'s summary', async () => {
+	const a = await setup();
+	await createArAp(a.companyId, a.userId, input(a.customerId, { total: '1000' }));
+	const other = await makeCompany('PT Lain');
+	const { id: otherCustomer } = await makeContact(other.companyId, 'CUSTOMER', { name: 'PT B', code: 'PTB' });
+	const { id: otherVendor } = await makeContact(other.companyId, 'VENDOR', { name: 'PT V', code: 'PTV' });
+	await createArAp(other.companyId, a.userId, input(otherCustomer, { total: '7777' }));
+	await createArAp(other.companyId, a.userId, input(otherCustomer, { total: '50', currency: 'USD' }));
+	await createArAp(other.companyId, a.userId, input(otherVendor, { kind: 'AP', total: '3333' }));
+	const s = await getArApSummary(a.companyId);
+	expect(s.ar).toEqual({ IDR: '1000.00', USD: '0.00' });
+	expect(s.ap).toEqual({ IDR: '0.00', USD: '0.00' });
+	expect((await getArApSummary(other.companyId)).ar).toEqual({ IDR: '7777.00', USD: '50.00' });
+});
