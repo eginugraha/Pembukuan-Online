@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { computeStatus, resolveTermAmounts, sumUnpaid } from '$lib/arap-terms';
+import { computeStatus, resolveTermAmounts, sumUnpaid, toSnapshot } from '$lib/arap-terms';
 import { sumMoney } from '$lib/money';
 
 test('splits by percent', () => {
@@ -46,4 +46,18 @@ test('computeStatus', () => {
 test('sumUnpaid sums only unpaid terms', () => {
 	expect(sumUnpaid([{ paid: true, amount: '30.00' }, { paid: false, amount: '20.50' }, { paid: false, amount: '10' }])).toBe('30.50');
 	expect(sumUnpaid([{ paid: true, amount: '30.00' }])).toBe('0.00');
+});
+
+test('toSnapshot uses the effective document id and keeps id/paid', () => {
+	const ID1 = '00000000-0000-4000-8000-000000000001';
+	const ID2 = '00000000-0000-4000-8000-000000000002';
+	const DOC = '00000000-0000-4000-8000-0000000000aa';
+	const snap = toSnapshot([
+		{ id: ID1, paid: true, document: { id: DOC } },
+		{ id: ID2, paid: false, document: null }
+	]);
+	expect(snap).toEqual([
+		{ id: ID1, paid: true, documentId: DOC },
+		{ id: ID2, paid: false, documentId: null }
+	]);
 });

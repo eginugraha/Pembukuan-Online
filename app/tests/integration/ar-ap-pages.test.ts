@@ -1,8 +1,9 @@
 import { beforeEach, expect, test } from 'bun:test';
 import { db } from '../../src/lib/server/db';
+import { toSnapshot } from '../../src/lib/arap-terms';
 import { contacts } from '../../src/lib/server/db/schema';
 import { createArAp, deleteArAp, getArAp } from '../../src/lib/server/arap/entries';
-import { createInvoice } from '../../src/lib/server/invoicing/invoices';
+import { createInvoice, deleteInvoice } from '../../src/lib/server/invoicing/invoices';
 import { createPurchaseOrder } from '../../src/lib/server/invoicing/purchase-orders';
 import { load as listLoad } from '../../src/routes/(app)/invoicing/ar-ap/+page.server';
 import { load as newLoad } from '../../src/routes/(app)/invoicing/ar-ap/new/+page.server';
@@ -120,6 +121,23 @@ test('edit loader: lists documents linked to any term of this entry, excludes do
 	expect(r.entry!.id).toBe(id);
 	expect(r.contacts.map((c) => c.id)).toEqual([s.customer.id, s.both.id]);
 	expect(r.linkable.map((d) => d.id).sort()).toEqual([a.id, b.id, free.id].sort());
+});
+
+test('edit loader: the form snapshot built from the loaded entry matches its terms (effective documents)', async () => {
+	const s = await formSetup();
+	const [a, b] = [await s.inv(), await s.inv()];
+	const terms = [
+		{ name: 'DP', percent: '50', paid: true, documentId: a.id },
+		{ name: 'Lunas', percent: '50', paid: false, documentId: b.id }
+	];
+	const { id } = await createArAp(s.companyId, s.acc.id, { ...s.base, kind: 'AR', contactId: s.customer.id, terms } as never);
+	await deleteInvoice(s.companyId, b.id);
+	const r = (await s.runEdit(s.acc, id)) as unknown as { entry: { terms: Parameters<typeof toSnapshot>[0] } };
+	const dbTerms = (await getArAp(s.companyId, id)).terms;
+	expect(toSnapshot(r.entry.terms)).toEqual([
+		{ id: dbTerms[0].id, paid: true, documentId: a.id },
+		{ id: dbTerms[1].id, paid: false, documentId: null }
+	]);
 });
 
 test('edit loader: 404 for a missing entry', async () => {

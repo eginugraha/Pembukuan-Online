@@ -10,7 +10,7 @@
 	import { fieldErrors } from '$lib/forms/validation';
 	import { FormState } from '$lib/forms/form-state.svelte';
 	import { ArApTermInput, CreateArApInput } from '$lib/schemas/ar-ap';
-	import { resolveTermAmounts } from '$lib/arap-terms';
+	import { resolveTermAmounts, toSnapshot } from '$lib/arap-terms';
 	import FormField from '$lib/components/FormField.svelte';
 	import SimpleSelect from '$lib/components/SimpleSelect.svelte';
 	import SearchSelect from '$lib/components/SearchSelect.svelte';
@@ -27,7 +27,7 @@
 		total: string;
 		currency: string;
 		hasTerms: boolean;
-		terms: { name: string | null; percent: string; amount: string; paid: boolean; document: { id: string } | null }[];
+		terms: { id: string; name: string | null; percent: string; amount: string; paid: boolean; document: { id: string } | null }[];
 	};
 	type Row = { name: string; mode: 'percent' | 'amount'; value: string; paid: boolean; documentId: string };
 
@@ -75,6 +75,9 @@
 	// Bertermin -> tanpa termin: server menentukan lunas dari termin lama.
 	// svelte-ignore state_referenced_locally
 	const wasTerms = entry?.hasTerms ?? false;
+	// Termin seperti saat form dimuat; server menolak (409 stale_entry) bila sudah diubah proses lain.
+	// svelte-ignore state_referenced_locally
+	const snapshot = entry ? toSnapshot(entry.terms) : undefined;
 
 	function toggleTerms(on: boolean) {
 		useTerms = on;
@@ -168,7 +171,8 @@
 			paid: useTerms ? false : paid,
 			documentId: useTerms ? null : documentId || null,
 			// Termin disimpan ulang dengan id baru, jadi tautan dokumen dikirim eksplisit per termin.
-			terms: useTerms ? rows.map(termInput) : []
+			terms: useTerms ? rows.map(termInput) : [],
+			snapshot
 		};
 	}
 

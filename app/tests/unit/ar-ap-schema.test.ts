@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { fieldErrors } from '$lib/forms/validation';
-import { CreateArApInput } from '$lib/schemas/ar-ap';
+import { CreateArApInput, UpdateArApInput } from '$lib/schemas/ar-ap';
 
 const UUID = '00000000-0000-4000-8000-000000000000';
 const base = { kind: 'AR', contactId: UUID, title: 'Proyek A', total: '1000', currency: 'IDR', paid: false, terms: [] };
@@ -43,4 +43,12 @@ test('documentId must be a uuid; empty string becomes null', () => {
 	const r = CreateArApInput.parse({ ...base, documentId: '', terms: [t(''), term('Lunas')] });
 	expect(r.documentId).toBeNull();
 	expect(r.terms[0].documentId).toBeNull();
+});
+
+test('UpdateArApInput: snapshot is optional; when given it must be well formed', () => {
+	expect(fieldErrors(UpdateArApInput, base)).toEqual({});
+	expect(fieldErrors(UpdateArApInput, { ...base, snapshot: [{ id: UUID, paid: true, documentId: null }] })).toEqual({});
+	expect(fieldErrors(UpdateArApInput, { ...base, snapshot: [{ id: UUID, paid: true, documentId: UUID }] })).toEqual({});
+	expect(Object.keys(fieldErrors(UpdateArApInput, { ...base, snapshot: [{ id: 'x', paid: true, documentId: null }] })).length).toBeGreaterThan(0);
+	expect(CreateArApInput.safeParse({ ...base, snapshot: [] }).data).not.toHaveProperty('snapshot');
 });

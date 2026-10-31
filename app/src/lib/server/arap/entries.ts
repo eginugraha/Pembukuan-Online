@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, isNull, ne, notExists, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { computeStatus, resolveTermAmounts, sumUnpaid, type ArApStatus } from '../../arap-terms';
+import { computeStatus, resolveTermAmounts, sumUnpaid, type ArApStatus, type TermSnapshot } from '../../arap-terms';
 import { sumMoney, toMoney } from '../../money';
 import { CreateArApInput, UpdateArApInput } from '../../schemas/ar-ap';
 import { ApiError, notFound } from '../api';
@@ -148,6 +148,33 @@ export async function createArAp(companyId: string, userId: string, input: Creat
 	});
 }
 
+const staleEntry = () => new ApiError(409, 'stale_entry', 'Data sudah berubah oleh proses lain. Muat ulang halaman, lalu coba lagi.');
+
+/**
+ * Termin entri saat ini dengan baris terkunci (FOR UPDATE, hanya tabel termin) dan dokumen efektifnya: tautan ke
+ * dokumen yang sudah dihapus dibaca sebagai `null`, sama seperti `loadTerms`/`getArAp` (dan `toSnapshot`).
+ */
+async function lockCurrentTerms(tx: Tx, entryId: string, kind: Kind): Promise<TermSnapshot[]> {
+	const rows = await tx
+		.select({ id: arApTerms.id, paid: arApTerms.paid, invId: invoices.id, poId: purchaseOrders.id })
+		.from(arApTerms)
+		.leftJoin(invoices, and(eq(invoices.id, arApTerms.invoiceId), isNull(invoices.deletedAt)))
+		.leftJoin(purchaseOrders, and(eq(purchaseOrders.id, arApTerms.purchaseOrderId), isNull(purchaseOrders.deletedAt)))
+		.where(eq(arApTerms.entryId, entryId))
+		.for('update', { of: arApTerms });
+	return rows.map((r) => ({ id: r.id, paid: r.paid, documentId: (kind === 'AR' ? r.invId : r.poId) ?? null }));
+}
+
+/** Bandingkan sebagai himpunan per id termin pada (id, paid, documentId). */
+function sameTerms(current: TermSnapshot[], snapshot: TermSnapshot[]): boolean {
+	if (current.length !== snapshot.length || new Set(snapshot.map((t) => t.id)).size !== snapshot.length) return false;
+	const byId = new Map(current.map((t) => [t.id, t]));
+	return snapshot.every((s) => {
+		const c = byId.get(s.id);
+		return c !== undefined && c.paid === s.paid && c.documentId === s.documentId;
+	});
+}
+
 /** Ubah menimpa header dan seluruh termin (hapus lalu masukkan ulang); `kind` tidak boleh berubah. */
 export async function updateArAp(companyId: string, id: string, input: UpdateArApInput): Promise<void> {
 	return withLinkGuard(async (tx) => {
@@ -164,11 +191,15 @@ export async function updateArAp(companyId: string, id: string, input: UpdateArA
 		// Kontak lama tetap boleh dipakai walau sudah dinonaktifkan/dihapus; kontak baru harus valid.
 		if (input.contactId !== current.contactId) await assertContact(tx, companyId, input.contactId, contactKind(current.kind));
 
+		// Kunci termin saat ini (FOR UPDATE) sebelum dibandingkan: tanpa kunci, tandai lunas/tautan dokumen yang
+		// berjalan bersamaan bisa terselip di antara perbandingan dan penghapusan termin.
+		const old = await lockCurrentTerms(tx, id, current.kind);
+		if (input.snapshot && !sameTerms(old, input.snapshot)) throw staleEntry();
+
 		// Bertermin -> tanpa termin: status lunas ditentukan server (lunas hanya bila semua termin lama lunas),
 		// `input.paid` dari klien diabaikan pada transisi ini saja.
-		let effective = input;
+		let effective: CreateArApInput = input;
 		if (current.hasTerms && input.terms.length === 0) {
-			const old = await tx.select({ paid: arApTerms.paid }).from(arApTerms).where(eq(arApTerms.entryId, id));
 			effective = { ...input, paid: old.length > 0 && old.every((t) => t.paid) };
 		}
 
@@ -361,15 +392,26 @@ export async function listLinkableDocuments(
  * batal di Postgres, jadi pemanggil tidak boleh menelan error ini dan melanjutkan transaksi.
  */
 export async function linkDocumentToTerm(tx: Tx, companyId: string, termId: string, documentId: string): Promise<void> {
+	// Urutan kunci sama dengan `updateArAp` (entri lalu termin) supaya tidak deadlock. Termin dibaca ulang setelah
+	// kunci entri didapat: pernyataan baru melihat data yang sudah commit, jadi termin yang baru saja diganti oleh
+	// `updateArAp` terbaca hilang (404), bukan diperbarui diam-diam tanpa efek.
+	const [ref] = await tx.select({ entryId: arApTerms.entryId }).from(arApTerms).where(eq(arApTerms.id, termId)).limit(1);
+	if (!ref) throw notFound('Termin');
+	const [entry] = await tx
+		.select({ kind: arApEntries.kind })
+		.from(arApEntries)
+		.where(and(eq(arApEntries.id, ref.entryId), eq(arApEntries.companyId, companyId), isNull(arApEntries.deletedAt)))
+		.limit(1)
+		.for('update');
+	if (!entry) throw notFound('Termin');
 	const [term] = await tx
-		.select({ kind: arApEntries.kind, invoiceId: arApTerms.invoiceId, purchaseOrderId: arApTerms.purchaseOrderId })
+		.select({ invoiceId: arApTerms.invoiceId, purchaseOrderId: arApTerms.purchaseOrderId })
 		.from(arApTerms)
-		.innerJoin(arApEntries, eq(arApEntries.id, arApTerms.entryId))
-		.where(and(eq(arApTerms.id, termId), eq(arApEntries.companyId, companyId), isNull(arApEntries.deletedAt)))
+		.where(and(eq(arApTerms.id, termId), eq(arApTerms.entryId, ref.entryId)))
 		.limit(1)
 		.for('update');
 	if (!term) throw notFound('Termin');
-	const kind = term.kind;
+	const kind = entry.kind;
 	const currentId = kind === 'AR' ? term.invoiceId : term.purchaseOrderId;
 	if (currentId && currentId !== documentId && (await findActiveDocument(tx, companyId, kind, currentId))) {
 		throw new ApiError(409, 'term_already_linked', 'Termin ini sudah terhubung ke dokumen lain');

@@ -14,7 +14,8 @@ import {
 import { createInvoice, deleteInvoice, getInvoice } from '../../src/lib/server/invoicing/invoices';
 import { createPurchaseOrder } from '../../src/lib/server/invoicing/purchase-orders';
 import { db } from '../../src/lib/server/db';
-import { arApTerms } from '../../src/lib/server/db/schema';
+import { arApTerms, invoices } from '../../src/lib/server/db/schema';
+import { toSnapshot } from '../../src/lib/arap-terms';
 import { makeCompany, makeContact, makeUser } from './factory';
 import { resetDb } from './db';
 
@@ -252,4 +253,152 @@ test('listLinkableDocuments includeEntryId keeps documents of all terms of that 
 	const ids = async (opts?: { includeEntryId?: string }) => (await listLinkableDocuments(companyId, 'AR', opts)).map((d) => d.id).sort();
 	expect(await ids()).toEqual([free.id]);
 	expect(await ids({ includeEntryId: x.id })).toEqual([inv1.id, inv2.id, free.id].sort());
+});
+
+// --- Snapshot (form ubah basi) ---
+
+const stale = { status: 409, code: 'stale_entry', message: 'Data sudah berubah oleh proses lain. Muat ulang halaman, lalu coba lagi.' };
+const rawTerms = (entryId: string) => db.select().from(arApTerms).where(eq(arApTerms.entryId, entryId)).orderBy(arApTerms.termNo);
+
+async function termedEntry() {
+	const s = await setup();
+	const { id } = await createArAp(s.companyId, s.userId, input(s.customerId, { terms: threeTerms([false, false, false]) }));
+	return { ...s, id };
+}
+
+test('stale snapshot: a concurrent setTermPaid makes updateArAp 409 stale_entry and the DB is unchanged', async () => {
+	const { companyId, customerId, id } = await termedEntry();
+	const loaded = await getArAp(companyId, id);
+	await setTermPaid(companyId, id, loaded.terms[0].id, true);
+	await expect(
+		updateArAp(companyId, id, { ...input(customerId, { title: 'Judul Baru', terms: threeTerms([false, false, false]) }), snapshot: toSnapshot(loaded.terms) })
+	).rejects.toMatchObject(stale);
+	const after = await getArAp(companyId, id);
+	expect(after.title).toBe('Proyek A');
+	expect(after.terms.map((t) => t.id)).toEqual(loaded.terms.map((t) => t.id));
+	expect(after.terms.map((t) => t.paid)).toEqual([true, false, false]);
+});
+
+test('stale snapshot: a concurrent linkDocumentToTerm makes updateArAp 409 and the link stays', async () => {
+	const { companyId, userId, customerId, id } = await termedEntry();
+	const loaded = await getArAp(companyId, id);
+	const inv = await makeInvoice(companyId, userId, customerId);
+	await db.transaction((tx) => linkDocumentToTerm(tx, companyId, loaded.terms[1].id, inv.id));
+	await expect(
+		updateArAp(companyId, id, { ...input(customerId, { title: 'Judul Baru', terms: threeTerms([false, false, false]) }), snapshot: toSnapshot(loaded.terms) })
+	).rejects.toMatchObject(stale);
+	const rows = await rawTerms(id);
+	expect(rows.map((r) => r.id)).toEqual(loaded.terms.map((t) => t.id));
+	expect(rows[1].invoiceId).toBe(inv.id);
+	expect((await getArAp(companyId, id)).title).toBe('Proyek A');
+});
+
+test('stale snapshot: added/removed terms and a changed effective document are detected', async () => {
+	const { companyId, userId, customerId, id } = await termedEntry();
+	const loaded = await getArAp(companyId, id);
+	const body = (snapshot: ReturnType<typeof toSnapshot>) => ({ ...input(customerId, { terms: threeTerms([false, false, false]) }), snapshot });
+	const snap = toSnapshot(loaded.terms);
+	await expect(updateArAp(companyId, id, body(snap.slice(0, 2)))).rejects.toMatchObject(stale);
+	await expect(updateArAp(companyId, id, body([...snap, { id: crypto.randomUUID(), paid: false, documentId: null }]))).rejects.toMatchObject(stale);
+	await expect(updateArAp(companyId, id, body([snap[0], snap[0], snap[2]]))).rejects.toMatchObject(stale);
+	const inv = await makeInvoice(companyId, userId, customerId);
+	await expect(updateArAp(companyId, id, body([{ ...snap[0], documentId: inv.id }, snap[1], snap[2]]))).rejects.toMatchObject(stale);
+	expect((await rawTerms(id)).map((r) => r.id)).toEqual(loaded.terms.map((t) => t.id));
+});
+
+test('current snapshot: update succeeds and a title-only edit preserves links and paid flags', async () => {
+	const { companyId, userId, customerId } = await setup();
+	const inv = await makeInvoice(companyId, userId, customerId);
+	const { id } = await createArAp(companyId, userId, input(customerId, { terms: threeTerms([true, false, false], [null, inv.id, null]) }));
+	const loaded = await getArAp(companyId, id);
+	// Payload seperti form: termin dikirim ulang apa adanya dengan dokumen efektif masing-masing.
+	const terms = loaded.terms.map((t) => ({ name: t.name!, percent: t.percent, paid: t.paid, documentId: t.document?.id ?? null }));
+	await updateArAp(companyId, id, { ...input(customerId, { title: 'Proyek Baru', terms }), snapshot: toSnapshot(loaded.terms) });
+	const after = await getArAp(companyId, id);
+	expect(after.title).toBe('Proyek Baru');
+	expect(after.terms.map((t) => t.paid)).toEqual([true, false, false]);
+	expect(after.terms.map((t) => t.document?.id ?? null)).toEqual([null, inv.id, null]);
+	expect((await rawTerms(id))[1].invoiceId).toBe(inv.id);
+
+	// Snapshot baru (id termin baru) dari hasil ubah juga diterima.
+	await updateArAp(companyId, id, { ...input(customerId, { title: 'Proyek Lagi', terms }), snapshot: toSnapshot(after.terms) });
+	expect((await getArAp(companyId, id)).title).toBe('Proyek Lagi');
+});
+
+test('update without snapshot still succeeds (backwards compatible)', async () => {
+	const { companyId, customerId, id } = await termedEntry();
+	await setTermPaid(companyId, id, (await getArAp(companyId, id)).terms[0].id, true);
+	await updateArAp(companyId, id, input(customerId, { title: 'Tanpa Snapshot', terms: threeTerms([false, true, false]) }));
+	const after = await getArAp(companyId, id);
+	expect(after.title).toBe('Tanpa Snapshot');
+	expect(after.terms.map((t) => t.paid)).toEqual([false, true, false]);
+});
+
+test('soft-deleted linked invoice: snapshot carries documentId null (effective) and update succeeds', async () => {
+	// Kolom invoice_id masih terisi setelah invoice dihapus (soft delete); getArAp membacanya sebagai tanpa dokumen,
+	// jadi snapshot form berisi null. Perbandingan memakai dokumen efektif, bukan kolom mentah -> tidak 409.
+	const { companyId, userId, customerId } = await setup();
+	const inv = await makeInvoice(companyId, userId, customerId);
+	const { id } = await createArAp(companyId, userId, input(customerId, { terms: threeTerms([false, false, false], [inv.id, null, null]) }));
+	await deleteInvoice(companyId, inv.id);
+	const loaded = await getArAp(companyId, id);
+	const snapshot = toSnapshot(loaded.terms);
+	expect(snapshot[0].documentId).toBeNull();
+	expect((await rawTerms(id))[0].invoiceId).toBe(inv.id);
+	await updateArAp(companyId, id, { ...input(customerId, { title: 'Setelah Hapus', terms: threeTerms([false, false, false]) }), snapshot });
+	expect((await getArAp(companyId, id)).title).toBe('Setelah Hapus');
+});
+
+test('concurrency: createInvoice(linkTermId) racing updateArAp with the pre-link snapshot never loses the link', async () => {
+	// Urutan antar-transaksi tidak bisa dipaksa di sini, jadi assertion berlaku untuk SETIAP urutan:
+	// update 409 (link duluan) atau link 404 (update duluan, termin lama sudah diganti). Bila createInvoice
+	// sukses, tautannya harus ada di DB akhir.
+	for (let round = 0; round < 5; round++) {
+		await resetDb();
+		const { companyId, userId, customerId, id } = await termedEntry();
+		const loaded = await getArAp(companyId, id);
+		const terms = loaded.terms.map((t) => ({ name: t.name!, percent: t.percent, paid: t.paid, documentId: null }));
+		const [created, updated] = await Promise.allSettled([
+			createInvoice(companyId, userId, { contactId: customerId, issueDate: '2026-10-01', lines: docLines }, { linkTermId: loaded.terms[1].id }),
+			updateArAp(companyId, id, { ...input(customerId, { title: 'Balapan', terms }), snapshot: toSnapshot(loaded.terms) })
+		]);
+		const final = await getArAp(companyId, id);
+		if (created.status === 'fulfilled') {
+			expect(final.terms.some((t) => t.document?.id === created.value.id)).toBe(true);
+			expect(updated.status).toBe('rejected');
+			expect((updated as PromiseRejectedResult).reason).toMatchObject({ status: 409, code: 'stale_entry' });
+		} else {
+			expect(created.reason).toMatchObject({ status: 404 });
+			expect(updated.status).toBe('fulfilled');
+			expect(final.title).toBe('Balapan');
+			expect(await db.select().from(invoices)).toHaveLength(0);
+		}
+	}
+});
+
+test('concurrency (forced interleave): updateArAp waits for an uncommitted link and then 409s', async () => {
+	// Transaksi tautan ditahan terbuka setelah linkDocumentToTerm; updateArAp dimulai lalu harus menunggu kunci
+	// entri/termin. Hasilnya deterministik: apa pun waktunya, update melihat tautan yang sudah commit -> 409.
+	const { companyId, userId, customerId, id } = await termedEntry();
+	const loaded = await getArAp(companyId, id);
+	const inv = await makeInvoice(companyId, userId, customerId);
+	let release!: () => void;
+	const gate = new Promise<void>((r) => (release = r));
+	let linked!: () => void;
+	const linkedP = new Promise<void>((r) => (linked = r));
+	const linkTx = db.transaction(async (tx) => {
+		await linkDocumentToTerm(tx, companyId, loaded.terms[1].id, inv.id);
+		linked();
+		await gate;
+	});
+	await linkedP;
+	const upd = updateArAp(companyId, id, { ...input(customerId, { title: 'Basi', terms: threeTerms([false, false, false]) }), snapshot: toSnapshot(loaded.terms) }).then(
+		() => 'ok',
+		(e: unknown) => e
+	);
+	await Bun.sleep(150);
+	release();
+	await linkTx;
+	expect(await upd).toMatchObject(stale);
+	expect((await rawTerms(id))[1].invoiceId).toBe(inv.id);
 });

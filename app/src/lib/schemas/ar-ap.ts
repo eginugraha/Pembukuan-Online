@@ -42,9 +42,19 @@ export const CreateArApInput = z.object({
 });
 export type CreateArApInput = z.infer<typeof CreateArApInput>;
 
-/** Ubah menimpa seluruh data; `kind` diabaikan tetapi wajib cocok di service. */
-export const UpdateArApInput = CreateArApInput;
-export type UpdateArApInput = CreateArApInput;
+/** Termin seperti saat form ubah dimuat (lihat `toSnapshot`); dokumen = dokumen efektif (terhapus = `null`). */
+export const ArApTermSnapshot = z.object({
+	id: z.uuid({ error: 'Snapshot termin tidak valid' }),
+	paid: z.boolean(),
+	documentId: z.uuid({ error: 'Snapshot termin tidak valid' }).nullable()
+});
+
+/**
+ * Ubah menimpa seluruh data; `kind` diabaikan tetapi wajib cocok di service. `snapshot` opsional: bila ada,
+ * service menolak dengan 409 `stale_entry` saat termin di DB sudah berbeda dari snapshot.
+ */
+export const UpdateArApInput = CreateArApInput.extend({ snapshot: z.array(ArApTermSnapshot).optional() });
+export type UpdateArApInput = z.infer<typeof UpdateArApInput>;
 
 export const SetTermPaidInput = z.object({ paid: z.boolean({ error: 'Status bayar tidak valid' }) });
 export type SetTermPaidInput = z.infer<typeof SetTermPaidInput>;

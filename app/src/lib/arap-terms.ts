@@ -44,3 +44,18 @@ export function computeStatus(terms: { paid: boolean }[]): ArApStatus {
 export function sumUnpaid(terms: { paid: boolean; amount: string }[]): string {
 	return toMoney(sumMoney(terms.filter((t) => !t.paid).map((t) => t.amount)));
 }
+
+export interface TermSnapshot {
+	id: string;
+	paid: boolean;
+	/** Dokumen efektif: `null` bila tidak terhubung atau dokumennya sudah dihapus (soft delete). */
+	documentId: string | null;
+}
+
+/**
+ * Snapshot termin seperti saat form ubah dimuat. Dikirim bersama Ubah supaya server bisa menolak (409
+ * `stale_entry`) bila termin, status lunas, atau tautan dokumen sudah berubah oleh proses lain.
+ */
+export function toSnapshot(terms: { id: string; paid: boolean; document: { id: string } | null }[]): TermSnapshot[] {
+	return terms.map((t) => ({ id: t.id, paid: t.paid, documentId: t.document?.id ?? null }));
+}
