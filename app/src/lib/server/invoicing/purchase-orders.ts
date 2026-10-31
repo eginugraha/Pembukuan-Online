@@ -1,6 +1,7 @@
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import { D, sumMoney, toMoney } from '../../money';
 import { CreatePurchaseOrderInput, POLineInput, UpdatePurchaseOrderInput } from '../../schemas/purchase-order';
+import { linkDocumentToTerm } from '../arap/entries';
 import { assertContact, contactLocked } from './contacts';
 import { notFound } from '../api';
 import { db, type Tx } from '../db';
@@ -74,7 +75,7 @@ async function insertLines(tx: Tx, poId: string, lines: ReturnType<typeof comput
 }
 
 /** Buat PO: nomor `NNN/<PERUSAHAAN>-<KONTAK>/PO/<BULAN>/<TAHUN>` dibuat saat itu juga; tidak ada status dan tidak ada jurnal. */
-export async function createPurchaseOrder(companyId: string, userId: string, input: CreatePurchaseOrderInput): Promise<{ id: string }> {
+export async function createPurchaseOrder(companyId: string, userId: string, input: CreatePurchaseOrderInput, opts: { linkTermId?: string } = {}): Promise<{ id: string }> {
 	return db.transaction(async (tx) => {
 		const contact = await assertContact(tx, companyId, input.contactId, 'VENDOR');
 		const totals = computeTotals(input);
@@ -101,6 +102,8 @@ export async function createPurchaseOrder(companyId: string, userId: string, inp
 			})
 			.returning({ id: purchaseOrders.id });
 		await insertLines(tx, row.id, totals.lines);
+		// Satu transaksi dengan dokumen: bila tautan gagal, dokumen dan nomornya ikut batal.
+		if (opts.linkTermId) await linkDocumentToTerm(tx, companyId, opts.linkTermId, row.id, 'AP');
 		return { id: row.id };
 	});
 }

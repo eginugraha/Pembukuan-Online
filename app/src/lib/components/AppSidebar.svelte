@@ -6,6 +6,7 @@
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import ChartColumn from '@lucide/svelte/icons/chart-column';
 	import FileText from '@lucide/svelte/icons/file-text';
+	import HandCoins from '@lucide/svelte/icons/hand-coins';
 	import History from '@lucide/svelte/icons/history';
 	import Landmark from '@lucide/svelte/icons/landmark';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
@@ -134,7 +135,8 @@
 		contacts: BookUser,
 		quotation: FilePenLine,
 		invoice: Receipt,
-		po: ShoppingCart
+		po: ShoppingCart,
+		arap: HandCoins
 	};
 </script>
 

@@ -1,6 +1,7 @@
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { D, sumMoney, toMoney } from '../../money';
 import { CreateInvoiceInput, InvoiceLineInput, UpdateInvoiceInput } from '../../schemas/invoice';
+import { linkDocumentToTerm } from '../arap/entries';
 import { assertContact, contactLocked } from './contacts';
 import { ApiError, notFound } from '../api';
 import { db, type Tx } from '../db';
@@ -81,7 +82,7 @@ async function insertLines(tx: Tx, invoiceId: string, lines: ReturnType<typeof c
 }
 
 /** Buat invoice: nomor `NNN/<PERUSAHAAN>-<KONTAK>/INV/<BULAN>/<TAHUN>` dibuat saat itu juga; tidak ada status dan tidak ada jurnal. */
-export async function createInvoice(companyId: string, userId: string, input: CreateInvoiceInput): Promise<{ id: string }> {
+export async function createInvoice(companyId: string, userId: string, input: CreateInvoiceInput, opts: { linkTermId?: string } = {}): Promise<{ id: string }> {
 	return db.transaction(async (tx) => {
 		const contact = await assertContact(tx, companyId, input.contactId, 'CUSTOMER');
 		const totals = computeTotals(input);
@@ -109,6 +110,8 @@ export async function createInvoice(companyId: string, userId: string, input: Cr
 			})
 			.returning({ id: invoices.id });
 		await insertLines(tx, row.id, totals.lines);
+		// Satu transaksi dengan dokumen: bila tautan gagal, dokumen dan nomornya ikut batal.
+		if (opts.linkTermId) await linkDocumentToTerm(tx, companyId, opts.linkTermId, row.id, 'AR');
 		return { id: row.id };
 	});
 }

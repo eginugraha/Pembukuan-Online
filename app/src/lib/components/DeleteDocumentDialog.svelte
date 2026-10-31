@@ -7,15 +7,16 @@
 		title,
 		name,
 		busy,
-		onconfirm
-	}: { open: boolean; title: string; name: string; busy: boolean; onconfirm: () => void } = $props();
+		onconfirm,
+		note
+	}: { open: boolean; title: string; name: string; busy: boolean; onconfirm: () => void; note?: string } = $props();
 </script>
 
 <Dialog.Root bind:open>
 	<Dialog.Content>
 		<Dialog.Header>
 			<Dialog.Title>{title}</Dialog.Title>
-			<Dialog.Description>{name} akan dihapus dari daftar. Tindakan ini tidak bisa dibatalkan dari aplikasi.</Dialog.Description>
+			<Dialog.Description>{name} akan dihapus dari daftar. Tindakan ini tidak bisa dibatalkan dari aplikasi.{#if note} {note}{/if}</Dialog.Description>
 		</Dialog.Header>
 		<Dialog.Footer>
 			<Button type="button" variant="outline" onclick={() => (open = false)}>Batal</Button>

@@ -32,7 +32,8 @@
 		docId,
 		initial,
 		reviseOf,
-		contactLocked = !!docId || !!reviseOf
+		contactLocked = !!docId || !!reviseOf,
+		linkTermId
 	}: {
 		kind: 'invoice' | 'po' | 'quotation';
 		contacts: { id: string; name: string; code?: string | null }[];
@@ -44,6 +45,8 @@
 		reviseOf?: string;
 		/** Pelanggan/pemasok tidak bisa diganti (kodenya ada di nomor dokumen); default saat mengubah. */
 		contactLocked?: boolean;
+		/** Termin AR/AP asal: dokumen baru ditautkan ke termin ini saat dibuat (hanya jalur buat baru). */
+		linkTermId?: string;
 	} = $props();
 
 	// Jenis dokumen dan nilai awal bersifat tetap selama komponen hidup (rute berganti = komponen baru).
@@ -131,7 +134,8 @@
 				await apiFetch(`${COPY.base}/${docId}`, { method: 'PUT', json: toInput(form.values) });
 				await goto(`${COPY.page}/${docId}`);
 			} else {
-				const res = await apiFetch<{ id: string }>(COPY.base, { method: 'POST', json: toInput(form.values) });
+				const url = linkTermId ? `${COPY.base}?termId=${encodeURIComponent(linkTermId)}` : COPY.base;
+				const res = await apiFetch<{ id: string }>(url, { method: 'POST', json: toInput(form.values) });
 				await goto(`${COPY.page}/${res.id}`);
 			}
 		} catch (err) {
